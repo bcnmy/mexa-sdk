@@ -1,0 +1,32 @@
+{
+  "name": "mexa-sdk",
+  "version": "1.0.0",
+  "description": "Mexa SDK to enable meta transaction in your DApps",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bcnmy/mexa-sdk.git"
+  },
+  "keywords": [
+    "mexa",
+    "sdk",
+    "meta-transactions",
+    "gasless",
+    "transactions"
+  ],
+  "author": "Sachin Tomar",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bcnmy/mexa-sdk/issues"
+  },
+  "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "events": "^3.0.0",
+    "promise": "^8.0.3",
+    "web3": "^1.2.1"
+  }
+}
