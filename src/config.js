@@ -1,8 +1,5 @@
 let config = {}
-config.baseURL = {
-	dev: "http://localhost:4000",
-	prod: "https://api.biconomy.io"
-};
+config.baseURL = "https://api.biconomy.io";
 config.userLoginPath = "/api/v1/dapp-user/login";
 config.MESSAGE_TO_SIGN = 'Sign message to prove the ownership of your account';
 config.USER_ACCOUNT = "BUA";
