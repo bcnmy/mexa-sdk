@@ -161,6 +161,13 @@ async function handleSendTransaction(engine, payload, end) {
 			}
 			console.info(`User account fetched`);
 			let message = engine.messageToSign;
+			let nonce = await _getUserNonce(account, engine);
+			if(!nonce) {
+				let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+				engine.emit(EVENTS.BICONOMY_ERROR, error);
+				end(error);
+			}
+			message += nonce;
 			engine.sendAsync({
 				jsonrpc: JSON_RPC_VERSION,
 				id: payload.id,
@@ -176,7 +183,7 @@ async function handleSendTransaction(engine, payload, end) {
 					let data = {};
 					data.signature = response.result;
 					data.signer = account;
-					data.message = message;
+					data.message = engine.messageToSign;
 					data.apiId = api.id;
 					data.dappId = engine.dappId;
 					data.params = paramArray;
@@ -186,14 +193,33 @@ async function handleSendTransaction(engine, payload, end) {
 				}
 			});
 		} else {
-			engine.emit(EVENTS.BICONOMY_ERROR,
-				formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
-					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`));
+			let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
+				`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+			engine.emit(EVENTS.BICONOMY_ERROR, error);
+			end(error);
 		}
 	} else {
-		engine.emit(EVENTS.BICONOMY_ERROR,
-				formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
-					`Invalid payload data ${payload}. Expecting params key to be an array with first element having a 'to' property`));
+		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+			`Invalid payload data ${payload}. Expecting params key to be an array with first element having a 'to' property`);
+		engine.emit(EVENTS.BICONOMY_ERROR, error);
+		end(error);
+	}
+}
+
+async function _getUserNonce(address, engine) {
+	try {
+		let getNonceAPI = `${baseURL}/api/${config.version}/dapp-user/getNonce?signer=${address}`;
+		axios.defaults.headers.common["x-api-key"] = engine.apiKey;
+		let response = await axios.get(getNonceAPI);
+		if(response && response.status == 200 && response.data) {
+			return response.data.nonce;
+		}
+		return;
+	} catch(error) {
+		if(error.response.status == 404) {
+			return 0;
+		}
+		return;
 	}
 }
 
@@ -470,8 +496,14 @@ function _getUserContractWallet(engine, address, cb) {
  * new user contract for the user. It user contract already exists it just
  * returns the contract wallet address.
  **/
-Biconomy.prototype.login = function(signer, cb){
+Biconomy.prototype.login = async function(signer, cb){
 	let message = this.loginMessageToSign;
+	let nonce = await _getUserNonce(signer, this);
+	if(!nonce) {
+		nonce = 0;
+	}
+	message += nonce;
+
 	let engine = this;
 	console.debug(`Biconomy engine status ${engine.status}`);
 	if(engine.status != STATUS.BICONOMY_READY) {
@@ -489,7 +521,7 @@ Biconomy.prototype.login = function(signer, cb){
 			let data = {};
 			data.signature = signature.result;
 			data.signer = signer;
-			data.message = message;
+			data.message = engine.loginMessageToSign;
 			data.provider = engine.providerId;
 			axios
 		      .post(`${baseURL}${userLoginPath}`, data)

@@ -3,11 +3,11 @@ config.version = 'v1';
 config.baseURL = "https://api.biconomy.io";
 config.userLoginPath = `/api/${config.version}/dapp-user/login`;
 config.getUserContractPath = `/api/${config.version}/dapp-user/getUserContract`;
-config.MESSAGE_TO_SIGN = 'Sign message to prove the ownership of your account';
+config.MESSAGE_TO_SIGN = 'Sign message to prove the ownership of your account with nonce ';
 config.USER_ACCOUNT = "BUA";
 config.USER_CONTRACT = "BUC";
 config.JSON_RPC_VERSION = '2.0';
-config.LOGIN_MESSAGE_TO_SIGN = "Sign message to login to Biconomy";
+config.LOGIN_MESSAGE_TO_SIGN = "Sign message to login to Biconomy with nonce ";
 
 const EVENTS = {
 	SMART_CONTRACT_DATA_READY: 'smart_contract_data_ready',
