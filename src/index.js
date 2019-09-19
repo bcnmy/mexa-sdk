@@ -436,8 +436,13 @@ function _init(dappId, apiKey, engine) {
 					}
 				});
 			} else {
-				engine.emit(EVENTS.BICONOMY_ERROR,
-					formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with dapp id ${dappId}`));
+				if(dappResponse.log) {
+					engine.emit(EVENTS.BICONOMY_ERROR,
+						formatMessage(RESPONSE_CODES.ERROR_RESPONSE, dappResponse.log));
+				} else {
+					engine.emit(EVENTS.BICONOMY_ERROR,
+						formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with dapp id ${dappId}`));
+				}
 			}
 		}).catch(function(error) {
 			engine.emit(EVENTS.BICONOMY_ERROR,
