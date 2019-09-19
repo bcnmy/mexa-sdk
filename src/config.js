@@ -1,6 +1,6 @@
 let config = {}
 config.version = 'v1';
-config.baseURL = "https://api.biconomy.io";
+config.baseURL = "https://test-backend.biconomy.io";
 config.userLoginPath = `/api/${config.version}/dapp-user/login`;
 config.getUserContractPath = `/api/${config.version}/dapp-user/getUserContract`;
 config.MESSAGE_TO_SIGN = 'Sign message to prove the ownership of your account with nonce ';
