@@ -1,4 +1,4 @@
 # Table of contents
 
-* [mexa-sdk](README.md)
+* [Biconomy SDK \(Mexa\)](README.md)
 
