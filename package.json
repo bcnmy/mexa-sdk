@@ -25,6 +25,7 @@
   "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
   "dependencies": {
     "axios": "^0.19.0",
+    "ethereum-tx-decoder": "^3.0.0",
     "events": "^3.0.0",
     "promise": "^8.0.3",
     "web3": "^1.2.1"
