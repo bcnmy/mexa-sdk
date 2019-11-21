@@ -1,5 +1,6 @@
 import axios from "axios";
 const Promise = require('promise');
+const txDecoder = require('ethereum-tx-decoder');
 const util = require('util');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
 
@@ -19,7 +20,11 @@ var eventEmitter = new events.EventEmitter();
 function Biconomy(provider, options) {
 	console.debug(provider);
 	console.debug(options);
-	events.EventEmitter.call(this);
+	// Handle websocket provider on function
+	if(provider.on) {
+		this.providerOn = provider.on;
+	}
+
 	_validate(options);
 	let _self = this;
 	this.status = STATUS.INIT;
@@ -40,12 +45,14 @@ function Biconomy(provider, options) {
 
 	if(provider) {
 		web3 = new Web3(provider);
-		// Copy all properties of provider
+		// Copy all properties of provider except 'on' function
 		for(var key in provider) {
-			this[key] = provider[key];
+			if(key != 'on') {
+				this[key] = provider[key];
+			}
 		}
 
-		this.providerSendAsync = provider.sendAsync;
+		this.providerSendAsync = provider.send || provider.sendAsync;
 		this.sendAsync = function(payload, cb) {
 			if(payload.method == 'eth_sendTransaction') {
 				if(this.isLogin) {
@@ -59,6 +66,11 @@ function Biconomy(provider, options) {
 					error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
 					cb(error);
 				}
+			} else if(payload.method == 'eth_sendRawTransaction') {
+				sendSignedTransaction(this, payload, (error, result) => {
+					let response = _createJsonRpcResponse(payload, error, result);
+					cb(error, response);
+				});
 			} else if(payload.method == 'eth_call') {
 				let userContract = localStorage.getItem(USER_CONTRACT);
 				if(this.readViaContract && this.isLogin && userContract) {
@@ -71,6 +83,7 @@ function Biconomy(provider, options) {
 				this.providerSendAsync(payload, cb);
 			}
 		};
+		this.send = this.sendAsync;
 
 		const subscription = web3.eth.subscribe('logs',{
 			topics:['0x5983cdcaa370320b76fe01a3a32a0430e6a13b9f47a55e806afb13b5aef95a12']
@@ -88,7 +101,7 @@ function Biconomy(provider, options) {
 						if(!error && userContract) {
 							_setLocalData(userAddress, userContract);
 							_self.isLogin = true;
-							_self.emit(EVENTS.LOGIN_CONFIRMATION, log);
+							eventEmitter.emit(EVENTS.LOGIN_CONFIRMATION, log);
 							delete _self.pendingLoginTransactions[log.transactionHash];
 						}
 					});
@@ -100,7 +113,22 @@ function Biconomy(provider, options) {
 	}
 }
 
-util.inherits(Biconomy, events.EventEmitter);
+Biconomy.prototype.getLoginMessageToSign = async function(signer) {
+	let nonce = await _getUserNonce(signer, this);
+	if(!nonce) {
+		nonce = 0;
+	}
+	let message = `${this.loginMessageToSign}${nonce}`;
+	return message;
+}
+
+Biconomy.prototype.on = function(type, callback) {
+	if(type == this.READY || type == this.ERROR || type == this.LOGIN_CONFIRMATION) {
+		return eventEmitter.on(type, callback);
+	} else {
+		return this.providerOn(type, callback);
+	}
+}
 
 /**
  * Create a JSON RPC response from the given error and result parameter.
@@ -121,6 +149,77 @@ function _createJsonRpcResponse(payload, error, result) {
 	return response;
 }
 
+function decodeMethod(to, data) {
+	if(to && data && decoderMap[to]) {
+		return decoderMap[to].decodeMethod(data);
+	}
+	return;
+}
+
+async function sendSignedTransaction(engine, payload, end) {
+	if(payload && payload.params && payload.params[0]) {
+		let rawTx = payload.params[0];
+		let signer = web3.eth.accounts.recoverTransaction(rawTx);
+		let decodedTx = txDecoder.decodeTx(rawTx);
+
+		if(decodedTx.to && decodedTx.data) {
+			const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
+			let methodName = methodInfo.name;
+			let api = engine.dappAPIMap[methodName];
+			if(!api) {
+				console.debug(`API not found for method ${methodName}`);
+				console.debug(`Strict mode ${engine.strictMode}`);
+				if(engine.strictMode) {
+					let error = {};
+					error.code = RESPONSE_CODES.API_NOT_FOUND;
+					error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
+					end(error, null);
+				} else {
+					console.debug(`Falling back to default provider as strict mode is false in biconomy`);
+					return engine.providerSendAsync(payload, end);
+				}
+			}
+			console.debug('API found');
+			let params = methodInfo.params;
+			let paramArray = [];
+			for(let i = 0; i < params.length; i++) {
+				paramArray.push(_getParamValue(params[i]));
+			}
+
+			let account = signer;
+			if(!account) {
+				return end(`Not able to get user account`);
+			}
+
+			let nonce = await _getUserNonce(account, engine);
+			if(!nonce) {
+				let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+				end(error);
+			}
+
+			let data = {};
+			data.rawTx = rawTx;
+			data.signer = account;
+			data.apiId = api.id;
+			data.dappId = engine.dappId;
+			data.params = paramArray;
+			_sendTransaction(engine, account, api, data, end);
+
+		} else {
+			let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
+				`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+			end(error);
+		}
+	} else {
+		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+			`Invalid payload data ${payload}. Expecting params key to be an array with first element having a 'to' property`);
+		eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+		end(error);
+	}
+}
+
 /**
  * Function decodes the parameter in payload and gets the user signature using personal_sign
  * method and send the request to biconomy for processing and call the callback method 'end'
@@ -131,7 +230,7 @@ async function handleSendTransaction(engine, payload, end) {
 	console.debug(payload);
 	if(payload.params && payload.params[0] && payload.params[0].to) {
 		if(decoderMap[payload.params[0].to]) {
-			const methodInfo = decoderMap[payload.params[0].to.toLowerCase()].decodeMethod(payload.params[0].data);
+			const methodInfo = decodeMethod(payload.params[0].to.toLowerCase(), payload.params[0].data);
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[methodName];
 			if(!api) {
@@ -164,7 +263,7 @@ async function handleSendTransaction(engine, payload, end) {
 			let nonce = await _getUserNonce(account, engine);
 			if(!nonce) {
 				let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
-				engine.emit(EVENTS.BICONOMY_ERROR, error);
+				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 				end(error);
 			}
 			message += nonce;
@@ -195,13 +294,13 @@ async function handleSendTransaction(engine, payload, end) {
 		} else {
 			let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
 				`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
-			engine.emit(EVENTS.BICONOMY_ERROR, error);
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 			end(error);
 		}
 	} else {
 		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
 			`Invalid payload data ${payload}. Expecting params key to be an array with first element having a 'to' property`);
-		engine.emit(EVENTS.BICONOMY_ERROR, error);
+		eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 		end(error);
 	}
 }
@@ -242,7 +341,7 @@ eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 
 eventEmitter.on(EVENTS.DAPP_API_DATA_READY, (engine)=>{
 	engine.status = STATUS.BICONOMY_READY;
-	engine.emit(STATUS.BICONOMY_READY);
+	eventEmitter.emit(STATUS.BICONOMY_READY);
 	console.debug(engine);
 });
 
@@ -318,8 +417,12 @@ function _getParamValue(paramObj) {
  **/
 function _sendTransaction(engine, account, api, data, cb) {
 	if(engine && account && api && data) {
+		let url = api.url;
+		if(data.rawTx) {
+			url = config.handleSignedTxUrl;
+		}
 		axios
-	      .post(`${baseURL}${api.url}`, data)
+	      .post(`${baseURL}${url}`, data)
 	      .then(function(response) {
 	      	console.debug(response);
 	        const result = response.data;
@@ -372,13 +475,13 @@ function _init(dappId, apiKey, engine) {
 					params: []
 				}, function(error, networkResponse){
 					if(error || (networkResponse && networkResponse.error)) {
-						engine.emit(EVENTS.BICONOMY_ERROR,
+						eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 							formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND , "Could not get network version"), error || networkResponse.error);
 					} else {
 						let providerNetworkId = networkResponse.result;
 						console.debug(`Current provider network id: ${providerNetworkId}`);
 						if(providerNetworkId != dappNetworkId) {
-							engine.emit(EVENTS.BICONOMY_ERROR,
+							eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 								formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH,
 								`Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${dappNetworkId}`));
 						} else {
@@ -387,7 +490,7 @@ function _init(dappId, apiKey, engine) {
 							axios.get(getDAppInfoAPI).then(function(response) {
 								let result = response.data;
 								if(!result && result.flag != 143) {
-									engine.emit(EVENTS.BICONOMY_ERROR,
+									eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 										formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
 											`Error getting smart contract for dappId ${dappId}`));
 								}
@@ -404,7 +507,7 @@ function _init(dappId, apiKey, engine) {
 									if(userLocalContract && userLocalAccount) {
 										_getUserAccount(engine, undefined, (error, response) => {
 											if(error || response.error) {
-												engine.emit(EVENTS.BICONOMY_ERROR,
+												eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 													formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,
 														"Could not get user account"));
 											}
@@ -423,13 +526,13 @@ function _init(dappId, apiKey, engine) {
 									}
 								} else {
 									engine.status = STATUS.NO_DATA;
-									engine.emit(EVENTS.BICONOMY_ERROR,
+									eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 										formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
 											`No smart contract registered for dappId ${dappId} on Mexa Dashboard`));
 								}
 						    })
 						    .catch(function(error) {
-						      engine.emit(EVENTS.BICONOMY_ERROR,
+						      eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 						      	formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
 						    });
 						}
@@ -437,19 +540,19 @@ function _init(dappId, apiKey, engine) {
 				});
 			} else {
 				if(dappResponse.log) {
-					engine.emit(EVENTS.BICONOMY_ERROR,
+					eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 						formatMessage(RESPONSE_CODES.ERROR_RESPONSE, dappResponse.log));
 				} else {
-					engine.emit(EVENTS.BICONOMY_ERROR,
+					eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 						formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with dapp id ${dappId}`));
 				}
 			}
 		}).catch(function(error) {
-			engine.emit(EVENTS.BICONOMY_ERROR,
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 				formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
 	    });
 	} catch(error) {
-		engine.emit(EVENTS.BICONOMY_ERROR,
+		eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 			formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
 	}
 
@@ -468,7 +571,7 @@ function _getUserContractWallet(engine, address, cb) {
 		}, function(error, response){
 			if(error || (response && response.error)) {
 				console.error(error || response.error);
-				engine.emit(EVENTS.BICONOMY_ERROR,
+				eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 					formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND , "Could not get network version"), error || networkResponse.error);
 			} else {
 				let networkId = response.result;
@@ -493,6 +596,45 @@ function _getUserContractWallet(engine, address, cb) {
 	} else {
 		cb("Input address is not valid");
 	}
+}
+
+Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
+	let engine = this;
+	let data = {};
+	data.signature = signature;
+	data.signer = signer;
+	data.message = engine.loginMessageToSign;
+	data.provider = engine.providerId;
+	axios
+		.post(`${baseURL}${userLoginPath}`, data)
+		.then(function(response) {
+			const data = response.data;
+			console.debug(data);
+			let result = {}
+			if(data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
+				result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
+				if(data.userContract) {
+					result.message = `User login successfull`;
+					result.userContract = data.userContract;
+					engine.isLogin = true;
+					_setLocalData(signer, data.userContract);
+				} else if(data.transactionHash) {
+					result.message = `User contract creation initiated`;
+					result.transactionHash = data.transactionHash;
+					addPendingLoginTransactions(engine, data.transactionHash);
+					console.debug(`Transaction hash ${data.transactionHash} added to pending transactions`);
+				}
+				cb(null, result);
+			} else {
+				result.code = RESPONSE_CODES.ERROR_RESPONSE;
+				result.message = data.log;
+				cb(result, null);
+			}
+		})
+		.catch(function(error) {
+			console.debug(error);
+			cb(error, null);
+		});
 }
 
 /**

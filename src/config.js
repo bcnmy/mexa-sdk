@@ -8,7 +8,7 @@ config.USER_ACCOUNT = "BUA";
 config.USER_CONTRACT = "BUC";
 config.JSON_RPC_VERSION = '2.0';
 config.LOGIN_MESSAGE_TO_SIGN = "Sign message to login to Biconomy with counter ";
-
+config.handleSignedTxUrl = `/api/${config.version}/meta-tx/sendSignedTx`;
 const EVENTS = {
 	SMART_CONTRACT_DATA_READY: 'smart_contract_data_ready',
 	DAPP_API_DATA_READY: 'dapp_api_data_ready',
