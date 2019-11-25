@@ -161,9 +161,11 @@ async function sendSignedTransaction(engine, payload, end) {
 		let rawTx = payload.params[0];
 		let signer = web3.eth.accounts.recoverTransaction(rawTx);
 		let decodedTx = txDecoder.decodeTx(rawTx);
-
 		if(decodedTx.to && decodedTx.data) {
 			const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
+			if(!methodInfo) {
+				return end(`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
+			}
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[methodName];
 			if(!api) {
@@ -173,7 +175,7 @@ async function sendSignedTransaction(engine, payload, end) {
 					let error = {};
 					error.code = RESPONSE_CODES.API_NOT_FOUND;
 					error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
-					end(error, null);
+					return end(error, null);
 				} else {
 					console.debug(`Falling back to default provider as strict mode is false in biconomy`);
 					return engine.providerSendAsync(payload, end);
@@ -204,6 +206,7 @@ async function sendSignedTransaction(engine, payload, end) {
 			data.apiId = api.id;
 			data.dappId = engine.dappId;
 			data.params = paramArray;
+			data.data = decodedTx.data;
 			_sendTransaction(engine, account, api, data, end);
 
 		} else {
