@@ -263,13 +263,15 @@ async function handleSendTransaction(engine, payload, end) {
 			}
 			console.info(`User account fetched`);
 			let message = engine.messageToSign;
-			let nonce = await _getUserNonce(account, engine);
+			let nonce = await _getUserContractNonce(account, engine);
 			if(!nonce) {
 				let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
 				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 				end(error);
 			}
 			message += nonce;
+			let messageLength = message.length;
+
 			engine.sendAsync({
 				jsonrpc: JSON_RPC_VERSION,
 				id: payload.id,
@@ -286,6 +288,7 @@ async function handleSendTransaction(engine, payload, end) {
 					data.signature = response.result;
 					data.signer = account;
 					data.message = engine.messageToSign;
+					data.messageLength = messageLength;
 					data.apiId = api.id;
 					data.dappId = engine.dappId;
 					data.params = paramArray;
@@ -325,6 +328,22 @@ async function _getUserNonce(address, engine) {
 	}
 }
 
+async function _getUserContractNonce(address, engine) {
+	try {
+		let getNonceAPI = `${baseURL}/api/${config.version}/dapp-user/getContractNonce?signer=${address}`;
+		axios.defaults.headers.common["x-api-key"] = engine.apiKey;
+		let response = await axios.get(getNonceAPI);
+		if(response && response.status == 200 && response.data) {
+			return response.data.nonce;
+		}
+		return;
+	} catch(error) {
+		if(error.response.status == 404) {
+			return 0;
+		}
+		return;
+	}
+}
 // On getting smart contract data get the API data also
 eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 	// Get DApp API information from Database
