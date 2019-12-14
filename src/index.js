@@ -272,8 +272,6 @@ async function handleSendTransaction(engine, payload, end) {
 			message += nonce;
 			let messageLength = message.length;
 
-
-			console.log(engine.messageToSign);
 			engine.sendAsync({
 				jsonrpc: JSON_RPC_VERSION,
 				id: payload.id,
