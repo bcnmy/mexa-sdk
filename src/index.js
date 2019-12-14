@@ -270,6 +270,10 @@ async function handleSendTransaction(engine, payload, end) {
 				end(error);
 			}
 			message += nonce;
+			let messageLength = message.length;
+
+
+			console.log(engine.messageToSign);
 			engine.sendAsync({
 				jsonrpc: JSON_RPC_VERSION,
 				id: payload.id,
@@ -286,6 +290,7 @@ async function handleSendTransaction(engine, payload, end) {
 					data.signature = response.result;
 					data.signer = account;
 					data.message = engine.messageToSign;
+					data.messageLength = messageLength;
 					data.apiId = api.id;
 					data.dappId = engine.dappId;
 					data.params = paramArray;
