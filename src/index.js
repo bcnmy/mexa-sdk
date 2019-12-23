@@ -1,7 +1,7 @@
 import axios from "axios";
+import { sign } from "crypto";
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
-const util = require('util');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
 
 const Web3 = require('web3');
@@ -67,10 +67,17 @@ function Biconomy(provider, options) {
 					cb(error);
 				}
 			} else if(payload.method == 'eth_sendRawTransaction') {
-				sendSignedTransaction(this, payload, (error, result) => {
-					let response = _createJsonRpcResponse(payload, error, result);
-					cb(error, response);
-				});
+				if(this.isLogin) {
+					sendSignedTransaction(this, payload, (error, result) => {
+						let response = _createJsonRpcResponse(payload, error, result);
+						cb(error, response);
+					});
+				} else {
+					let error = {};
+					error.message = 'User not logged in to biconomy';
+					error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
+					cb(error);
+				}
 			} else if(payload.method == 'eth_call') {
 				let userContract = localStorage.getItem(USER_CONTRACT);
 				if(this.readViaContract && this.isLogin && userContract) {
@@ -122,6 +129,42 @@ Biconomy.prototype.getLoginMessageToSign = async function(signer) {
 	return message;
 }
 
+Biconomy.prototype.getUserMessageToSign = async function(signer, cb) {
+	let engine = this;
+	return new Promise(async (resolve, reject)=>{
+		let result = {};
+		try {
+			let getNonceAPI = `${baseURL}/api/${config.version}/dapp-user/getContractNonce?signer=${signer}`;
+			axios.defaults.headers.common["x-api-key"] = engine.apiKey;
+			let response = await axios.get(getNonceAPI);
+			if(response && response.status == 200 && response.data) {
+				if(response.data.flag != BICONOMY_RESPONSE_CODES.SUCCESS) {
+					result.code = RESPONSE_CODES.ERROR_RESPONSE;
+					result.message = response.data.log;
+					if(cb) cb(result);
+					reject(result);
+				} else {
+					result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
+					result.message = "Successfully fetched user message to sign";
+					result.messageToSign = `${this.messageToSign}${response.data.nonce}`;
+					if(cb) cb(result);
+					resolve(`${this.messageToSign}${response.data.nonce}`);
+				}
+			}
+		} catch(error) {
+			console.log(error);
+			let message;
+			if(error.response && error.response.data) {
+				message = error.response.data.log;
+			}
+			result.code = RESPONSE_CODES.ERROR_RESPONSE;
+			result.message = message ? message: "Failed to get user nonce";
+			if(cb) cb(result);
+			reject(result);
+		}
+	});
+}
+
 Biconomy.prototype.on = function(type, callback) {
 	if(type == this.READY || type == this.ERROR || type == this.LOGIN_CONFIRMATION) {
 		return eventEmitter.on(type, callback);
@@ -157,67 +200,83 @@ function decodeMethod(to, data) {
 }
 
 async function sendSignedTransaction(engine, payload, end) {
-	if(payload && payload.params && payload.params[0]) {
-		let rawTx = payload.params[0];
-		let signer = web3.eth.accounts.recoverTransaction(rawTx);
-		let decodedTx = txDecoder.decodeTx(rawTx);
-		if(decodedTx.to && decodedTx.data) {
-			const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
-			if(!methodInfo) {
-				return end(`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
-			}
-			let methodName = methodInfo.name;
-			let api = engine.dappAPIMap[methodName];
-			if(!api) {
-				console.debug(`API not found for method ${methodName}`);
-				console.debug(`Strict mode ${engine.strictMode}`);
-				if(engine.strictMode) {
-					let error = {};
-					error.code = RESPONSE_CODES.API_NOT_FOUND;
-					error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
-					return end(error, null);
-				} else {
-					console.debug(`Falling back to default provider as strict mode is false in biconomy`);
-					return engine.providerSendAsync(payload, end);
+
+	if(payload && payload.params[0]) {
+		let data = payload.params[0];
+		let message = data.message;
+		let signature = data.signature;
+		let rawTransaction = data.rawTransaction;
+		if(message && signature && rawTransaction) {
+			let decodedTx = txDecoder.decodeTx(rawTransaction);
+
+			if(decodedTx.to && decodedTx.data && decodedTx.value) {
+				const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
+				if(!methodInfo) {
+					return end(`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
 				}
-			}
-			console.debug('API found');
-			let params = methodInfo.params;
-			let paramArray = [];
-			for(let i = 0; i < params.length; i++) {
-				paramArray.push(_getParamValue(params[i]));
-			}
+				let methodName = methodInfo.name;
+				let api = engine.dappAPIMap[methodName];
+				if(!api) {
+					console.debug(`API not found for method ${methodName}`);
+					console.debug(`Strict mode ${engine.strictMode}`);
+					if(engine.strictMode) {
+						let error = {};
+						error.code = RESPONSE_CODES.API_NOT_FOUND;
+						error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
+						return end(error, null);
+					} else {
+						console.debug(`Falling back to default provider as strict mode is false in biconomy`);
+						return engine.providerSendAsync(rawTransaction, end);
+					}
+				}
+				console.debug('API found');
+				let params = methodInfo.params;
+				let paramArray = [];
+				for(let i = 0; i < params.length; i++) {
+					paramArray.push(_getParamValue(params[i]));
+				}
 
-			let account = signer;
-			if(!account) {
-				return end(`Not able to get user account`);
-			}
+				let account = web3.eth.accounts.recoverTransaction(rawTransaction);
+				console.log(`signer is ${account}`);
+				if(!account) {
+					return end(`Not able to get user account`);
+				}
 
-			let nonce = await _getUserNonce(account, engine);
-			if(!nonce) {
-				let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+				let nonce = await _getUserNonce(account, engine);
+				if(!nonce) {
+					let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+					eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+					end(error);
+				}
+
+				let data = {};
+				data.rawTx = rawTransaction;
+				data.signature = signature;
+				data.messageLength = message.length;
+				data.message = engine.messageToSign;
+				data.signer = account;
+				data.apiId = api.id;
+				data.dappId = engine.dappId;
+				data.params = paramArray;
+				data.data = decodedTx.data;
+				data.value = web3.utils.toHex(decodedTx.value)
+				_sendTransaction(engine, account, api, data, end);
+
+			} else {
+				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
+					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
 				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 				end(error);
 			}
-
-			let data = {};
-			data.rawTx = rawTx;
-			data.signer = account;
-			data.apiId = api.id;
-			data.dappId = engine.dappId;
-			data.params = paramArray;
-			data.data = decodedTx.data;
-			_sendTransaction(engine, account, api, data, end);
-
 		} else {
-			let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
-				`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+			let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+				`Invalid payload data ${JSON.stringify(payload.params[0])}. message, signature and rawTransaction are required in param object`);
 			eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 			end(error);
 		}
 	} else {
 		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
-			`Invalid payload data ${payload}. Expecting params key to be an array with first element having a 'to' property`);
+			`Invalid payload data ${JSON.stringify(payload.params[0])}. Non empty Array expected in params key`);
 		eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 		end(error);
 	}
@@ -236,6 +295,8 @@ async function handleSendTransaction(engine, payload, end) {
 			const methodInfo = decodeMethod(payload.params[0].to.toLowerCase(), payload.params[0].data);
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[methodName];
+			console.log(api);
+
 			if(!api) {
 				console.debug(`API not found for method ${methodName}`);
 				console.debug(`Strict mode ${engine.strictMode}`);
@@ -243,7 +304,7 @@ async function handleSendTransaction(engine, payload, end) {
 					let error = {};
 					error.code = RESPONSE_CODES.API_NOT_FOUND;
 					error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
-					end(error, null);
+					return end(error, null);
 				} else {
 					console.debug(`Falling back to default provider as strict mode is false in biconomy`);
 					return engine.providerSendAsync(payload, end);
@@ -292,6 +353,11 @@ async function handleSendTransaction(engine, payload, end) {
 					data.apiId = api.id;
 					data.dappId = engine.dappId;
 					data.params = paramArray;
+					if(payload.params[0].value) {
+						data.value = payload.params[0].value;
+					} else {
+						data.value = "0x0";
+					}
 					_sendTransaction(engine, account, api, data, end);
 				} else {
 					end();
@@ -305,7 +371,7 @@ async function handleSendTransaction(engine, payload, end) {
 		}
 	} else {
 		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
-			`Invalid payload data ${payload}. Expecting params key to be an array with first element having a 'to' property`);
+			`Invalid payload data ${JSON.stringify(payload)}. Expecting params key to be an array with first element having a 'to' property`);
 		eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 		end(error);
 	}
@@ -338,12 +404,12 @@ async function _getUserContractNonce(address, engine) {
 		}
 		return;
 	} catch(error) {
-		if(error.response.status == 404) {
-			return 0;
-		}
+		console.debug(error);
 		return;
 	}
 }
+
+
 // On getting smart contract data get the API data also
 eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 	// Get DApp API information from Database
@@ -440,9 +506,6 @@ function _getParamValue(paramObj) {
 function _sendTransaction(engine, account, api, data, cb) {
 	if(engine && account && api && data) {
 		let url = api.url;
-		if(data.rawTx) {
-			url = config.handleSignedTxUrl;
-		}
 		axios
 	      .post(`${baseURL}${url}`, data)
 	      .then(function(response) {
@@ -659,6 +722,9 @@ Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
 		});
 }
 
+Biconomy.prototype.isReady = async function() {
+	return (this.status === STATUS.BICONOMY_READY);
+}
 /**
  * Method used to login to biconomy. It takes user's signature as input
  * and if user contract wallet is not found for the user then it deploys
