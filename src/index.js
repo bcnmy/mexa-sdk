@@ -70,7 +70,7 @@ function Biconomy(provider, options) {
 				if(this.isLogin) {
 					sendSignedTransaction(this, payload, (error, result) => {
 						let response = _createJsonRpcResponse(payload, error, result);
-						cb(error, response);
+						cb(response);
 					});
 				} else {
 					let error = {};
@@ -108,7 +108,7 @@ function Biconomy(provider, options) {
 						if(!error && userContract) {
 							_setLocalData(userAddress, userContract);
 							_self.isLogin = true;
-							eventEmitter.emit(EVENTS.LOGIN_CONFIRMATION, log);
+							eventEmitter.emit(EVENTS.LOGIN_CONFIRMATION, log, userContract);
 							delete _self.pendingLoginTransactions[log.transactionHash];
 						}
 					});
@@ -212,7 +212,9 @@ async function sendSignedTransaction(engine, payload, end) {
 			if(decodedTx.to && decodedTx.data && decodedTx.value) {
 				const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
 				if(!methodInfo) {
-					return end(`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
+					let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
+						`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
+					return end(error);
 				}
 				let methodName = methodInfo.name;
 				let api = engine.dappAPIMap[methodName];
@@ -220,9 +222,8 @@ async function sendSignedTransaction(engine, payload, end) {
 					console.debug(`API not found for method ${methodName}`);
 					console.debug(`Strict mode ${engine.strictMode}`);
 					if(engine.strictMode) {
-						let error = {};
-						error.code = RESPONSE_CODES.API_NOT_FOUND;
-						error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
+						let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND,
+							`Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`);
 						return end(error, null);
 					} else {
 						console.debug(`Falling back to default provider as strict mode is false in biconomy`);
@@ -239,7 +240,8 @@ async function sendSignedTransaction(engine, payload, end) {
 				let account = web3.eth.accounts.recoverTransaction(rawTransaction);
 				console.log(`signer is ${account}`);
 				if(!account) {
-					return end(`Not able to get user account`);
+					let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE ,`Not able to get user account from signed transaction`);
+					return end(error);
 				}
 
 				let nonce = await _getUserNonce(account, engine);
