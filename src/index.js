@@ -70,7 +70,7 @@ function Biconomy(provider, options) {
 				if(this.isLogin) {
 					sendSignedTransaction(this, payload, (error, result) => {
 						let response = _createJsonRpcResponse(payload, error, result);
-						cb(response);
+						cb(error, response);
 					});
 				} else {
 					let error = {};
