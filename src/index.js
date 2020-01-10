@@ -11,6 +11,7 @@ const getUserContractPath = config.getUserContractPath;
 const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
 const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
+const NATIVE_META_TX_URL = config.nativeMetaTxUrl
 
 let decoderMap = {};
 let web3;
@@ -243,7 +244,7 @@ async function sendSignedTransaction(engine, payload, end) {
 					let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE ,`Not able to get user account from signed transaction`);
 					return end(error);
 				}
-				if(api.url=="/native"){
+				if(api.url == NATIVE_META_TX_URL){
 					let data = {};
 					data.userAddress = account;
 					data.apiId = api.id;
@@ -334,7 +335,7 @@ async function handleSendTransaction(engine, payload, end) {
 				return end(`Not able to get user account`);
 			}
 			console.info(`User account fetched`);
-			if(api.url=="/native"){
+			if(api.url == NATIVE_META_TX_URL){
 				let data = {};
 				data.userAddress = account;
 				data.apiId = api.id;
