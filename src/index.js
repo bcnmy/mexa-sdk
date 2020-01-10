@@ -11,7 +11,7 @@ const getUserContractPath = config.getUserContractPath;
 const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
 const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
-const NATIVE_META_TX_URL = config.nativeMetaTxUrl
+const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 
 let decoderMap = {};
 let web3;
