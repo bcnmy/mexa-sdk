@@ -11,6 +11,7 @@ const getUserContractPath = config.getUserContractPath;
 const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
 const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
+const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 
 let decoderMap = {};
 let web3;
@@ -243,26 +244,35 @@ async function sendSignedTransaction(engine, payload, end) {
 					let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE ,`Not able to get user account from signed transaction`);
 					return end(error);
 				}
-
-				let nonce = await _getUserNonce(account, engine);
-				if(!nonce) {
-					let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
-					eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-					end(error);
+				if(api.url == NATIVE_META_TX_URL){
+					let data = {};
+					data.userAddress = account;
+					data.apiId = api.id;
+					data.dappId = engine.dappId;
+					data.params = paramArray;
+					_sendTransaction(engine, account, api, data, end);
 				}
+				else{
+					let nonce = await _getUserNonce(account, engine);
+					if(!nonce) {
+						let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+						eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+						end(error);
+					}
 
-				let data = {};
-				data.rawTx = rawTransaction;
-				data.signature = signature;
-				data.messageLength = message.length;
-				data.message = engine.messageToSign;
-				data.signer = account;
-				data.apiId = api.id;
-				data.dappId = engine.dappId;
-				data.params = paramArray;
-				data.data = decodedTx.data;
-				data.value = web3.utils.toHex(decodedTx.value)
-				_sendTransaction(engine, account, api, data, end);
+					let data = {};
+					data.rawTx = rawTransaction;
+					data.signature = signature;
+					data.messageLength = message.length;
+					data.message = engine.messageToSign;
+					data.signer = account;
+					data.apiId = api.id;
+					data.dappId = engine.dappId;
+					data.params = paramArray;
+					data.data = decodedTx.data;
+					data.value = web3.utils.toHex(decodedTx.value)
+					_sendTransaction(engine, account, api, data, end);
+				}
 
 			} else {
 				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
@@ -325,46 +335,57 @@ async function handleSendTransaction(engine, payload, end) {
 				return end(`Not able to get user account`);
 			}
 			console.info(`User account fetched`);
-			let message = engine.messageToSign;
-			let nonce = await _getUserContractNonce(account, engine);
-			if(!nonce) {
-				let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
-				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-				end(error);
+			if(api.url == NATIVE_META_TX_URL){
+				let data = {};
+				data.userAddress = account;
+				data.apiId = api.id;
+				data.dappId = engine.dappId;
+				data.params = paramArray;
+				_sendTransaction(engine, account, api, data, end);
 			}
-			message += nonce;
-			let messageLength = message.length;
-
-			engine.sendAsync({
-				jsonrpc: JSON_RPC_VERSION,
-				id: payload.id,
-				method: 'personal_sign',
-				params: [web3.utils.utf8ToHex(message), account]
-			}, function(error, response) {
-				console.info(`User signature for payload id ${payload.id} is ${response.result}`);
-				if(error) {
+			else{
+			
+				let message = engine.messageToSign;
+				let nonce = await _getUserContractNonce(account, engine);
+				if(!nonce) {
+					let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+					eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 					end(error);
-				} else if(response && response.error) {
-					end(response.error);
-				} else if(response && response.result) {
-					let data = {};
-					data.signature = response.result;
-					data.signer = account;
-					data.message = engine.messageToSign;
-					data.messageLength = messageLength;
-					data.apiId = api.id;
-					data.dappId = engine.dappId;
-					data.params = paramArray;
-					if(payload.params[0].value) {
-						data.value = payload.params[0].value;
-					} else {
-						data.value = "0x0";
-					}
-					_sendTransaction(engine, account, api, data, end);
-				} else {
-					end();
 				}
-			});
+				message += nonce;
+				let messageLength = message.length;
+
+				engine.sendAsync({
+					jsonrpc: JSON_RPC_VERSION,
+					id: payload.id,
+					method: 'personal_sign',
+					params: [web3.utils.utf8ToHex(message), account]
+				}, function(error, response) {
+					console.info(`User signature for payload id ${payload.id} is ${response.result}`);
+					if(error) {
+						end(error);
+					} else if(response && response.error) {
+						end(response.error);
+					} else if(response && response.result) {
+						let data = {};
+						data.signature = response.result;
+						data.signer = account;
+						data.message = engine.messageToSign;
+						data.messageLength = messageLength;
+						data.apiId = api.id;
+						data.dappId = engine.dappId;
+						data.params = paramArray;
+						if(payload.params[0].value) {
+							data.value = payload.params[0].value;
+						} else {
+							data.value = "0x0";
+						}
+						_sendTransaction(engine, account, api, data, end);
+					} else {
+						end();
+					}
+				});
+			}
 		} else {
 			let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
 				`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
