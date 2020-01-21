@@ -575,7 +575,6 @@ function _init(dappId, apiKey, engine) {
 			if(dappResponse && dappResponse.dapp) {
 				let dappNetworkId = dappResponse.dapp.networkId;
 				console.debug(`Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`);
-
 				engine.sendAsync({
 					jsonrpc: JSON_RPC_VERSION,
 					id: '102',
@@ -669,7 +668,7 @@ function _init(dappId, apiKey, engine) {
 /**
  * Method to get user contract wallet from biconomy server.
  **/
-function _getUserContractWallet(engine, address, cb) {
+async function _getUserContractWallet(engine, address, cb) {
 	if(address) {
 		engine.sendAsync({
 			jsonrpc: JSON_RPC_VERSION,
@@ -681,6 +680,7 @@ function _getUserContractWallet(engine, address, cb) {
 				console.error(error || response.error);
 				eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 					formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND , "Could not get network version"), error || networkResponse.error);
+				return;
 			} else {
 				let networkId = response.result;
 				let data = {owner:address, networkId: networkId};
@@ -690,19 +690,31 @@ function _getUserContractWallet(engine, address, cb) {
 			        const data = response.data;
 			        console.debug(data);
 			        if(data.flag && data.flag == BICONOMY_RESPONSE_CODES.SUCCESS) {
-			        	cb(null, data.userContract);
+						if(cb) {
+							cb(null, data.userContract);
+						}
+						return data.userContract;
 			        } else {
-			        	cb("User contract not found");
+						if(cb) {
+							cb("User contract not found");
+						}
+						return;
 			        }
 			      })
 			      .catch(function(error) {
-			        console.error(error);
-			        cb(`Error while fetching user contract ${error}`);
+					console.error(error);
+					if(cb) {
+						cb(`Error while fetching user contract ${error}`);
+					}
+					return;
 			      });
 			}
 		});
 	} else {
-		cb("Input address is not valid");
+		if(cb) {
+			cb("Input address is not valid");
+		}
+		return;
 	}
 }
 
@@ -814,6 +826,42 @@ Biconomy.prototype.login = async function(signer, cb){
 		}
 	});
 };
+
+Biconomy.prototype.logout = function() {
+	removeStorage(USER_ACCOUNT);
+	removeStorage(USER_CONTRACT);
+	this.isLogin = false;
+}
+
+Biconomy.prototype.getUserContract = async function(userAddress) {
+	let userContract;
+	if(this.isLogin) {
+		let userAddressFromStorage = getFromStorage(USER_ACCOUNT);
+		if(userAddressFromStorage.toLocaleLowerCase() === userAddress.toLocaleLowerCase()) {
+			userContract = getFromStorage(USER_CONTRACT);
+		}
+		if(!userContract) {
+			userContract = await _getUserContractWallet(this, userAddress);
+		}
+	}
+	return userContract;
+}
+
+Biconomy.prototype.getUserAccount = async function() {
+	return await _getUserAccount(this);
+}
+
+function removeStorage(key) {
+	if(localStorage) {
+		localStorage.removeItem(key);
+	}
+}
+
+function getFromStorage(key) {
+	if(localStorage) {
+		return localStorage.getItem(key);
+	}
+}
 
 function addPendingLoginTransactions(engine, txHash) {
 	engine.pendingLoginTransactions[txHash] = true;
