@@ -1,6 +1,7 @@
 let config = {}
 config.version = 'v1';
 config.baseURL = "https://api.biconomy.io";
+config.nativeMetaTxUrl = "/native";
 config.userLoginPath = `/api/${config.version}/dapp-user/login`;
 config.getUserContractPath = `/api/${config.version}/dapp-user/getUserContract`;
 config.MESSAGE_TO_SIGN = 'Sign message to prove the ownership of your account with counter ';
@@ -28,13 +29,15 @@ const RESPONSE_CODES = {
 	SMART_CONTRACT_NOT_FOUND: 'B508',
 	DAPP_NOT_FOUND: 'B509',
 	INVALID_PAYLOAD: 'B510',
+	DASHBOARD_DATA_MISMATCH: 'B511',
 	SUCCESS_RESPONSE: 'B200'
 };
 
 const BICONOMY_RESPONSE_CODES = {
 	SUCCESS : 200,
 	ACTION_COMPLETE: 143,
-	USER_CONTRACT_NOT_FOUND: 148
+	USER_CONTRACT_NOT_FOUND: 148,
+	ERROR_RESPONSE: 144
 };
 
 const STATUS = {
