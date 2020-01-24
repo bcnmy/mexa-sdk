@@ -3,10 +3,11 @@ import { sign } from "crypto";
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
-
+const payloadId = 99999999;
 const Web3 = require('web3');
 const baseURL = config.baseURL;
 const userLoginPath = config.userLoginPath;
+const withdrawFundsUrl = config.withdrawFundsUrl;
 const getUserContractPath = config.getUserContractPath;
 const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
 const USER_ACCOUNT = config.USER_ACCOUNT;
@@ -37,6 +38,7 @@ function Biconomy(provider, options) {
 	this.providerId = options.providerId || 100;
 	this.readViaContract = options.readViaContract || false;
 	this.messageToSign = options.messageToSign || config.MESSAGE_TO_SIGN;
+	this.withdrawMessageToSign = options.withdrawMessageToSign || config.WITHDRAW_MESSAGE_TO_SIGN;
 	this.loginMessageToSign = options.loginMessageToSign || config.LOGIN_MESSAGE_TO_SIGN;
 	this.READY = STATUS.BICONOMY_READY;
 	this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
@@ -130,7 +132,7 @@ Biconomy.prototype.getLoginMessageToSign = async function(signer) {
 	return message;
 }
 
-Biconomy.prototype.getUserMessageToSign = async function(signer, cb) {
+Biconomy.prototype.getUserMessageToSign = function(signer, cb) {
 	let engine = this;
 	return new Promise(async (resolve, reject)=>{
 		let result = {};
@@ -294,6 +296,67 @@ async function sendSignedTransaction(engine, payload, end) {
 	}
 }
 
+Biconomy.prototype.withdrawFunds = async function( receiverAddress , withdrawAmount, cb) {
+
+	let engine = this;
+	return new Promise(async (resolve, reject)=>{
+		let data = {};
+		let account = await _getUserAccount(this);
+		let nonce = await _getUserContractNonce(account,this);
+
+		data.signer = account;
+		data.message = engine.withdrawMessageToSign;
+		data.amount = withdrawAmount;
+		data.receiver = receiverAddress;
+
+		let messageToSign = `${data.message}${nonce}`
+		try{
+			engine.sendAsync({
+				jsonrpc: JSON_RPC_VERSION,
+				id: payloadId,
+				method: 'personal_sign',
+				params: [web3.utils.utf8ToHex(messageToSign), data.signer]
+			}, function(error, response) {
+				console.log(`User signature for payload id ${payloadId} is ${response.result}`);
+				if(error) {
+					if(cb){
+						cb(error);
+					}
+					reject(error);
+				} else if(response && response.result) {
+					data.signature = response.result;
+						// data.nonce = nonce;
+					data.messageLength = messageToSign.length;
+					data.dappId = engine.dappId;
+					
+					axios.defaults.headers.common["x-api-key"] = engine.apiKey;
+
+					axios.post(`${baseURL}${withdrawFundsUrl}`, data)
+					.then(function(response) {
+						if(cb){
+							cb(null, response.data);
+						}
+
+						let result = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE,response.data.log);
+						result.txHash = response.data.txHash;
+						resolve(result);
+					})
+					.catch(function(error) {
+						if(cb){
+							cb(formatMessage(error.flag,error.log));
+						}
+						reject(formatMessage(error.flag,error.log));
+					});
+				}
+			}); 
+		}catch(error) {
+			if(cb){
+				cb(error);
+			}
+			reject(error);
+		}
+	});
+}
 /**
  * Function decodes the parameter in payload and gets the user signature using personal_sign
  * method and send the request to biconomy for processing and call the callback method 'end'
@@ -461,7 +524,7 @@ eventEmitter.on(EVENTS.DAPP_API_DATA_READY, (engine)=>{
  **/
 function _getUserAccount(engine, payload, cb) {
 	if(engine) {
-		let id = 99999999;
+		let id = payloadId;
 		if(payload) {
 			id = payload.id;
 		}
@@ -748,6 +811,7 @@ Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
 Biconomy.prototype.isReady = async function() {
 	return (this.status === STATUS.BICONOMY_READY);
 }
+
 /**
  * Method used to login to biconomy. It takes user's signature as input
  * and if user contract wallet is not found for the user then it deploys
