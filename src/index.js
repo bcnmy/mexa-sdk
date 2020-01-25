@@ -3,7 +3,7 @@ import { sign } from "crypto";
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
-const payloadId = 99999999;
+const DEFAULT_PAYLOAD_ID = 99999999;
 const Web3 = require('web3');
 const baseURL = config.baseURL;
 const userLoginPath = config.userLoginPath;
@@ -296,7 +296,7 @@ async function sendSignedTransaction(engine, payload, end) {
 	}
 }
 
-Biconomy.prototype.withdrawFunds = async function( receiverAddress , withdrawAmount, cb) {
+Biconomy.prototype.withdrawFunds = function( receiverAddress , withdrawAmount, cb) {
 
 	let engine = this;
 	return new Promise(async (resolve, reject)=>{
@@ -313,11 +313,11 @@ Biconomy.prototype.withdrawFunds = async function( receiverAddress , withdrawAmo
 		try{
 			engine.sendAsync({
 				jsonrpc: JSON_RPC_VERSION,
-				id: payloadId,
+				id: DEFAULT_PAYLOAD_ID,
 				method: 'personal_sign',
 				params: [web3.utils.utf8ToHex(messageToSign), data.signer]
 			}, function(error, response) {
-				console.log(`User signature for payload id ${payloadId} is ${response.result}`);
+				console.log(`User signature for payload id ${DEFAULT_PAYLOAD_ID} is ${response.result}`);
 				if(error) {
 					if(cb){
 						cb(error);
@@ -524,7 +524,7 @@ eventEmitter.on(EVENTS.DAPP_API_DATA_READY, (engine)=>{
  **/
 function _getUserAccount(engine, payload, cb) {
 	if(engine) {
-		let id = payloadId;
+		let id = DEFAULT_PAYLOAD_ID;
 		if(payload) {
 			id = payload.id;
 		}
