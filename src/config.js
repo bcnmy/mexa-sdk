@@ -1,7 +1,7 @@
 let config = {}
 config.version = 'v1';
 config.baseURL = "https://api.biconomy.io";
-config.nativeMetaTxUrl = "/native";
+config.nativeMetaTxUrl = `/api/${config.version}/meta-tx/native`;
 config.userLoginPath = `/api/${config.version}/dapp-user/login`;
 config.withdrawFundsUrl = `/api/${config.version}/meta-tx/withdraw`;
 config.getUserContractPath = `/api/${config.version}/dapp-user/getUserContract`;
