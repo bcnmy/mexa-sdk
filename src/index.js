@@ -196,9 +196,18 @@ async function sendSignedTransaction(engine, payload, end) {
 
 	if(payload && payload.params[0]) {
 		let data = payload.params[0];
-		let message = data.message;
-		let signature = data.signature;
-		let rawTransaction = data.rawTransaction;
+		let rawTransaction, message, signature;
+
+		if(typeof data == "string") {
+			// Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
+			rawTransaction = data;
+		} else if(typeof data == "object") {
+			// Here user wrapped raw Transaction in json object along with message and signature
+			message = data.message;
+			signature = data.signature;
+			rawTransaction = data.rawTransaction;
+		}
+
 		if(rawTransaction) {
 			let decodedTx = txDecoder.decodeTx(rawTransaction);
 
