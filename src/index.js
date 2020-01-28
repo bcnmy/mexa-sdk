@@ -58,29 +58,19 @@ function Biconomy(provider, options) {
 		this.providerSendAsync = provider.send || provider.sendAsync;
 		this.sendAsync = function(payload, cb) {
 			if(payload.method == 'eth_sendTransaction') {
-				if(this.isLogin) {
-					handleSendTransaction(this, payload, (error, result) => {
-						let response = _createJsonRpcResponse(payload, error, result);
-						cb(error, response);
-					});
-				} else {
-					let error = {};
-					error.message = 'User not logged in to biconomy';
-					error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
-					cb(error);
-				}
+
+				handleSendTransaction(this, payload, (error, result) => {
+					let response = _createJsonRpcResponse(payload, error, result);
+					cb(error, response);
+				});
+
 			} else if(payload.method == 'eth_sendRawTransaction') {
-				if(this.isLogin) {
-					sendSignedTransaction(this, payload, (error, result) => {
-						let response = _createJsonRpcResponse(payload, error, result);
-						cb(error, response);
-					});
-				} else {
-					let error = {};
-					error.message = 'User not logged in to biconomy';
-					error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
-					cb(error);
-				}
+
+				sendSignedTransaction(this, payload, (error, result) => {
+					let response = _createJsonRpcResponse(payload, error, result);
+					cb(error, response);
+				});
+
 			} else if(payload.method == 'eth_call') {
 				let userContract = localStorage.getItem(USER_CONTRACT);
 				if(this.readViaContract && this.isLogin && userContract) {
@@ -209,7 +199,7 @@ async function sendSignedTransaction(engine, payload, end) {
 		let message = data.message;
 		let signature = data.signature;
 		let rawTransaction = data.rawTransaction;
-		if(message && signature && rawTransaction) {
+		if(rawTransaction) {
 			let decodedTx = txDecoder.decodeTx(rawTransaction);
 
 			if(decodedTx.to && decodedTx.data && decodedTx.value) {
@@ -246,7 +236,7 @@ async function sendSignedTransaction(engine, payload, end) {
 					let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE ,`Not able to get user account from signed transaction`);
 					return end(error);
 				}
-				if(api.url == NATIVE_META_TX_URL){
+				if(api.url == NATIVE_META_TX_URL) {
 					let data = {};
 					data.userAddress = account;
 					data.apiId = api.id;
@@ -255,27 +245,40 @@ async function sendSignedTransaction(engine, payload, end) {
 					_sendTransaction(engine, account, api, data, end);
 				}
 				else{
-					let nonce = await _getUserNonce(account, engine);
-					if(!nonce) {
-						let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
-						eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-						end(error);
+					if(!engine.isLogin){
+						let error = {};
+						error.message = 'User not logged in to biconomy';
+						error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
+						return end(error);
+					} else {
+						if(message && signature ) {
+							let nonce = await _getUserNonce(account, engine);
+							if(!nonce) {
+								let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+								eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+								end(error);
+							}
+
+							let data = {};
+							data.rawTx = rawTransaction;
+							data.signature = signature;
+							data.messageLength = message.length;
+							data.message = engine.messageToSign;
+							data.signer = account;
+							data.apiId = api.id;
+							data.dappId = engine.dappId;
+							data.params = paramArray;
+							data.data = decodedTx.data;
+							data.value = web3.utils.toHex(decodedTx.value)
+							_sendTransaction(engine, account, api, data, end);
+						} else {
+							let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+								`Invalid payload data ${JSON.stringify(payload.params[0])}. message and signature are required in param object`);
+							eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+							end(error);
+						}
 					}
-
-					let data = {};
-					data.rawTx = rawTransaction;
-					data.signature = signature;
-					data.messageLength = message.length;
-					data.message = engine.messageToSign;
-					data.signer = account;
-					data.apiId = api.id;
-					data.dappId = engine.dappId;
-					data.params = paramArray;
-					data.data = decodedTx.data;
-					data.value = web3.utils.toHex(decodedTx.value)
-					_sendTransaction(engine, account, api, data, end);
 				}
-
 			} else {
 				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
 					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
@@ -284,7 +287,7 @@ async function sendSignedTransaction(engine, payload, end) {
 			}
 		} else {
 			let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
-				`Invalid payload data ${JSON.stringify(payload.params[0])}. message, signature and rawTransaction are required in param object`);
+				`Invalid payload data ${JSON.stringify(payload.params[0])}.rawTransaction is required in param object`);
 			eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 			end(error);
 		}
@@ -328,7 +331,7 @@ Biconomy.prototype.withdrawFunds = function( receiverAddress , withdrawAmount, c
 						// data.nonce = nonce;
 					data.messageLength = messageToSign.length;
 					data.dappId = engine.dappId;
-					
+
 					axios.defaults.headers.common["x-api-key"] = engine.apiKey;
 
 					axios.post(`${baseURL}${withdrawFundsUrl}`, data)
@@ -348,7 +351,7 @@ Biconomy.prototype.withdrawFunds = function( receiverAddress , withdrawAmount, c
 						reject(formatMessage(error.flag,error.log));
 					});
 				}
-			}); 
+			});
 		}catch(error) {
 			if(cb){
 				cb(error);
@@ -407,47 +410,53 @@ async function handleSendTransaction(engine, payload, end) {
 				_sendTransaction(engine, account, api, data, end);
 			}
 			else{
-			
-				let message = engine.messageToSign;
-				let nonce = await _getUserContractNonce(account, engine);
-				if(!nonce) {
-					let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
-					eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-					end(error);
-				}
-				message += nonce;
-				let messageLength = message.length;
-
-				engine.sendAsync({
-					jsonrpc: JSON_RPC_VERSION,
-					id: payload.id,
-					method: 'personal_sign',
-					params: [web3.utils.utf8ToHex(message), account]
-				}, function(error, response) {
-					console.info(`User signature for payload id ${payload.id} is ${response.result}`);
-					if(error) {
+				if(engine.isLogin) {
+					let message = engine.messageToSign;
+					let nonce = await _getUserContractNonce(account, engine);
+					if(!nonce) {
+						let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+						eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 						end(error);
-					} else if(response && response.error) {
-						end(response.error);
-					} else if(response && response.result) {
-						let data = {};
-						data.signature = response.result;
-						data.signer = account;
-						data.message = engine.messageToSign;
-						data.messageLength = messageLength;
-						data.apiId = api.id;
-						data.dappId = engine.dappId;
-						data.params = paramArray;
-						if(payload.params[0].value) {
-							data.value = payload.params[0].value;
-						} else {
-							data.value = "0x0";
-						}
-						_sendTransaction(engine, account, api, data, end);
-					} else {
-						end();
 					}
-				});
+					message += nonce;
+					let messageLength = message.length;
+
+					engine.sendAsync({
+						jsonrpc: JSON_RPC_VERSION,
+						id: payload.id,
+						method: 'personal_sign',
+						params: [web3.utils.utf8ToHex(message), account]
+					}, function(error, response) {
+						console.info(`User signature for payload id ${payload.id} is ${response.result}`);
+						if(error) {
+							end(error);
+						} else if(response && response.error) {
+							end(response.error);
+						} else if(response && response.result) {
+							let data = {};
+							data.signature = response.result;
+							data.signer = account;
+							data.message = engine.messageToSign;
+							data.messageLength = messageLength;
+							data.apiId = api.id;
+							data.dappId = engine.dappId;
+							data.params = paramArray;
+							if(payload.params[0].value) {
+								data.value = payload.params[0].value;
+							} else {
+								data.value = "0x0";
+							}
+							_sendTransaction(engine, account, api, data, end);
+						} else {
+							end();
+						}
+					});
+				} else {
+					let error = {};
+					error.message = 'User not logged in to biconomy';
+					error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
+					return end(error);
+				}
 			}
 		} else {
 			let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
