@@ -251,6 +251,8 @@ async function sendSignedTransaction(engine, payload, end) {
 					data.apiId = api.id;
 					data.dappId = engine.dappId;
 					data.params = paramArray;
+					data.gasLimit = decodedTx.gasLimit.toString();
+					data.gasPrice = decodedTx.gasPrice.toString();
 					_sendTransaction(engine, account, api, data, end);
 				}
 				else{
@@ -278,6 +280,8 @@ async function sendSignedTransaction(engine, payload, end) {
 							data.dappId = engine.dappId;
 							data.params = paramArray;
 							data.data = decodedTx.data;
+							data.gasLimit = decodedTx.gasLimit.toString();
+							data.gasPrice = decodedTx.gasPrice.toString();
 							data.value = web3.utils.toHex(decodedTx.value)
 							_sendTransaction(engine, account, api, data, end);
 						} else {
