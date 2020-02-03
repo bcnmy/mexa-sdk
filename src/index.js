@@ -343,7 +343,6 @@ Biconomy.prototype.withdrawFunds = function( receiverAddress , withdrawAmount, c
 					data.signature = response.result;
 						// data.nonce = nonce;
 					data.messageLength = messageToSign.length;
-					data.dappId = engine.dappId;
 
 					axios.defaults.headers.common["x-api-key"] = engine.apiKey;
 
