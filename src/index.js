@@ -386,6 +386,8 @@ async function handleSendTransaction(engine, payload, end) {
 			const methodInfo = decodeMethod(payload.params[0].to.toLowerCase(), payload.params[0].data);
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[methodName];
+			let gasPrice = payload.params[0].gasPrice;
+
 			console.log(api);
 
 			if(!api) {
@@ -420,6 +422,7 @@ async function handleSendTransaction(engine, payload, end) {
 				data.apiId = api.id;
 				data.dappId = engine.dappId;
 				data.params = paramArray;
+				data.gasPrice = gasPrice;
 				_sendTransaction(engine, account, api, data, end);
 			}
 			else{
@@ -459,6 +462,7 @@ async function handleSendTransaction(engine, payload, end) {
 							} else {
 								data.value = "0x0";
 							}
+							data.gasPrice = gasPrice;
 							_sendTransaction(engine, account, api, data, end);
 						} else {
 							end();
