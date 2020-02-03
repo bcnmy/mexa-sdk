@@ -1,6 +1,6 @@
 {
   "name": "@biconomy/mexa",
-  "version": "1.2.8",
+  "version": "1.3.3",
   "description": "Mexa SDK to enable meta transaction in your DApps",
   "main": "src/index.js",
   "scripts": {

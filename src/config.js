@@ -1,10 +1,12 @@
 let config = {}
 config.version = 'v1';
 config.baseURL = "https://api.biconomy.io";
-config.nativeMetaTxUrl = "/native";
+config.nativeMetaTxUrl = `/api/${config.version}/meta-tx/native`;
 config.userLoginPath = `/api/${config.version}/dapp-user/login`;
+config.withdrawFundsUrl = `/api/${config.version}/meta-tx/withdraw`;
 config.getUserContractPath = `/api/${config.version}/dapp-user/getUserContract`;
 config.MESSAGE_TO_SIGN = 'Sign message to prove the ownership of your account with counter ';
+config.WITHDRAW_MESSAGE_TO_SIGN = 'Provide your signature to withdraw funds with counter ';
 config.USER_ACCOUNT = "BUA";
 config.USER_CONTRACT = "BUC";
 config.JSON_RPC_VERSION = '2.0';
