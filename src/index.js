@@ -802,7 +802,7 @@ Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
 					engine.isLogin = true;
 					_setLocalData(signer, data.userContract);
 				} else if(data.transactionHash) {
-					result.message = `User login successfull`;
+					result.message = `User contract creation initiated`;
 					result.transactionHash = data.transactionHash;
 					loginInterval = setInterval(function(){
 						getLoginTransactionReceipt(engine,data.transactionHash,signer)
@@ -834,7 +834,7 @@ const getLoginTransactionReceipt = async (engine,txHash,userAddress) => {
 			});
       	}
       	else if(!receipt.status){
-			eventEmitter.emit(EVENTS.BICONOMY_ERROR, "User Contract wallet creation Failed");
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR,formatMessage(USER_CONTRACT_CREATION_FAILED,"User Contract wallet creation Failed"));
       	}
       	if(loginInterval){
         	clearInterval(loginInterval);
@@ -893,7 +893,7 @@ Biconomy.prototype.login = async function(signer, cb){
 			        	engine.isLogin = true;
 			        	_setLocalData(signer, data.userContract);
 		        	} else if(data.transactionHash) {
-						result.message = `User login successfull`;
+						result.message = `User contract creation initiated`;
 						result.transactionHash = data.transactionHash;
 						loginInterval = setInterval(function(){
 							getLoginTransactionReceipt(engine,data.transactionHash,signer)
