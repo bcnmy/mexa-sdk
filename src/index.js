@@ -18,6 +18,7 @@ let decoderMap = {};
 let web3;
 const events = require('events');
 var eventEmitter = new events.EventEmitter();
+let loginInterval;
 
 function Biconomy(provider, options) {
 	console.debug(provider);
@@ -94,30 +95,6 @@ function Biconomy(provider, options) {
 			}
 		};
 		this.send = this.sendAsync;
-
-		const subscription = web3.eth.subscribe('logs',{
-			topics:['0x5983cdcaa370320b76fe01a3a32a0430e6a13b9f47a55e806afb13b5aef95a12']
-		}, function(error, result){
-			if(error) {
-				console.error(error);
-			}
-		}).on("data", function(log) {
-			console.debug(log);
-			if(log && _self.pendingLoginTransactions[log.transactionHash]) {
-				if(log.topics && log.topics.length >= 3) {
-					let userAddress = web3.eth.abi.decodeParameter('address', log.topics[2]);
-					console.debug(`Got transaction log from blockchain having user address ${userAddress}`);
-					_getUserContractWallet(_self, userAddress, (error, userContract) => {
-						if(!error && userContract) {
-							_setLocalData(userAddress, userContract);
-							_self.isLogin = true;
-							eventEmitter.emit(EVENTS.LOGIN_CONFIRMATION, log, userContract);
-							delete _self.pendingLoginTransactions[log.transactionHash];
-						}
-					});
-				}
-			}
-		});
 	} else {
 		throw new Error('Please pass a provider to Biconomy.');
 	}
@@ -250,7 +227,6 @@ async function sendSignedTransaction(engine, payload, end) {
 					let data = {};
 					data.userAddress = account;
 					data.apiId = api.id;
-					data.dappId = engine.dappId;
 					data.params = paramArray;
 					_sendTransaction(engine, account, api, data, end);
 				}
@@ -402,7 +378,6 @@ async function handleSendTransaction(engine, payload, end) {
 				let data = {};
 				data.userAddress = account;
 				data.apiId = api.id;
-				data.dappId = engine.dappId;
 				data.params = paramArray;
 				_sendTransaction(engine, account, api, data, end);
 			}
@@ -802,10 +777,11 @@ Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
 					engine.isLogin = true;
 					_setLocalData(signer, data.userContract);
 				} else if(data.transactionHash) {
-					result.message = `User contract creation initiated`;
+					result.message = `User login successfull`;
 					result.transactionHash = data.transactionHash;
-					addPendingLoginTransactions(engine, data.transactionHash);
-					console.debug(`Transaction hash ${data.transactionHash} added to pending transactions`);
+					loginInterval = setInterval(function(){
+						getLoginTransactionReceipt(engine,data.transactionHash,signer)
+					}, 2000);
 				}
 				cb(null, result);
 			} else {
@@ -818,6 +794,27 @@ Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
 			console.debug(error);
 			cb(error, null);
 		});
+}
+
+const getLoginTransactionReceipt = async (engine,txHash,userAddress) => {
+    var receipt = await web3.eth.getTransactionReceipt(txHash);
+    if(receipt){
+      	if(receipt.status){
+        	await _getUserContractWallet(engine, userAddress, (error, userContract) => {
+				if(!error && userContract) {
+					_setLocalData(userAddress, userContract);
+					engine.isLogin = true;
+					eventEmitter.emit(EVENTS.LOGIN_CONFIRMATION, "User Contract wallet created Successfully", userContract);
+				}
+			});
+      	}
+      	else if(!receipt.status){
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR, "User Contract wallet creation Failed");
+      	}
+      	if(loginInterval){
+        	clearInterval(loginInterval);
+      	}
+    }
 }
 
 Biconomy.prototype.isReady = async function() {
@@ -862,7 +859,7 @@ Biconomy.prototype.login = async function(signer, cb){
 		      .then(function(response) {
 		        const data = response.data;
 		        console.debug(data);
-		        let result = {}
+				let result = {}
 		        if(data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
 		        	result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
 		        	if(data.userContract) {
@@ -871,10 +868,11 @@ Biconomy.prototype.login = async function(signer, cb){
 			        	engine.isLogin = true;
 			        	_setLocalData(signer, data.userContract);
 		        	} else if(data.transactionHash) {
-		        		result.message = `User contract creation initiated`;
-		        		result.transactionHash = data.transactionHash;
-		        		addPendingLoginTransactions(engine, data.transactionHash);
-		        		console.debug(`Transaction hash ${data.transactionHash} added to pending transactions`);
+						result.message = `User login successfull`;
+						result.transactionHash = data.transactionHash;
+						loginInterval = setInterval(function(){
+							getLoginTransactionReceipt(engine,data.transactionHash,signer)
+						}, 2000);
 		        	}
 		        	cb(null, result);
 		        } else {
