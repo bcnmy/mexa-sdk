@@ -834,7 +834,7 @@ const getLoginTransactionReceipt = async (engine,txHash,userAddress) => {
 			});
       	}
       	else if(!receipt.status){
-			eventEmitter.emit(EVENTS.BICONOMY_ERROR,formatMessage(USER_CONTRACT_CREATION_FAILED,"User Contract wallet creation Failed"));
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR,formatMessage(RESPONSE_CODES.USER_CONTRACT_CREATION_FAILED,"User Contract wallet creation Failed"));
       	}
       	if(loginInterval){
         	clearInterval(loginInterval);
