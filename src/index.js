@@ -138,7 +138,7 @@ Biconomy.prototype.getUserMessageToSign = function(signer, cb) {
 Biconomy.prototype.on = function(type, callback) {
 	if(type == this.READY || type == this.ERROR || type == this.LOGIN_CONFIRMATION) {
 		return eventEmitter.on(type, callback);
-	} else {
+	} else if(this.providerOn) {
 		return this.providerOn(type, callback);
 	}
 }
