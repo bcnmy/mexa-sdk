@@ -362,7 +362,7 @@ async function handleSendTransaction(engine, payload, end) {
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[methodName];
 			let gasPrice = payload.params[0].gasPrice;
-
+			let gasLimit = payload.params[0].gas;
 			console.log(api);
 
 			if(!api) {
@@ -397,6 +397,7 @@ async function handleSendTransaction(engine, payload, end) {
 				data.apiId = api.id;
 				data.params = paramArray;
 				data.gasPrice = gasPrice;
+				data.gasLimit = gasLimit;
 				_sendTransaction(engine, account, api, data, end);
 			}
 			else{
@@ -437,6 +438,7 @@ async function handleSendTransaction(engine, payload, end) {
 								data.value = "0x0";
 							}
 							data.gasPrice = gasPrice;
+							data.gasLimit = gasLimit;
 							_sendTransaction(engine, account, api, data, end);
 						} else {
 							end();
