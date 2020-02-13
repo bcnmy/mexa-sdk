@@ -53,7 +53,7 @@ function Biconomy(provider, options) {
 		const proto = Object.getPrototypeOf(provider)
 		const keys = Object.getOwnPropertyNames(proto)
 
-		for(var i=0;i<=keys.length;i++){
+		for(var i=0;i<keys.length;i++){
 			if(keys[i] != 'on') {
 				this[keys[i]] = provider[keys[i]];
 			}
