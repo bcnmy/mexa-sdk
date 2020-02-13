@@ -3,7 +3,7 @@ import { sign } from "crypto";
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
-const DEFAULT_PAYLOAD_ID = 99999999;
+const DEFAULT_PAYLOAD_ID = "99999999";
 const Web3 = require('web3');
 const baseURL = config.baseURL;
 const userLoginPath = config.userLoginPath;
@@ -49,14 +49,18 @@ function Biconomy(provider, options) {
 
 	if(provider) {
 		web3 = new Web3(provider);
-		// Copy all properties of provider except 'on' function
-		for(var key in provider) {
-			if(key != 'on') {
-				this[key] = provider[key];
+
+		const proto = Object.getPrototypeOf(provider)
+		const keys = Object.getOwnPropertyNames(proto)
+
+		for(var i=0;i<=keys.length;i++){
+			if(keys[i] != 'on') {
+				this[keys[i]] = provider[keys[i]];
 			}
 		}
 
-		this.providerSendAsync = provider.send || provider.sendAsync;
+		this.providerSendAsync = provider.sendAsync || provider.send;
+
 		this.sendAsync = function(payload, cb) {
 			if(payload.method == 'eth_sendTransaction') {
 
@@ -79,9 +83,9 @@ function Biconomy(provider, options) {
 						payload.params[0].from = userContract;
 					}
 				}
-				this.providerSendAsync(payload, cb);
+				web3.currentProvider.sendAsync(payload, cb);
 			} else {
-				this.providerSendAsync(payload, cb);
+				web3.currentProvider.sendAsync(payload, cb);
 			}
 		};
 		this.send = this.sendAsync;
@@ -303,7 +307,7 @@ Biconomy.prototype.withdrawFunds = function( receiverAddress , withdrawAmount, c
 
 		let messageToSign = `${data.message}${nonce}`
 		try{
-			engine.sendAsync({
+			web3.currentProvider.sendAsync({
 				jsonrpc: JSON_RPC_VERSION,
 				id: DEFAULT_PAYLOAD_ID,
 				method: 'personal_sign',
@@ -412,7 +416,7 @@ async function handleSendTransaction(engine, payload, end) {
 					message += nonce;
 					let messageLength = message.length;
 
-					engine.sendAsync({
+					web3.currentProvider.sendAsync({
 						jsonrpc: JSON_RPC_VERSION,
 						id: payload.id,
 						method: 'personal_sign',
@@ -531,10 +535,10 @@ function _getUserAccount(engine, payload, cb) {
 			id = payload.id;
 		}
 		if(cb) {
-			engine.sendAsync({jsonrpc: JSON_RPC_VERSION, id: id, method: 'eth_accounts', params: []}, cb);
+			web3.currentProvider.sendAsync({jsonrpc: JSON_RPC_VERSION, id: id, method: 'eth_accounts', params: []}, cb);
 		} else {
 			return new Promise(function(resolve, reject) {
-				engine.sendAsync({jsonrpc: JSON_RPC_VERSION, id: id, method: 'eth_accounts', params: []}, function(error, res){
+				web3.currentProvider.sendAsync({jsonrpc: JSON_RPC_VERSION, id: id, method: 'eth_accounts', params: []}, function(error, res){
 					if(error) {
 						reject(error);
 					} else if(!res.result) {
@@ -640,7 +644,7 @@ function _init(dappId, apiKey, engine) {
 			if(dappResponse && dappResponse.dapp) {
 				let dappNetworkId = dappResponse.dapp.networkId;
 				console.debug(`Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`);
-				engine.sendAsync({
+				web3.currentProvider.sendAsync({
 					jsonrpc: JSON_RPC_VERSION,
 					id: '102',
 					method: 'net_version',
@@ -735,7 +739,7 @@ function _init(dappId, apiKey, engine) {
  **/
 async function _getUserContractWallet(engine, address, cb) {
 	if(address) {
-		engine.sendAsync({
+		web3.currentProvider.sendAsync({
 			jsonrpc: JSON_RPC_VERSION,
 			id: '102',
 			method: 'net_version',
@@ -867,7 +871,7 @@ Biconomy.prototype.login = async function(signer, cb){
 	if(engine.status != STATUS.BICONOMY_READY) {
 		return cb(formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,'Biconomy SDK is not initialized properly'));
 	}
-	engine.sendAsync({
+	web3.currentProvider.sendAsync({
 		jsonrpc: JSON_RPC_VERSION,
 		id: '101',
 		method: 'personal_sign',
@@ -926,11 +930,13 @@ Biconomy.prototype.getUserContract = async function(userAddress) {
 	let userContract;
 	if(this.isLogin) {
 		let userAddressFromStorage = getFromStorage(USER_ACCOUNT);
-		if(userAddressFromStorage.toLocaleLowerCase() === userAddress.toLocaleLowerCase()) {
-			userContract = getFromStorage(USER_CONTRACT);
-		}
-		if(!userContract) {
-			userContract = await _getUserContractWallet(this, userAddress);
+		if(userAddressFromStorage && userAddress){
+			if( userAddressFromStorage.toLowerCase() === userAddress.toLowerCase()) {
+				userContract = getFromStorage(USER_CONTRACT);
+			}
+			if(!userContract) {
+				userContract = await _getUserContractWallet(this, userAddress);
+			}
 		}
 	}
 	return userContract;
