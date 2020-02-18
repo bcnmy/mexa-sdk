@@ -6,10 +6,10 @@ const contractAddress = "0x9CA27E862f33FC3c049828aD37618D48d690252f";
 
 window.onload = function () {
     let biconomy ;
+    let web3;
 
     // check to see if user has metamask addon installed on his browser. check to make sure web3 is defined
     if (window.Biconomy) {
-        alert("sdfasdf");
         let Biconomy = window.Biconomy.default;
         biconomy = new Biconomy(window.ethereum,{dappId: "5e4ba8695147862df513f332", apiKey: "xOZqVRVoB.a4306a94-7591-4d0b-9c69-327d7f138941"});
         web3 = new Web3(biconomy);
@@ -26,16 +26,11 @@ window.onload = function () {
         // Handle error while initializing mexa
         alert("error while initialising biconomy");
     });
-    // web3 = new Web3(window.ethereum);
-    // this.getvalue();
 }
 
 function setValue() {
     try {
         var value = document.getElementById("xvalue").value;
-
-        console.log(value);
-        // var web3js = new Web3(window.web3.currentProvider);
 
         var MyContract = new web3.eth.Contract(abi, contractAddress ,{from :"0xF86B30C63E068dBB6bdDEa6fe76bf92F194Dc53c" });
 
