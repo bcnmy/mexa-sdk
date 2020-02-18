@@ -60706,6 +60706,12 @@ function Biconomy(provider, options) {
       }
     }
 
+    for (var key in provider) {
+      if (key != 'on' && !this[key]) {
+        this[key] = provider[key];
+      }
+    }
+
     this.providerSendAsync = provider.sendAsync || provider.send;
 
     this.sendAsync = function (payload, cb) {
@@ -61272,7 +61278,14 @@ function _getParamValue(paramObj) {
         break;
 
       case 'string':
-        value = JSON.stringify(paramObj.value);
+        console.log(typeof paramObj.value);
+
+        if (typeof paramObj.value === "object") {
+          value = paramObj.value.toString();
+        } else {
+          value = paramObj.value;
+        }
+
         break;
 
       default:
