@@ -1,5 +1,4 @@
 import axios from "axios";
-import { sign } from "crypto";
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
