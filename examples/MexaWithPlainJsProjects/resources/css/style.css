@@ -1,0 +1,17 @@
+h2 {
+    text-align:center;
+    color: darkred;
+}
+h3 {
+    text-align:center;
+    color: darkolivegreen;
+}
+div{
+    color: black;
+    margin-left: 30px;
+    font-size: large;
+}
+body{
+    background-color: lightgray;
+    margin-top:5%;
+}
