@@ -34,9 +34,9 @@ web3 = new Web3(biconomy);
 #### Initialize your dapp after mexa initialization
 
 ```text
-biconomy.on(biconomy.READY, () => {
+biconomy.onEvent(biconomy.READY, () => {
  // Initialize your dapp here
-}).on(biconomy.ERROR, (error, message) => {
+}).onEvent(biconomy.ERROR, (error, message) => {
  // Handle error while initializing mexa
 });
 ```
@@ -71,7 +71,7 @@ biconomy.login(<public wallet address>, (error, response) => {
 When user login for the first time, you’ll get the transaction hash for user’s contract wallet creation transaction. On transaction confirmation mexa will emit a confirmation event.
 
 ```javascript
-biconomy.on(biconomy.LOGIN_CONFIRMATION, (log) => {
+biconomy.onEvent(biconomy.LOGIN_CONFIRMATION, (log) => {
  // User's Contract Wallet creation successful
 });
 ```
