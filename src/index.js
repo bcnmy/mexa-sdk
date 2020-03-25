@@ -31,9 +31,7 @@ let domainData = {
 let loginDomainType, loginMessageType, loginDomainData;
 
 function Biconomy(provider, options) {
-
 	_validate(options);
-	let _self = this;
 	this.status = STATUS.INIT;
 	this.dappId = options.dappId;
 	this.apiKey = options.apiKey;
@@ -42,9 +40,6 @@ function Biconomy(provider, options) {
 	this.strictMode = options.strictMode || false;
 	this.providerId = options.providerId || 0;
 	this.readViaContract = options.readViaContract || false;
-	this.messageToSign = options.messageToSign || config.MESSAGE_TO_SIGN;
-	this.withdrawMessageToSign = options.withdrawMessageToSign || config.WITHDRAW_MESSAGE_TO_SIGN;
-	this.loginMessageToSign = options.loginMessageToSign || config.LOGIN_MESSAGE_TO_SIGN;
 	this.READY = STATUS.BICONOMY_READY;
 	this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
 	this.ERROR = EVENTS.BICONOMY_ERROR;
@@ -110,6 +105,15 @@ function Biconomy(provider, options) {
 	}
 }
 
+/**
+ * This method returns an EIP712 formatted data ready to be signed
+ * that will be used in login method/API.
+ * LoginMessageType [
+ * 	 { name: "userAddress", type: "address"},
+ *   { name: "nonce", type: "uint256"},
+ *   { name: "providerId", type: "string"}
+ * ]
+ */
 Biconomy.prototype.getLoginMessageToSign = function(signer) {
 	let engine = this;
 	return new Promise(async (resolve, reject) => {
@@ -143,6 +147,29 @@ Biconomy.prototype.getLoginMessageToSign = function(signer) {
 	});
 }
 
+/**
+ * This method returns an EIP712 formatted data ready to be signed
+ * that will be used while sending the transaction using web3.eth.sendSignedTransaction
+ * Returned data structure types
+ * RelayerPaymentType [
+ *   { name: "token", type: "address"},
+ *   { name: "amount", type: "uint256"}
+ * ]
+
+ * MetaTransactionType = [
+ *	{ name: "from", type: "address"},
+ *	{ name: "to", type: "address"},
+ *	{ name: "data", type: "bytes"},
+ *	{ name: "batchId", type: "uint256"},
+ *	{ name: "nonce", type: "uint256"},
+ *	{ name: "expiry", type: "uint256"},
+ *	{ name: "txGas", type: "uint256"},
+ *	{ name: "baseGas", type: "uint256"},
+ *	{ name: "value", type: "uint256"},
+ *  { name: "metaInfo", type: "MetaInfo"},
+ *  { name: "relayerPayment", type: "RelayerPayment"}
+ * ]
+ */
 Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 	let engine = this;
 	return new Promise(async (resolve, reject)=>{
@@ -230,6 +257,9 @@ Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 	});
 }
 
+/**
+ * Method used to listen to events emitted from the SDK
+ */
 Biconomy.prototype.onEvent = function(type, callback) {
 	if(type == this.READY || type == this.ERROR || type == this.LOGIN_CONFIRMATION) {
 		eventEmitter.on(type, callback);
@@ -265,11 +295,23 @@ function decodeMethod(to, data) {
 	return;
 }
 
+/**
+ * Method used to handle transaction initiated using web3.eth.sendSignedTransaction method
+ * It extracts rawTransaction from payload and decode it to get required information like from, to,
+ * data, gasLimit to create the payload for biconomy meta transaction API.
+ * In case of Native meta transaction, payload just contains rawTransaction
+ * In case of contract based meta transaction, payload contains rawTransaction and signature wrapped
+ * in a json object.
+ *
+ * @param {Object} engine Reference to this SDK instance
+ * @param {Object} payload Payload data
+ * @param {Function} end Callback function with error as first argument
+ */
 async function sendSignedTransaction(engine, payload, end) {
 
 	if(payload && payload.params[0]) {
 		let data = payload.params[0];
-		let rawTransaction, message, signature;
+		let rawTransaction, signature;
 
 		if(typeof data == "string") {
 			// Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
@@ -333,7 +375,7 @@ async function sendSignedTransaction(engine, payload, end) {
 						error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
 						return end(error);
 					} else {
-						if(message && signature ) {
+						if(signature ) {
 
 							let relayerPayment = {};
 							relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
@@ -385,6 +427,14 @@ async function sendSignedTransaction(engine, payload, end) {
 	}
 }
 
+/**
+ * Method to withdraw ether from use contract wallets.
+ * It takes the receiverAddress and withdraw amount in wei.
+ * An optional callback parameter can also be given that has first parameter as error and
+ * second parameter as result containing withdraw transaction hash.
+ *
+ * Returns a promise that resolves to result object containing withdraw transaction hash.
+ */
 Biconomy.prototype.withdrawFunds = function(receiverAddress, withdrawAmount, cb) {
 	let engine = this;
 	return new Promise(async (resolve, reject)=>{
@@ -484,9 +534,11 @@ Biconomy.prototype.withdrawFunds = function(receiverAddress, withdrawAmount, cb)
 	});
 }
 /**
- * Function decodes the parameter in payload and gets the user signature using personal_sign
+ * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v3
  * method and send the request to biconomy for processing and call the callback method 'end'
  * with transaction hash.
+ *
+ * This is an internal function that is called while intercepting eth_sendTransaction RPC method call.
  **/
 async function handleSendTransaction(engine, payload, end) {
 	_logMessage('Handle transaction with payload');
@@ -617,7 +669,7 @@ async function handleSendTransaction(engine, payload, end) {
 							data.userContract = userContractWallet;
 							data.value = web3.utils.toHex(payload.params[0].value || 0);
 							data.gasPrice = gasPrice;
-							data.gasLimit = gasLimit?gasLimit:0;;
+							data.gasLimit = gasLimit?gasLimit:0;
 							data.relayerPayment = {
 								token: relayerPayment.token,
 								amount: relayerPayment.amount
@@ -648,6 +700,12 @@ async function handleSendTransaction(engine, payload, end) {
 	}
 }
 
+/**
+ * It fetches the user nonce used during login.
+ *
+ * @param {string} address User address whole nonce is requested
+ * @param {object} engine Reference to Mexa object.
+ */
 async function _getUserNonce(address, engine) {
 	try {
 		let getNonceAPI = `${baseURL}/api/${config.version}/dapp-user/getNonce?signer=${address}`;
@@ -665,6 +723,12 @@ async function _getUserNonce(address, engine) {
 	}
 }
 
+/**
+ * It query biconomy server for user contract nonce.
+ *
+ * @param {string} address user address whole nonce is requested
+ * @param {object} engine Reference to mexa object
+ */
 async function _getUserContractNonce(address, engine) {
 	try {
 		let getNonceAPI = `${baseURL}/api/${config.version2}/dapp-user/getContractNonce?signer=${address}`;
@@ -1012,6 +1076,21 @@ async function _getUserContractWallet(engine, address, cb) {
 	return promise;
 }
 
+/**
+ * Function used to login user. This creates a smart contract wallet for new user and
+ * just returns contract wallet address for existing user.
+ *
+ * This function should be used when you have access to user's private key.
+ *
+ * @param {string} signer User Externally Owned Account (EOA) address
+ * @param {string} signature EIP712 formatted signature signed using signer address
+ * @param {function} cb Optional callback method with error first parameter
+ *
+ * @returns A promise that resolves to response containg transaction hash for new user
+ * and user contract wallet address for existing user.
+ *
+ * Refer to https://docs.biconomy.io for more details on how to use it.
+ */
 Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
 	let engine = this;
 	return new Promise(async (resolve, reject) => {
@@ -1182,12 +1261,21 @@ Biconomy.prototype.login = async function(signer, cb){
 	});
 };
 
+/**
+ * Function used to logout user from biconomy. It clears any internal user state and local storage.
+ */
 Biconomy.prototype.logout = function() {
 	removeFromStorage(USER_ACCOUNT);
 	removeFromStorage(USER_CONTRACT);
 	this.isLogin = false;
 }
 
+/**
+ * Function to return user contract wallet address.
+ *
+ * @param {string} userAddress User address for which contract wallet is requested
+ * @returns A promise that resolves to user contact wallet if it exists else error response.
+ */
 Biconomy.prototype.getUserContract = async function(userAddress) {
 	let response;
 	if(this.isLogin) {
@@ -1257,6 +1345,11 @@ function getFromStorage(key) {
 	}
 }
 
+/**
+ * Single method to be used for logging purpose.
+ *
+ * @param {string} message Message to be logged
+ */
 function _logMessage(message) {
 	if(config && config.logsEnabled && console.log) {
 		console.log(message);
