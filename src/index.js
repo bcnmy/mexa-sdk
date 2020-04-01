@@ -544,7 +544,7 @@ async function handleSendTransaction(engine, payload, end) {
 	_logMessage('Handle transaction with payload');
 	_logMessage(payload);
 	if(payload.params && payload.params[0] && payload.params[0].to) {
-		if(decoderMap[payload.params[0].to]) {
+		if(decoderMap[payload.params[0].to.toLowerCase()]) {
 			const methodInfo = decodeMethod(payload.params[0].to.toLowerCase(), payload.params[0].data);
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[methodName];
