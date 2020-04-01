@@ -2,4 +2,3 @@
 
 * [Biconomy SDK \(Mexa\)](README.md)
 * [Biconomy Dashboard](DeveloperDashboard.md)
-
