@@ -1,6 +1,6 @@
 {
   "name": "@biconomy/mexa",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "Mexa SDK to enable meta transaction in your DApps",
   "main": "src/index.js",
   "scripts": {
@@ -25,7 +25,8 @@
   },
   "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
   "files": [
-    "*.js","/dist/*.js"
+    "*.js",
+    "/dist/*.js"
   ],
   "dependencies": {
     "abi-decoder": "^2.2.2",

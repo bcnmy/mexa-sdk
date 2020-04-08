@@ -58926,29 +58926,33 @@ module.exports = {
 
 },{"bn.js":47,"eth-lib/lib/hash":359,"number-to-bn":202,"underscore":307,"utf8":311}],363:[function(require,module,exports){
 module.exports={
-  "_from": "web3",
+  "_args": [
+    [
+      "web3@1.2.1",
+      "/Users/sachintomar/github/mexa-sdk"
+    ]
+  ],
+  "_from": "web3@1.2.1",
   "_id": "web3@1.2.1",
   "_inBundle": false,
   "_integrity": "sha512-nNMzeCK0agb5i/oTWNdQ1aGtwYfXzHottFP2Dz0oGIzavPMGSKyVlr8ibVb1yK5sJBjrWVnTdGaOC2zKDFuFRw==",
   "_location": "/web3",
   "_phantomChildren": {},
   "_requested": {
-    "type": "tag",
+    "type": "version",
     "registry": true,
-    "raw": "web3",
+    "raw": "web3@1.2.1",
     "name": "web3",
     "escapedName": "web3",
-    "rawSpec": "",
+    "rawSpec": "1.2.1",
     "saveSpec": null,
-    "fetchSpec": "latest"
+    "fetchSpec": "1.2.1"
   },
   "_requiredBy": [
-    "#USER",
     "/"
   ],
   "_resolved": "https://registry.npmjs.org/web3/-/web3-1.2.1.tgz",
-  "_shasum": "5d8158bcca47838ab8c2b784a2dee4c3ceb4179b",
-  "_spec": "web3",
+  "_spec": "1.2.1",
   "_where": "/Users/sachintomar/github/mexa-sdk",
   "author": {
     "name": "ethereum.org"
@@ -58982,7 +58986,6 @@ module.exports={
   "bugs": {
     "url": "https://github.com/ethereum/web3.js/issues"
   },
-  "bundleDependencies": false,
   "dependencies": {
     "web3-bzz": "1.2.1",
     "web3-core": "1.2.1",
@@ -58992,7 +58995,6 @@ module.exports={
     "web3-shh": "1.2.1",
     "web3-utils": "1.2.1"
   },
-  "deprecated": false,
   "description": "Ethereum JavaScript API",
   "engines": {
     "node": ">=8.0.0"
@@ -61232,6 +61234,7 @@ function _getParamValue(paramObj) {
 		switch (type) {
 			case (type.match(/^uint/) || type.match(/^int/) || {}).input:
 				value = scientificToDecimal(parseInt(paramObj.value));
+				value = web3.utils.toHex(value);
 				break;
 			case 'string':
 				if(typeof paramObj.value === "object"){
