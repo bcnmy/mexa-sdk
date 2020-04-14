@@ -747,7 +747,7 @@ async function _getUserContractNonce(address, engine) {
 // On getting smart contract data get the API data also
 eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 	// Get DApp API information from Database
-    let getAPIInfoAPI = `${baseURL}/api/${config.version}/meta-api?dappId=${dappId}`;
+    let getAPIInfoAPI = `${baseURL}/api/${config.version}/meta-api`;
 	axios.get(getAPIInfoAPI).then(function(response) {
 		if(response && response.data && response.data.listApis) {
 			let apiList = response.data.listApis;
