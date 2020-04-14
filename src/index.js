@@ -809,10 +809,10 @@ function _getUserAccount(engine, payload, cb) {
  **/
 function _validate(options) {
 	if(!options) {
-		throw new Error(`Options object needs to be passed to Biconomy Object with apiKey mandatory keys`);
+		throw new Error(`Options object needs to be passed to Biconomy Object with apiKey as mandatory key`);
 	}
 	if(!options.apiKey) {
-		throw new Error(`apiKey are required in options object when creating Biconomy object`);
+		throw new Error(`apiKey is required in options object when creating Biconomy object`);
 	}
 }
 
