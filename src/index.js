@@ -33,7 +33,6 @@ let loginDomainType, loginMessageType, loginDomainData;
 function Biconomy(provider, options) {
 	_validate(options);
 	this.status = STATUS.INIT;
-	this.dappId = options.dappId;
 	this.apiKey = options.apiKey;
 	this.isLogin = false;
 	this.dappAPIMap = {};
@@ -47,7 +46,7 @@ function Biconomy(provider, options) {
 	if(options.debug) {
 		config.logsEnabled = true;
 	}
-	_init(this.dappId, this.apiKey, this);
+	_init(this.apiKey, this);
 
 	if(provider) {
 		web3 = new Web3(provider);
@@ -660,7 +659,7 @@ async function handleSendTransaction(engine, payload, end) {
 							data.from = account;
 							data.to = payload.params[0].to.toLowerCase();
 							data.apiId = api.id;
-							data.dappId = engine.dappId;
+							// data.dappId = engine.dappId;
 
 							data.data = payload.params[0].data;
 							data.nonceBatchId = config.NONCE_BATCH_ID;
@@ -810,10 +809,10 @@ function _getUserAccount(engine, payload, cb) {
  **/
 function _validate(options) {
 	if(!options) {
-		throw new Error(`Options object needs to be passed to Biconomy Object with dappId and apiKey mandatory keys`);
+		throw new Error(`Options object needs to be passed to Biconomy Object with apiKey mandatory keys`);
 	}
-	if(!options.dappId || !options.apiKey) {
-		throw new Error(`dappId and apiKey are required in options object when creating Biconomy object`);
+	if(!options.apiKey) {
+		throw new Error(`apiKey are required in options object when creating Biconomy object`);
 	}
 }
 
@@ -899,15 +898,16 @@ function _sendTransaction(engine, account, api, data, cb) {
  * @param apiKey API key used to authenticate the request at biconomy server
  * @param _this object representing biconomy provider
  **/
-async function _init(dappId, apiKey, engine) {
+async function _init(apiKey, engine) {
 	try {
 		// Check current network id and dapp network id registered on dashboard
-		let getDappAPI = `${baseURL}/api/${config.version}/dapp?dappId=${dappId}`;
+		let getDappAPI = `${baseURL}/api/${config.version}/dapp`;
 		axios.defaults.headers.common["x-api-key"] = apiKey;
 		axios.get(getDappAPI).then(function(response) {
 			let dappResponse = response.data;
 			if(dappResponse && dappResponse.dapp) {
 				let dappNetworkId = dappResponse.dapp.networkId;
+				let dappId = dappResponse.dapp._id;
 				_logMessage(`Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`);
 				web3.currentProvider.send({
 					jsonrpc: JSON_RPC_VERSION,
@@ -948,7 +948,7 @@ async function _init(dappId, apiKey, engine) {
 											"Could not get signature types from server. Contact Biconomy Team"));
 								}
 								// Get dapps smart contract data from biconomy servers
-								let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract?dappId=${dappId}`;
+								let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
 								axios.get(getDAppInfoAPI).then(function(response) {
 									let result = response.data;
 									if(!result && result.flag != 143) {
@@ -991,7 +991,7 @@ async function _init(dappId, apiKey, engine) {
 										engine.status = STATUS.NO_DATA;
 										eventEmitter.emit(EVENTS.BICONOMY_ERROR,
 											formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
-												`No smart contract registered for dappId ${dappId} on Mexa Dashboard`));
+												`No smart contract registered for apikey ${apiKey} on Mexa Dashboard`));
 									}
 								})
 								.catch(function(error) {
@@ -1008,7 +1008,7 @@ async function _init(dappId, apiKey, engine) {
 						formatMessage(RESPONSE_CODES.ERROR_RESPONSE, dappResponse.log));
 				} else {
 					eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-						formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with dapp id ${dappId}`));
+						formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with apikey ${apiKey}`));
 				}
 			}
 		}).catch(function(error) {
