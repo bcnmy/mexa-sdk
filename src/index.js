@@ -828,6 +828,7 @@ function _getParamValue(paramObj) {
 		switch (type) {
 			case (type.match(/^uint/) || type.match(/^int/) || {}).input:
 				value = scientificToDecimal(parseInt(paramObj.value));
+				value = web3.utils.toHex(value);
 				break;
 			case 'string':
 				if(typeof paramObj.value === "object"){
