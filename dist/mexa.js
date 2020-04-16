@@ -60439,6 +60439,7 @@ let loginDomainType, loginMessageType, loginDomainData;
 
 function Biconomy(provider, options) {
 	_validate(options);
+	this.isBiconomy = true;
 	this.status = STATUS.INIT;
 	this.dappId = options.dappId;
 	this.apiKey = options.apiKey;
@@ -60980,7 +60981,8 @@ async function handleSendTransaction(engine, payload, end) {
 			}
 
 			console.info("Getting user account");
-			let account = await _getUserAccount(engine, payload);
+			// let account = await _getUserAccount(engine, payload);
+			let account= payload.params[0].from;
 			if(!account) {
 				return end(`Not able to get user account`);
 			}
@@ -61094,10 +61096,15 @@ async function handleSendTransaction(engine, payload, end) {
 				}
 			}
 		} else {
-			let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
-				`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
-			eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-			end(error);
+			if(engine.strictMode) {
+				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
+					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+				end(error);
+			} else {
+				_logMessage("Smart contract not found on dashbaord. Strict mode is on, so falling back to normal transaction mode");
+				return engine.providerSend(payload, end);
+			}
 		}
 	} else {
 		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
@@ -61395,10 +61402,14 @@ async function _init(dappId, apiKey, engine) {
 											eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
 										}
 									} else {
-										engine.status = STATUS.NO_DATA;
-										eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-											formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
-												`No smart contract registered for dappId ${dappId} on Mexa Dashboard`));
+										if(engine.strictMode) {
+											engine.status = STATUS.NO_DATA;
+											eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+												formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
+													`No smart contract registered for dappId ${dappId} on Mexa Dashboard`));
+										} else {
+											eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
+										}
 									}
 								})
 								.catch(function(error) {
@@ -61612,7 +61623,9 @@ Biconomy.prototype.login = async function(signer, cb){
 
 		console.debug(`Biconomy engine status ${engine.status}`);
 		if(engine.status != STATUS.BICONOMY_READY) {
-			return cb(formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,'Biconomy SDK is not initialized properly'));
+			let response = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,'Biconomy SDK is not initialized properly');
+			if(cb) cb(response);
+			return reject(response);
 		}
 		web3.currentProvider.sendAsync({
 			jsonrpc: JSON_RPC_VERSION,
