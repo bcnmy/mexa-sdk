@@ -326,11 +326,19 @@ async function sendSignedTransaction(engine, payload, end) {
 			let decodedTx = txDecoder.decodeTx(rawTransaction);
 
 			if(decodedTx.to && decodedTx.data && decodedTx.value) {
-				const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
+				let methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
 				if(!methodInfo) {
-					let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
-						`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
-					return end(error);
+					methodInfo = decodeMethod(config.SCW, decodedTx.data);
+					if(!methodInfo) {
+						if(engine.strictMode) {
+							let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
+								`No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
+							return end(error);
+						} else {
+							_logMessage("Strict mode is off so falling back to default provider for handling transaction");
+							return engine.providerSend(rawTransaction, end);
+						}
+					}
 				}
 				let methodName = methodInfo.name;
 				let api = engine.dappAPIMap[methodName];
@@ -366,6 +374,7 @@ async function sendSignedTransaction(engine, payload, end) {
 					data.params = paramArray;
 					data.gasLimit = decodedTx.gasLimit.toString();
 					data.gasPrice = decodedTx.gasPrice.toString();
+					data.to = decodedTx.to.toLowerCase();
 					_sendTransaction(engine, account, api, data, end);
 				}
 				else{
@@ -408,8 +417,8 @@ async function sendSignedTransaction(engine, payload, end) {
 					}
 				}
 			} else {
-				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
-					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+				let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+					`Not able to deode the data in rawTransaction using ethereum-tx-decoder. Please check the data sent.`);
 				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 				end(error);
 			}
@@ -544,8 +553,13 @@ async function handleSendTransaction(engine, payload, end) {
 	_logMessage('Handle transaction with payload');
 	_logMessage(payload);
 	if(payload.params && payload.params[0] && payload.params[0].to) {
-		if(decoderMap[payload.params[0].to.toLowerCase()]) {
-			const methodInfo = decodeMethod(payload.params[0].to.toLowerCase(), payload.params[0].data);
+		if(decoderMap[payload.params[0].to.toLowerCase()] || decoderMap[config.SCW]) {
+			let methodInfo = decodeMethod(payload.params[0].to.toLowerCase(), payload.params[0].data);
+			
+			// Check if the Smart Contract Wallet is registered on dashboard
+			if(!methodInfo) {
+				methodInfo = decodeMethod(config.SCW, payload.params[0].data);
+			}
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[methodName];
 			let gasPrice = payload.params[0].gasPrice;
@@ -661,7 +675,6 @@ async function handleSendTransaction(engine, payload, end) {
 							data.from = account;
 							data.to = payload.params[0].to.toLowerCase();
 							data.apiId = api.id;
-							// data.dappId = engine.dappId;
 
 							data.data = payload.params[0].data;
 							data.nonceBatchId = config.NONCE_BATCH_ID;
@@ -967,9 +980,15 @@ async function _init(apiKey, engine) {
 									if(smartContractList && smartContractList.length > 0) {
 										smartContractList.forEach(contract => {
 											let abiDecoder = require('abi-decoder');
-											abiDecoder.addABI(JSON.parse(contract.abi));
-											decoderMap[contract.address.toLowerCase()] = abiDecoder;
-											smartContractMap[contract.address.toLowerCase()] = contract.abi;
+											if(contract.type === config.SCW) {
+												abiDecoder.addABI(JSON.parse(contract.abi));
+												decoderMap[config.SCW] = abiDecoder;
+												smartContractMap[config.SCW] = contract.abi;
+											} else {
+												abiDecoder.addABI(JSON.parse(contract.abi));
+												decoderMap[contract.address.toLowerCase()] = abiDecoder;
+												smartContractMap[contract.address.toLowerCase()] = contract.abi;
+											}
 										});
 
 										let userLocalAccount = getFromStorage(USER_ACCOUNT);
