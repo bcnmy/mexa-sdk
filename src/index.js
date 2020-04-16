@@ -707,7 +707,7 @@ async function handleSendTransaction(engine, payload, end) {
 				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 				end(error);
 			} else {
-				_logMessage("Smart contract not found on dashbaord. Strict mode is on, so falling back to normal transaction mode");
+				_logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
 				return engine.providerSend(payload, end);
 			}
 		}
