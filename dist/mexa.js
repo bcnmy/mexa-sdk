@@ -60584,7 +60584,8 @@ Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 		if(rawTransaction) {
 			let decodedTx = txDecoder.decodeTx(rawTransaction);
 			if(decodedTx.to && decodedTx.data && decodedTx.value) {
-				const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
+				let to = decodedTx.to.toLowerCase();
+				const methodInfo = decodeMethod(to, decodedTx.data);
 				if(!methodInfo) {
 					let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
 						`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
@@ -60592,10 +60593,12 @@ Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 					return reject(error);
 				}
 				let methodName = methodInfo.name;
-				let api = engine.dappAPIMap[methodName];
+				let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
 				if(!api) {
 					_logMessage(`API not found for method ${methodName}`);
-
+					let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND ,`No API found on dashboard for called method ${methodName}`);
+					if(cb) cb(error);
+					return reject(error);
 				}
 				_logMessage('API found');
 				let params = methodInfo.params;
@@ -60629,7 +60632,7 @@ Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 
 				let message = {};
 				message.from = account;
-				message.to = decodedTx.to.toLowerCase();
+				message.to = to;
 				message.data = decodedTx.data;
 				message.batchId = config.NONCE_BATCH_ID;
 				let nonce = await _getUserContractNonce(account,engine);
@@ -60733,14 +60736,15 @@ async function sendSignedTransaction(engine, payload, end) {
 			let decodedTx = txDecoder.decodeTx(rawTransaction);
 
 			if(decodedTx.to && decodedTx.data && decodedTx.value) {
-				const methodInfo = decodeMethod(decodedTx.to.toLowerCase(), decodedTx.data);
+				let to = decodedTx.to.toLowerCase();
+				const methodInfo = decodeMethod(to, decodedTx.data);
 				if(!methodInfo) {
 					let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
 						`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
 					return end(error);
 				}
 				let methodName = methodInfo.name;
-				let api = engine.dappAPIMap[methodName];
+				let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
 				if(!api) {
 					_logMessage(`API not found for method ${methodName}`);
 					_logMessage(`Strict mode ${engine.strictMode}`);
@@ -60791,7 +60795,7 @@ async function sendSignedTransaction(engine, payload, end) {
 							let data = {};
 							data.rawTx = rawTransaction;
 							data.signature = signature;
-							data.to = decodedTx.to.toLowerCase();
+							data.to = to;
 							data.from = account;
 							data.apiId = api.id;
 							data.data = decodedTx.data;
@@ -60951,10 +60955,11 @@ async function handleSendTransaction(engine, payload, end) {
 	_logMessage('Handle transaction with payload');
 	_logMessage(payload);
 	if(payload.params && payload.params[0] && payload.params[0].to) {
-		if(decoderMap[payload.params[0].to.toLowerCase()]) {
-			const methodInfo = decodeMethod(payload.params[0].to.toLowerCase(), payload.params[0].data);
+		let to = payload.params[0].to.toLowerCase();
+		if(decoderMap[to]) {
+			const methodInfo = decodeMethod(to, payload.params[0].data);
 			let methodName = methodInfo.name;
-			let api = engine.dappAPIMap[methodName];
+			let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
 			let gasPrice = payload.params[0].gasPrice;
 			let gasLimit = payload.params[0].gas;
 			_logMessage(api);
@@ -60980,7 +60985,8 @@ async function handleSendTransaction(engine, payload, end) {
 			}
 
 			console.info("Getting user account");
-			let account = await _getUserAccount(engine, payload);
+			// let account = await _getUserAccount(engine, payload);
+			let account= payload.params[0].from;
 			if(!account) {
 				return end(`Not able to get user account`);
 			}
@@ -61012,9 +61018,9 @@ async function handleSendTransaction(engine, payload, end) {
 
 					// Check if gas limit is present, it not calculate gas limit
 					if(!gasLimit || parseInt(gasLimit) == 0) {
-						let contractABI = smartContractMap[payload.params[0].to.toLowerCase()];
+						let contractABI = smartContractMap[to];
 						if(contractABI) {
-							let contract = new web3.eth.Contract(JSON.parse(contractABI), payload.params[0].to.toLowerCase());
+							let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
 							gasLimit = await contract.methods[methodName].apply(null, paramArray).estimateGas({from: userContractWallet});
 						}
 					}
@@ -61027,7 +61033,7 @@ async function handleSendTransaction(engine, payload, end) {
 
 					let message = {};
 					message.from = account;
-					message.to = payload.params[0].to.toLowerCase();
+					message.to = to;
 					message.data = payload.params[0].data;
 					message.batchId = config.NONCE_BATCH_ID;
 					message.nonce = parseInt(nonce);
@@ -61065,7 +61071,7 @@ async function handleSendTransaction(engine, payload, end) {
 							let data = {};
 							data.signature = response.result;
 							data.from = account;
-							data.to = payload.params[0].to.toLowerCase();
+							data.to = to;
 							data.apiId = api.id;
 							data.dappId = engine.dappId;
 
@@ -61160,7 +61166,14 @@ eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 		if(response && response.data && response.data.listApis) {
 			let apiList = response.data.listApis;
 			for(let i=0;i<apiList.length;i++) {
-				engine.dappAPIMap[apiList[i].method] = apiList[i];
+				let contractAddress = apiList[i].contractAddress;
+				// TODO: In case of SCW(Smart Contract Wallet) there'll be no contract address. Save SCW as key in that case.
+				if(contractAddress) {
+					if(!engine.dappAPIMap[contractAddress]) {
+						engine.dappAPIMap[contractAddress] = {};
+					}
+					engine.dappAPIMap[contractAddress][apiList[i].method] = apiList[i];
+				}
 			}
 			eventEmitter.emit(EVENTS.DAPP_API_DATA_READY, engine);
 		}
