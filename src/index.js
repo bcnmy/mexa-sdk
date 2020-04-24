@@ -579,7 +579,6 @@ async function handleSendTransaction(engine, payload, end) {
 			}
 
 			console.info("Getting user account");
-			// let account = await _getUserAccount(engine, payload);
 			let account= payload.params[0].from;
 			if(!account) {
 				return end(`Not able to get user account`);
