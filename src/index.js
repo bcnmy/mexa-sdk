@@ -343,21 +343,19 @@ function biconomyInitializer(engine, provider, options) {
  */
 function onboardObjectInitializer(onboardParams) {
 
+    let biconomyWalletCallback = (wallet) => {
+        web3Provider = wallet.provider;
+        onboardWalletCallbackParam = wallet;
+    }
     try {
-        onboardWalletCallback = onboardParams.subscriptions.wallet;
-        onboard = Onboard({
-            dappId: onboardParams.onboardDappId,
-            networkId: onboardParams.networkId,
-            subscriptions: {
-                wallet: wallet => {
-                    web3Provider = wallet.provider;
-                    onboardWalletCallbackParam = wallet;
-                }
-            },
-            walletSelect: {
-                wallets: onboardParams.wallets
-            }
-        })
+        if (onboardParams) {
+            onboardWalletCallback = onboardParams.subscriptions.wallet;
+            onboardParams.subscriptions.wallet = biconomyWalletCallback;
+            onboard = Onboard(onboardParams);
+        } else {
+            eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+                formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"), error);
+        }
     } catch (error) {
         eventEmitter.emit(EVENTS.BICONOMY_ERROR,
             formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"), error);
