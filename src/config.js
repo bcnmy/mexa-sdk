@@ -72,6 +72,8 @@ const STATUS = {
 	NO_DATA:'no_data'
 };
 
+config.SCW = "SCW";
+
 module.exports = {
 	config,
 	EVENTS,
