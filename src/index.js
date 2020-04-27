@@ -373,7 +373,7 @@ async function sendSignedTransaction(engine, payload, end) {
 				}
 				if(api.url == NATIVE_META_TX_URL) {
 					let data = {};
-					data.userAddress = account;
+					data.from = account;
 					data.apiId = api.id;
 					data.params = paramArray;
 					data.gasLimit = decodedTx.gasLimit.toString();
@@ -599,7 +599,7 @@ async function handleSendTransaction(engine, payload, end) {
 			console.info(`User account fetched`);
 			if(api.url == NATIVE_META_TX_URL) {
 				let data = {};
-				data.userAddress = account;
+				data.from = account;
 				data.apiId = api.id;
 				data.params = paramArray;
 				data.gasPrice = gasPrice;
