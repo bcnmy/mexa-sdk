@@ -558,8 +558,13 @@ async function handleSendTransaction(engine, payload, end) {
 	_logMessage(payload);
 	if(payload.params && payload.params[0] && payload.params[0].to) {
 		let to = payload.params[0].to.toLowerCase();
-		if(decoderMap[to]) {
+		if(decoderMap[to] || decoderMap[config.SCW) {
 			const methodInfo = decodeMethod(to, payload.params[0].data);
+
+			// Check if the Smart Contract Wallet is registered on dashboard
+			if(!methodInfo) {
+				methodInfo = decodeMethod(config.SCW, payload.params[0].data);
+			}
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
 			let gasPrice = payload.params[0].gasPrice;
