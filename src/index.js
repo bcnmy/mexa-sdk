@@ -34,7 +34,6 @@ function Biconomy(provider, options) {
 	_validate(options);
 	this.isBiconomy = true;
 	this.status = STATUS.INIT;
-	this.dappId = options.dappId;
 	this.apiKey = options.apiKey;
 	this.isLogin = false;
 	this.dappAPIMap = {};
@@ -48,7 +47,7 @@ function Biconomy(provider, options) {
 	if(options.debug) {
 		config.logsEnabled = true;
 	}
-	_init(this.dappId, this.apiKey, this);
+	_init(this.apiKey, this);
 
 	if(provider) {
 		web3 = new Web3(provider);
@@ -333,9 +332,17 @@ async function sendSignedTransaction(engine, payload, end) {
 				let to = decodedTx.to.toLowerCase();
 				const methodInfo = decodeMethod(to, decodedTx.data);
 				if(!methodInfo) {
-					let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
-						`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
-					return end(error);
+					methodInfo = decodeMethod(config.SCW, decodedTx.data);
+					if(!methodInfo) {
+						if(engine.strictMode) {
+							let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
+								`No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
+							return end(error);
+						} else {
+							_logMessage("Strict mode is off so falling back to default provider for handling transaction");
+							return engine.providerSend(rawTransaction, end);
+						}
+					}
 				}
 				let methodName = methodInfo.name;
 				let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
@@ -371,6 +378,7 @@ async function sendSignedTransaction(engine, payload, end) {
 					data.params = paramArray;
 					data.gasLimit = decodedTx.gasLimit.toString();
 					data.gasPrice = decodedTx.gasPrice.toString();
+					data.to = decodedTx.to.toLowerCase();
 					_sendTransaction(engine, account, api, data, end);
 				}
 				else{
@@ -413,8 +421,8 @@ async function sendSignedTransaction(engine, payload, end) {
 					}
 				}
 			} else {
-				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
-					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+				let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+					`Not able to deode the data in rawTransaction using ethereum-tx-decoder. Please check the data sent.`);
 				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 				end(error);
 			}
@@ -666,7 +674,6 @@ async function handleSendTransaction(engine, payload, end) {
 							data.from = account;
 							data.to = to;
 							data.apiId = api.id;
-							data.dappId = engine.dappId;
 
 							data.data = payload.params[0].data;
 							data.nonceBatchId = config.NONCE_BATCH_ID;
@@ -759,7 +766,7 @@ async function _getUserContractNonce(address, engine) {
 // On getting smart contract data get the API data also
 eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 	// Get DApp API information from Database
-    let getAPIInfoAPI = `${baseURL}/api/${config.version}/meta-api?dappId=${dappId}`;
+    let getAPIInfoAPI = `${baseURL}/api/${config.version}/meta-api`;
 	axios.get(getAPIInfoAPI).then(function(response) {
 		if(response && response.data && response.data.listApis) {
 			let apiList = response.data.listApis;
@@ -828,10 +835,10 @@ function _getUserAccount(engine, payload, cb) {
  **/
 function _validate(options) {
 	if(!options) {
-		throw new Error(`Options object needs to be passed to Biconomy Object with dappId and apiKey mandatory keys`);
+		throw new Error(`Options object needs to be passed to Biconomy Object with apiKey as mandatory key`);
 	}
-	if(!options.dappId || !options.apiKey) {
-		throw new Error(`dappId and apiKey are required in options object when creating Biconomy object`);
+	if(!options.apiKey) {
+		throw new Error(`apiKey is required in options object when creating Biconomy object`);
 	}
 }
 
@@ -917,15 +924,16 @@ function _sendTransaction(engine, account, api, data, cb) {
  * @param apiKey API key used to authenticate the request at biconomy server
  * @param _this object representing biconomy provider
  **/
-async function _init(dappId, apiKey, engine) {
+async function _init(apiKey, engine) {
 	try {
 		// Check current network id and dapp network id registered on dashboard
-		let getDappAPI = `${baseURL}/api/${config.version}/dapp?dappId=${dappId}`;
+		let getDappAPI = `${baseURL}/api/${config.version}/dapp`;
 		axios.defaults.headers.common["x-api-key"] = apiKey;
 		axios.get(getDappAPI).then(function(response) {
 			let dappResponse = response.data;
 			if(dappResponse && dappResponse.dapp) {
 				let dappNetworkId = dappResponse.dapp.networkId;
+				let dappId = dappResponse.dapp._id;
 				_logMessage(`Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`);
 				web3.currentProvider.send({
 					jsonrpc: JSON_RPC_VERSION,
@@ -966,7 +974,7 @@ async function _init(dappId, apiKey, engine) {
 											"Could not get signature types from server. Contact Biconomy Team"));
 								}
 								// Get dapps smart contract data from biconomy servers
-								let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract?dappId=${dappId}`;
+								let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
 								axios.get(getDAppInfoAPI).then(function(response) {
 									let result = response.data;
 									if(!result && result.flag != 143) {
@@ -978,9 +986,15 @@ async function _init(dappId, apiKey, engine) {
 									if(smartContractList && smartContractList.length > 0) {
 										smartContractList.forEach(contract => {
 											let abiDecoder = require('abi-decoder');
-											abiDecoder.addABI(JSON.parse(contract.abi));
-											decoderMap[contract.address.toLowerCase()] = abiDecoder;
-											smartContractMap[contract.address.toLowerCase()] = contract.abi;
+											if(contract.type === config.SCW) {
+												abiDecoder.addABI(JSON.parse(contract.abi));
+												decoderMap[config.SCW] = abiDecoder;
+												smartContractMap[config.SCW] = contract.abi;
+											} else {
+												abiDecoder.addABI(JSON.parse(contract.abi));
+												decoderMap[contract.address.toLowerCase()] = abiDecoder;
+												smartContractMap[contract.address.toLowerCase()] = contract.abi;
+											}
 										});
 
 										let userLocalAccount = getFromStorage(USER_ACCOUNT);
@@ -1030,7 +1044,7 @@ async function _init(dappId, apiKey, engine) {
 						formatMessage(RESPONSE_CODES.ERROR_RESPONSE, dappResponse.log));
 				} else {
 					eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-						formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with dapp id ${dappId}`));
+						formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with apikey ${apiKey}`));
 				}
 			}
 		}).catch(function(error) {
