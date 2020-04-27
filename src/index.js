@@ -558,7 +558,7 @@ async function handleSendTransaction(engine, payload, end) {
 	_logMessage(payload);
 	if(payload.params && payload.params[0] && payload.params[0].to) {
 		let to = payload.params[0].to.toLowerCase();
-		if(decoderMap[to] || decoderMap[config.SCW) {
+		if(decoderMap[to] || decoderMap[config.SCW]) {
 			const methodInfo = decodeMethod(to, payload.params[0].data);
 
 			// Check if the Smart Contract Wallet is registered on dashboard
@@ -604,6 +604,7 @@ async function handleSendTransaction(engine, payload, end) {
 				data.params = paramArray;
 				data.gasPrice = gasPrice;
 				data.gasLimit = gasLimit;
+				data.to = to;
 				_sendTransaction(engine, account, api, data, end);
 			}
 			else{
