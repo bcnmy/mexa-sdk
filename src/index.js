@@ -178,7 +178,7 @@ Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 			let decodedTx = txDecoder.decodeTx(rawTransaction);
 			if(decodedTx.to && decodedTx.data && decodedTx.value) {
 				let to = decodedTx.to.toLowerCase();
-				const methodInfo = decodeMethod(to, decodedTx.data);
+				let methodInfo = decodeMethod(to, decodedTx.data);
 				if(!methodInfo) {
 					let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
 						`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
@@ -187,6 +187,9 @@ Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 				}
 				let methodName = methodInfo.name;
 				let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
+				if(!api){
+					api = engine.dappAPIMap[config.SCW]?engine.dappAPIMap[config.SCW][methodName]:undefined;
+				}
 				if(!api) {
 					_logMessage(`API not found for method ${methodName}`);
 					let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND ,`No API found on dashboard for called method ${methodName}`);
@@ -330,7 +333,7 @@ async function sendSignedTransaction(engine, payload, end) {
 
 			if(decodedTx.to && decodedTx.data && decodedTx.value) {
 				let to = decodedTx.to.toLowerCase();
-				const methodInfo = decodeMethod(to, decodedTx.data);
+				let methodInfo = decodeMethod(to, decodedTx.data);
 				if(!methodInfo) {
 					methodInfo = decodeMethod(config.SCW, decodedTx.data);
 					if(!methodInfo) {
@@ -346,6 +349,9 @@ async function sendSignedTransaction(engine, payload, end) {
 				}
 				let methodName = methodInfo.name;
 				let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
+				if(!api){
+					api = engine.dappAPIMap[config.SCW]?engine.dappAPIMap[config.SCW][methodName]:undefined;
+				}
 				if(!api) {
 					_logMessage(`API not found for method ${methodName}`);
 					_logMessage(`Strict mode ${engine.strictMode}`);
@@ -559,7 +565,7 @@ async function handleSendTransaction(engine, payload, end) {
 	if(payload.params && payload.params[0] && payload.params[0].to) {
 		let to = payload.params[0].to.toLowerCase();
 		if(decoderMap[to] || decoderMap[config.SCW]) {
-			const methodInfo = decodeMethod(to, payload.params[0].data);
+			let methodInfo = decodeMethod(to, payload.params[0].data);
 
 			// Check if the Smart Contract Wallet is registered on dashboard
 			if(!methodInfo) {
@@ -567,6 +573,9 @@ async function handleSendTransaction(engine, payload, end) {
 			}
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
+			if(!api){
+				api = engine.dappAPIMap[config.SCW]?engine.dappAPIMap[config.SCW][methodName]:undefined;
+			}
 			let gasPrice = payload.params[0].gasPrice;
 			let gasLimit = payload.params[0].gas;
 			_logMessage(api);
@@ -784,6 +793,12 @@ eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 						engine.dappAPIMap[contractAddress] = {};
 					}
 					engine.dappAPIMap[contractAddress][apiList[i].method] = apiList[i];
+				}
+				else{
+					if(!engine.dappAPIMap[config.SCW]) {
+						engine.dappAPIMap[config.SCW] = {};
+					}
+					engine.dappAPIMap[config.SCW][apiList[i].method] = apiList[i];
 				}
 			}
 			eventEmitter.emit(EVENTS.DAPP_API_DATA_READY, engine);
