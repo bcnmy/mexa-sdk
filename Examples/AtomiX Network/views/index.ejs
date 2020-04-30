@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<% include partials/head %>
+
+<body class="">
+    <div class="body-wrap">
+        <header class="site-header">
+
+			<div class="hero-disk hero-disk-1 is-moving-object is-translating" data-translating-factor="60">
+				<svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+				    <defs>
+				        <linearGradient x1="-1.265%" y1="100%" y2="100%" id="disk-1-a">
+				            <stop stop-color="#040404" stop-opacity="0" offset="0%"/>
+				            <stop stop-color="#3217BB" offset="100%"/>
+				        </linearGradient>
+				    </defs>
+				    <path d="M846 515c0-165.685 134.315-300 300-300s300 134.315 300 300h-150c0-82.843-67.157-150-150-150s-150 67.157-150 150H846z" transform="translate(-846 -215)" fill="url(#disk-1-a)" fill-rule="evenodd"/>
+				</svg>
+			</div>
+			<div class="hero-disk hero-disk-2 is-moving-object is-translating" data-translating-factor="20">
+				<svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+				    <defs>
+				        <linearGradient x1="0%" y1="100%" y2="100%" id="disk-2-a">
+				            <stop stop-color="#040404" stop-opacity="0" offset="0%"/>
+				            <stop stop-color="#D15680" offset="100%"/>
+				        </linearGradient>
+				    </defs>
+				    <path d="M1153 63c0 165.685-134.315 300-300 300S553 228.685 553 63h150c0 82.843 67.157 150 150 150s150-67.157 150-150h150z" transform="translate(-553 -63)" fill="url(#disk-2-a)" fill-rule="evenodd"/>
+				</svg>
+            </div>
+			<div class="hero-sphere hero-sphere-1 is-moving-object is-translating" data-translating-factor="10">
+				<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+				    <defs>
+				        <radialGradient cx="83.479%" cy="86.284%" fx="83.479%" fy="86.284%" r="128.926%" id="sphere-1-a">
+				            <stop stop-color="#D15680" offset="0%"/>
+				            <stop stop-color="#040404" stop-opacity="0" offset="100%"/>
+				        </radialGradient>
+				    </defs>
+				    <circle cx="1522" cy="447" r="24" transform="translate(-1498 -423)" fill="url(#sphere-1-a)" fill-rule="evenodd"/>
+				</svg>
+			</div>
+
+            <div class="container">
+                <div class="site-header-inner">
+                    <div class="brand header-brand">
+                        <h3 class="m-0">
+                            AtomiX Network
+                        </h3>
+					</div>
+					<div class="brand header-brand">
+						<a class="button button-primary button-shadow" onclick="launchTransak()">Buy Crypto</a>
+					</div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero text-center">
+				<div class="hero-disk hero-disk-3 is-moving-object is-translating" data-translating-factor="90">
+					<svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+						<defs>
+							<linearGradient x1="100%" y1="100%" x2="-1.265%" y2="100%" id="disk-3-a">
+								<stop stop-color="#040404" stop-opacity="0" offset="0%"/>
+								<stop stop-color="#3217BB" offset="100%"/>
+							</linearGradient>
+						</defs>
+						<path d="M153 492c0-165.685 134.315-300 300-300s300 134.315 300 300H603c0-82.843-67.157-150-150-150s-150 67.157-150 150H153z" transform="translate(-153 -192)" fill="url(#disk-3-a)" fill-rule="evenodd"/>
+					</svg>
+				</div>
+				<div class="hero-disk hero-disk-4 is-moving-object is-translating" data-translating-factor="50">
+					<svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+					    <defs>
+					        <linearGradient x1="0%" y1="100%" y2="100%" id="disk-4-a">
+					            <stop stop-color="#040404" stop-opacity="0" offset="0%"/>
+					            <stop stop-color="#D15680" offset="100%"/>
+					        </linearGradient>
+					    </defs>
+					    <path d="M817 687c0 165.685-134.315 300-300 300S217 852.685 217 687h150c0 82.843 67.157 150 150 150s150-67.157 150-150h150z" transform="translate(-217 -687)" fill="url(#disk-4-a)" fill-rule="evenodd"/>
+					</svg>
+				</div>
+				<div class="hero-sphere hero-sphere-2 is-moving-object is-translating" data-translating-factor="30">
+					<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+					    <defs>
+					        <radialGradient cx="83.479%" cy="86.284%" fx="83.479%" fy="86.284%" r="128.926%" id="sphere-2-a">
+					            <stop stop-color="#3217BB" offset="0%"/>
+					            <stop stop-color="#040404" stop-opacity="0" offset="100%"/>
+					        </radialGradient>
+					    </defs>
+					    <circle cx="251" cy="433" r="16" transform="translate(-235 -417)" fill="url(#sphere-2-a)" fill-rule="evenodd"/>
+					</svg>
+				</div>
+                <div class="container-sm">
+                    <div class="hero-inner">
+
+                        <p class="hero-paragraph is-revealing">
+							Swap tokens across blockchains, atomically ⚡ and gasslessly ⛽
+						</p>
+
+                        <div class="hero-browser">
+							<h3 class="hero-title mt-0 is-revealing">Select chains to Swap Tokens</h3>
+
+							<div>
+								<style>
+									.swapWrapper {
+										display: flex;
+									}
+									.row {
+										display: flex;
+										flex-direction: row;
+										flex-wrap: wrap;
+										width: 100%;
+										align-items: center;
+									}
+									.column {
+										display: flex;
+										flex-direction: column;
+										flex-basis: 100%;
+										flex: 1;
+										height: auto;
+										align-items: center;
+										width: -webkit-fill-available;
+									}
+									@media screen and (max-width: 800px){
+										.row {
+											flex-direction: column;
+										}
+										.rotClock{
+											transform:rotate(90deg);
+										}
+									}
+								</style>
+								<div class="swapWrapper">
+									<div class="row">
+									  <div class="column">
+										<select class="cs-select cs-skin-slide" id="chain1">
+											<option value="Binance">Binance</option>
+											<option value="Ethereum">Ethereum</option>
+											<option value="EOS">EOS</option>
+										</select>
+									  </div>
+									  <div class="column" style="max-width: fit-content;font-size: 30px;">
+										<div class="rotClock">
+										  ➡
+										</div>
+									  </div>
+									  <div class="column">
+										<select class="cs-select cs-skin-slide" id="chain2">
+											<option value="Binance">Binance</option>
+											<option value="Ethereum">Ethereum</option>
+											<option value="EOS">EOS</option>
+										</select>
+									  </div>
+									</div>
+								</div>
+							</div>
+
+							<div class="hero-cta is-revealing">
+								<a class="button button-primary button-shadow" id="getStarted">Get Started</a>
+							</div>
+
+							<br/>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+			<section class="features section text-center">
+				<div class="container">
+					<div class="features-inner section-inner">
+						<div class="features-wrap">
+							<div class="feature">
+								<div class="feature-inner">
+									<h3 class="feature-title mt-0 mb-8">EOS Dashboard</h3>
+									<br>
+									<a class="button button-primary button-shadow" href="/eos-dashboard" target="_blank">OPEN</a>
+								</div>
+							</div>
+							<div class="feature">
+								<div class="feature-inner">
+									<h3 class="feature-title mt-0 mb-8" >Testnet ANC Faucet</h3>
+									<br/>
+									<a class="button button-primary button-shadow" href="/faucet">Faucet</a>
+								</div>
+							</div>
+							<div class="feature">
+								<div class="feature-inner">
+									<h3 class="feature-title mt-0 mb-8" >Binance Dashboard</h3>
+									<br/>
+									<a class="button button-primary button-shadow" href="/binanace-dashboard" target="_blank">OPEN</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+        </main>
+
+        <footer class="site-footer">
+			<div class="footer-disk footer-disk-1 is-moving-object is-translating" data-translating-factor="60">
+				<svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+					<defs>
+						<linearGradient x1="100%" y1="100%" x2="-1.265%" y2="100%" id="disk-5-a">
+							<stop stop-color="#040404" stop-opacity="0" offset="0%"/>
+							<stop stop-color="#3217BB" offset="100%"/>
+						</linearGradient>
+					</defs>
+					<path d="M153 492c0-165.685 134.315-300 300-300s300 134.315 300 300H603c0-82.843-67.157-150-150-150s-150 67.157-150 150H153z" transform="translate(-153 -192)" fill="url(#disk-5-a)" fill-rule="evenodd"/>
+				</svg>
+			</div>
+			<div class="footer-disk footer-disk-2 is-moving-object is-translating" data-translating-factor="80">
+				<svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+					<defs>
+						<linearGradient x1="0%" y1="100%" y2="100%" id="disk-6-a">
+							<stop stop-color="#040404" stop-opacity="0" offset="0%"/>
+							<stop stop-color="#D15680" offset="100%"/>
+						</linearGradient>
+					</defs>
+					<path d="M1153 63c0 165.685-134.315 300-300 300S553 228.685 553 63h150c0 82.843 67.157 150 150 150s150-67.157 150-150h150z" transform="translate(-553 -63)" fill="url(#disk-6-a)" fill-rule="evenodd"/>
+				</svg>
+			</div>
+			<div class="footer-sphere footer-sphere-1 is-moving-object is-translating" data-translating-factor="20">
+				<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+					<defs>
+						<radialGradient cx="83.479%" cy="86.284%" fx="83.479%" fy="86.284%" r="128.926%" id="sphere-3-a">
+							<stop stop-color="#D15680" offset="0%"/>
+							<stop stop-color="#040404" stop-opacity="0" offset="100%"/>
+						</radialGradient>
+					</defs>
+					<circle cx="251" cy="433" r="16" transform="translate(-235 -417)" fill="url(#sphere-3-a)" fill-rule="evenodd"/>
+				</svg>
+			</div>
+            <div class="container">
+                <div class="site-footer-inner has-top-divider">
+					<ul class="footer-links list-reset">
+						<li>
+							Powered by
+							<a href="https://matic.network" target="_blank">Matic Network</a>
+							and
+							<a href="https://biconomy.io/" target="_blank">Biconomy</a>
+						</li>
+					</ul>
+					<div class="footer-copyright">&copy; 2020 Made with ❤️ by &nbsp;<a href="https://anudit.dev/" target="_blank"> Anudit Nagar</a></div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+	<script src="js/main.min.js"></script>
+	<script src="js/start/classie.js"></script>
+	<script src="js/start/selectFx.js"></script>
+	<script>
+		(function() {
+			[].slice.call( document.querySelectorAll( 'select.cs-select' ) ).forEach( function(el) {
+				new SelectFx(el);
+			} );
+		})();
+	</script>
+
+	<script src="js/start/start.js"></script>
+	<script src="https://global.transak.com/sdk/v1.1/widget.js" async></script>
+	<script>
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.register('serviceworker.js');
+		}
+	</script>
+</body>
+</html>
