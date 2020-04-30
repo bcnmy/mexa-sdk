@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Gasless Uniswap</title>
+    <link rel="stylesheet" href="style.css">
+   <!-- <script src="./utils.js"></script> -->
+
+    <script src="./bundle.js"></script>
+    <!-- <script type="text/javascript">
+      moduleTry.connectWallet();
+    </script> -->
+  </head>
+
+  <body>
+    
+    <h2 class="heading">Gasless Uniswap</h2>
+    &nbsp; &nbsp;    &nbsp; &nbsp;
+    <div class = "container-login100-form-btn">
+    <button
+    class = "login100-form-btn"
+      type="button"
+      name="connect wallet"
+      onclick="moduleTry.connectWallet()"
+    >
+      connect wallet
+    </button></div>
+    <div id="swap" class="center">
+      <div class="center1">
+    <form >
+      <label for="input">You want to swap</label><br />
+      <select id="inputToken" name="inputToken">
+    
+        <option selected>select input token</option>
+        <option value="mDAI">mDAI</option>
+        <option value="mBTC">mBTC</option>
+        <option value="mUSDT">mUSDT</option>
+        <option value="MANA">MANA</option>
+        <option value="mETH">mETH</option>
+        <option value="m0x">m0x</option>
+      
+</select>
+<button type="button" onclick="moduleTry.getMax()">max</button>
+
+      <input type="number" step="0.0000000000000000001" min="0" id="input" name="input" />&nbsp;&nbsp;
+   
+      
+    
+<br />
+<br />
+
+
+      <label for="output">For</label><br />
+      <select
+      id="outputToken"
+      name="outputToken"
+      onchange="moduleTry.getExchangeRate()"
+    >
+      <option selected>select output token</option>
+      <option value="mDAI">mDAI</option>
+      <option value="mBTC">mBTC</option>
+      <option value="mUSDT">mUSDT</option>
+      <option value="MANA">MANA</option>
+      <option value="mETH">mETH</option>
+      <option value="m0x">m0x</option>
+    </select>
+      <input type="number" step="0.0000000000000000001" min="0" id="output" name="output" />&nbsp;&nbsp;
+     
+      <br />
+      <br />
+    
+      <label for="toWhom">send swapped tokens to</label><br />
+      <input type="text" id="toWhom"></input>
+      <br />
+      <br/>
+      <label>Unlock Your Tokens:</label>
+      <button type="button" id="unlockToken" onclick="moduleTry.unlockToken()">
+        unlockToken
+      </button>
+     
+      <div class="loader"></div>
+     
+      <div class="center1">
+      <button type="button" name="swap" onclick="moduleTry.swap()">swap</button></div>
+      <label id="swapTnxHash"></label>
+    </form>
+  </div>
+  </div>
+   
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,400i,700" rel="stylesheet">
+
+    <div class="content">
+      
+      <h1><H1>Github</H1></h1>
+     <a href="https://github.com/yashnaman/gasless-uniswap">https://github.com/yashnaman/gasless-uniswap</a>
+  
+      <h1>✌️</h1>
+      
+    </div>
+  </body>
+</html>

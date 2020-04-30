@@ -1,0 +1,24 @@
+{
+    "name": "htmlFrontend",
+    "version": "1.0.0",
+    "description": "",
+    "main": "PlaceHolder for a prettier Frontend",
+    "dependencies": {
+        "browserify": "^16.5.0",
+        "eth-sig-util": "^2.5.3",
+        "light-server": "^2.6.4",
+        "web3": "^1.2.6"
+    },
+    "devDependencies": {
+        "@biconomy/mexa": "^1.5.7",
+        "babel-preset-es2015": "^6.24.1",
+        "babelify": "^10.0.0"
+    },
+    "scripts": {
+        "build:js": "browserify --standalone moduleTry  ./js/index.js > bundle.js",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "dev": "light-server -s . -p 9090 -w \"./js/**/*.js, ./*.html # npm run build:js\""
+    },
+    "author": "yashnaman",
+    "license": "ISC"
+}

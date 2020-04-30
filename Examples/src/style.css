@@ -1,0 +1,275 @@
+
+.center {
+    margin: auto;
+    width: 60%;
+    padding: 10px;
+    border-style:  double;
+  }
+  .center1 {
+    margin: auto;
+    width: 60%;
+    padding: 10px;
+   
+  }
+
+  input { 
+    padding: 9px; 
+    border: solid 1px #E5E5E5; 
+    outline: 0; 
+    font: normal 13px/100% Verdana, Tahoma, sans-serif; 
+    width: 175px; 
+    background: #FFFFFF url('bg_form.png') left top repeat-x; 
+    background: -webkit-gradient(linear, left top, left 25, from(#FFFFFF), color-stop(4%, #EEEEEE), to(#FFFFFF)); 
+    background: -moz-linear-gradient(top, #FFFFFF, #EEEEEE 1px, #FFFFFF 25px); 
+    box-shadow: rgba(0,0,0, 0.1) 0px 0px 8px; 
+    -moz-box-shadow: rgba(0,0,0, 0.1) 0px 0px 8px; 
+    -webkit-box-shadow: rgba(0,0,0, 0.1) 0px 0px 8px; 
+  }
+   
+input:hover, textarea:hover, 
+input:focus, textarea:focus { 
+    border-color: #C9C9C9; 
+    -webkit-box-shadow: rgba(0, 0, 0, 0.15) 0px 0px 8px; 
+    } 
+   
+.form label { 
+    margin-left: 10px; 
+    color: #999999; 
+    } 
+   
+
+/* Normal white Button as seen on Google.com*/
+button {
+    color: #444444;
+    background: #F3F3F3;
+    border: 1px #DADADA solid;
+    padding: 5px 10px;
+    border-radius: 2px;
+    font-weight: bold;
+    font-size: 14pt;
+    outline: none;
+}
+
+button:hover {
+    border: 1px #C6C6C6 solid;
+    box-shadow: 1px 1px 1px #EAEAEA;
+    color: #333333;
+    background: #F7F7F7;
+}
+
+button:active {
+    box-shadow: inset 1px 1px 1px #DFDFDF;   
+}
+
+
+  .heading {
+    position: relative;
+    margin: 0 0 30px;
+    padding-bottom: 30px;
+    text-align: center;
+    font-size: 30px;
+    letter-spacing: 0.06em;
+  }
+  
+  .heading:before {
+      content: "";
+      display: block;
+      position: absolute;
+      left: 50%;
+      transform:translateX(-50%);
+      bottom: 0;
+      width: 50px;
+      height: 6px;
+      border-left: 50px solid #f12735;
+      background-color: #1598e3;
+  }
+  .heading:after {
+    content: "";
+    display: block;
+    position: absolute;
+    right: 50%;
+    bottom: 0;
+    border-right: 3px solid #1598e3;
+    border-bottom: 3px solid #1598e3;
+    border-top: 3px solid transparent;
+    border-left: 3px solid transparent;
+  }
+/* UNIMPORTANT SETUP STYLES */
+body {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 18px;
+    line-height: 32px;
+    color: #101010;
+    background: linear-gradient(to bottom, #ffffff, #dddddd);
+  }
+  
+  .content {
+    margin: 0 auto;
+    padding: 30px;
+    max-width: 760px;
+  }
+  
+  p {
+    margin: 0 0 20px;
+  }
+  
+  
+  /* HEADING STYLES */
+  h1 {
+    position: relative; /* This is important */
+    margin: 1.5em 0 .9em;
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: bold;
+    text-align: center;
+    overflow: hidden; /* This is important */
+  }
+  
+  /* Create two pseudo-elements */
+  h1:before, h1:after {
+    position: absolute;
+    top: 50%;
+    content: '';
+    width: 50%;
+    height: 2px;
+    display: inline-block;
+    background: #303030;
+  }
+  
+  /* Adjust the "14px" value to change the text's left padding */
+  h1:before {
+    margin-left: calc(-50% - 14px);
+  }
+  
+  /* Adjust the "14px" value to change the text's right padding */
+  h1:after {
+    margin-left: 14px;
+  }
+  
+  /*[ Button ]*/
+.container-login100-form-btn {
+  width: 100%;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: auto;
+  padding: 10px;
+  width: 60%;
+}
+
+.login100-form-btn {
+  font-family: Ubuntu-Bold;
+  font-size: 18px;
+  color: #fff;
+  line-height: 1.2;
+  text-transform: uppercase;
+
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+  min-width: 160px;
+  height: 42px;
+  border-radius: 21px;
+
+  background: #d41872;
+  background: -webkit-linear-gradient(left, #a445b2, #d41872, #fa4299);
+  background: -o-linear-gradient(left, #a445b2, #d41872, #fa4299);
+  background: -moz-linear-gradient(left, #a445b2, #d41872, #fa4299);
+  background: linear-gradient(left, #a445b2, #d41872, #fa4299);
+  position: relative;
+  z-index: 1;
+
+  -webkit-transition: all 0.4s;
+  -o-transition: all 0.4s;
+  -moz-transition: all 0.4s;
+  transition: all 0.4s;
+}
+
+.login100-form-btn::before {
+  content: "";
+  display: block;
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  border-radius: 21px;
+  background-color: #555555;
+  top: 0;
+  left: 0;
+  opacity: 0;
+
+  -webkit-transition: all 0.4s;
+  -o-transition: all 0.4s;
+  -moz-transition: all 0.4s;
+  transition: all 0.4s;
+}
+
+.login100-form-btn:hover {
+  background-color: transparent;
+}
+
+.login100-form-btn:hover:before {
+  opacity: 1;
+}
+select {
+  -webkit-appearance: button;
+  -moz-appearance: button;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -webkit-padding-end: 20px;
+  -moz-padding-end: 20px;
+  -webkit-padding-start: 2px;
+  -moz-padding-start: 2px;
+  background-color:#dddddd; /* Fallback color if gradients are not supported */
+  background-image: url(../images/select-arrow.png), -webkit-linear-gradient(top, #E5E5E5, #F4F4F4); /* For Chrome and Safari */
+  background-image: url(../images/select-arrow.png), -moz-linear-gradient(top, #E5E5E5, #F4F4F4); /* For old Firefox (3.6 to 15) */
+  background-image: url(../images/select-arrow.png), -ms-linear-gradient(top, #E5E5E5, #F4F4F4); /* For pre-releases of Internet Explorer  10*/
+  background-image: url(../images/select-arrow.png), -o-linear-gradient(top, #E5E5E5, #F4F4F4); /* For old Opera (11.1 to 12.0) */
+  background-image: url(../images/select-arrow.png), linear-gradient(to bottom, #E5E5E5, #F4F4F4); /* Standard syntax; must be last */
+  background-position: center right;
+  background-repeat: no-repeat;
+  border: 1px solid #AAA;
+  border-radius: 2px;
+  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.1);
+  color: #555;
+  font-size: inherit;
+  margin: 0;
+  overflow: hidden;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.loader {
+  border: 16px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 16px solid blue;
+  border-right: 16px solid green;
+  border-bottom: 16px solid red;
+  border-left: 16px solid pink;
+  width: 10px;
+  height: 10px;
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+  display: none;
+}
+
+@-webkit-keyframes spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
