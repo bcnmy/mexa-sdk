@@ -1437,14 +1437,17 @@ let domainDataERC20 = {
 }
 const showFaucetLink = function () {
     if (netowrkName == 'ropsten') {
-        tempString = 'https://oneclickdapp.com/cecilia-crash/'
+        mDAILink = 'https://oneclickdapp.com/cecilia-crash/'
+        MANALink = 'https://oneclickdapp.com/velvet-papa/'
     }
     if (netowrkName == 'matic') {
-        tempString = 'https://oneclickdapp.com/alias-type/'
+        mDAILink = 'https://oneclickdapp.com/alias-type/'
+        MANALink = 'https://oneclickdapp.com/street-mineral/'
     }
     var a = document.createElement('a')
-    a.href = tempString
+    a.href = mDAILink
     a.title = 'faucet'
+    a.target = '_blank'
     var link = document.createTextNode('mDAI faucet')
     a.appendChild(link)
 
@@ -1453,8 +1456,17 @@ const showFaucetLink = function () {
         '  :mint yourself 10000000000000000000 to be equal to 10 (Because of decimals): This action is not gasless'
     )
     x.appendChild(t)
+    var a1 = document.createElement('a')
+    a1.href = MANALink
+    a1.title = 'faucet'
+    a1.target = '_blank'
+    var link1 = document.createTextNode('MANA faucet')
+    a1.appendChild(link1)
     document.body.prepend(x)
+    var br = document.createElement('br')
+    a1.appendChild(br)
     document.body.prepend(a)
+    document.body.prepend(a1)
 }
 const forwarderEIP2585 = async function (_data) {
     var EIP712ForwarderContract = new web3.eth.Contract(
@@ -1545,9 +1557,10 @@ const forwarderEIP2585 = async function (_data) {
                 a.title = tempString
                 var link = document.createTextNode(tempString)
                 a.appendChild(link)
-                document.body.prepend(a)
-                var br = document.createElement('br')
-                a.appendChild(br)
+                // document.body.prepend(a)
+                // var br = document.createElement('br')
+                // a.appendChild(br)
+                alert(a)
             }).once('confirmation', function (confirmationNumber, receipt) {
                 console.log(receipt)
             })
@@ -1561,6 +1574,7 @@ const connectWallet = async function () {
         const provider = window['ethereum']
         let accounts = await provider.enable()
         document.getElementById('toWhom').value = accounts[0]
+        document.getElementById('toWhom1').value = accounts[0]
         console.log(provider.networkVersion)
         var _chainId = provider.networkVersion
 
@@ -1666,6 +1680,7 @@ const sendPermitTransaction = async (
                 let elements = document.getElementsByClassName('loader')
                 elements[0].style.display = 'none'
                 console.log(receipt)
+                alert('tokens unlocked')
             })
         } catch (error) {
             console.log(error)
@@ -1801,15 +1816,15 @@ const getBalanceERC20 = async function (ERC20address, wadAddress) {
     let balanceWithDecimals = web3.utils.fromWei(balance)
     return balanceWithDecimals
 }
-const getMax = async function () {
+const getMax = async function (inputElementId, outputElementId) {
     let wadAddress = ethereum.selectedAddress
     console.log(wadAddress)
-    let inputToken = document.getElementById('inputToken')
+    let inputToken = document.getElementById(inputElementId)
     let inputTokenName = inputToken.options[inputToken.selectedIndex].value
     let inputTokenaddress = config[netowrkName][inputTokenName]
     console.log(inputTokenaddress)
     let balance = await getBalanceERC20(inputTokenaddress, wadAddress)
-    document.getElementById('input').value = balance
+    document.getElementById(outputElementId).value = balance
 }
 const swap = async function () {
     let inputToken = document.getElementById('inputToken')
@@ -1828,10 +1843,10 @@ const swap = async function () {
     )
 }
 
-const unlockToken = async function () {
-    let inputToken = document.getElementById('inputToken')
+const unlockToken = async function (inputSelectElementId, inputValueElementId) {
+    let inputToken = document.getElementById(inputSelectElementId)
     let inputTokenName = inputToken.options[inputToken.selectedIndex].value
-    let inputAmount = document.getElementById('input').value
+    let inputAmount = document.getElementById(inputValueElementId).value
     await getPermit(inputTokenName, inputAmount)
 }
 
@@ -1860,10 +1875,45 @@ const getExchangeRate = async function () {
     // // let amountsOut = web3.utils.fromWei(amountsOutDecimals,"ether");
     // console.log(amountsOutDecimals.toString());
 }
+const addLiquidity = async function () {
+    let inputToken1 = document.getElementById('inputToken1')
+    let inputToken1Name = inputToken1.options[inputToken1.selectedIndex].value
+    let inputToken2 = document.getElementById('inputToken2')
+    let inputToken2Name = inputToken1.options[inputToken2.selectedIndex].value
+
+    let inputAmount1 = document.getElementById('input1').value
+    let inputAmount2 = document.getElementById('input2').value
+
+    let toWhom = document.getElementById('toWhom1').value
+    let now = await getNow()
+    let expiry = now + 3600
+    console.log(toWhom)
+
+    let data = contract.methods
+        .addLiquidity(
+            config[netowrkName][inputToken1Name],
+            config[netowrkName][inputToken2Name],
+            web3.utils.toWei(inputAmount1.toString(), 'ether'),
+            web3.utils.toWei(inputAmount2.toString(), 'ether'),
+            0,
+            0,
+            toWhom,
+            expiry
+        )
+        .encodeABI()
+    forwarderEIP2585(data)
+}
 
 // init();
 
-var moduleTry = { connectWallet, getExchangeRate, swap, unlockToken, getMax }
+var moduleTry = {
+    connectWallet,
+    getExchangeRate,
+    swap,
+    unlockToken,
+    getMax,
+    addLiquidity,
+}
 module.exports = moduleTry
 
 },{"./config":1,"@biconomy/mexa":4,"eth-sig-util":136,"web3":441}],3:[function(require,module,exports){
@@ -3467,7 +3517,13 @@ module.exports = require('../package.json').version;
 
 },{"../package.json":8}],8:[function(require,module,exports){
 module.exports={
-  "_from": "@web3-js/websocket@^1.0.29",
+  "_args": [
+    [
+      "@web3-js/websocket@1.0.30",
+      "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src"
+    ]
+  ],
+  "_from": "@web3-js/websocket@1.0.30",
   "_id": "@web3-js/websocket@1.0.30",
   "_inBundle": false,
   "_integrity": "sha512-fDwrD47MiDrzcJdSeTLF75aCcxVVt8B1N74rA+vh2XCAvFy4tEWJjtnUtj2QG7/zlQ6g9cQ88bZFBxwd9/FmtA==",
@@ -3476,23 +3532,22 @@ module.exports={
     "ms": "2.0.0"
   },
   "_requested": {
-    "type": "range",
+    "type": "version",
     "registry": true,
-    "raw": "@web3-js/websocket@^1.0.29",
+    "raw": "@web3-js/websocket@1.0.30",
     "name": "@web3-js/websocket",
     "escapedName": "@web3-js%2fwebsocket",
     "scope": "@web3-js",
-    "rawSpec": "^1.0.29",
+    "rawSpec": "1.0.30",
     "saveSpec": null,
-    "fetchSpec": "^1.0.29"
+    "fetchSpec": "1.0.30"
   },
   "_requiredBy": [
     "/web3-providers-ws"
   ],
   "_resolved": "https://registry.npmjs.org/@web3-js/websocket/-/websocket-1.0.30.tgz",
-  "_shasum": "9ea15b7b582cf3bf3e8bc1f4d3d54c0731a87f87",
-  "_spec": "@web3-js/websocket@^1.0.29",
-  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/maticUniswapWithEIP2585/test/src/node_modules/web3-providers-ws",
+  "_spec": "1.0.30",
+  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src",
   "author": {
     "name": "Brian McKelvey",
     "email": "theturtle32@gmail.com",
@@ -3502,7 +3557,6 @@ module.exports={
   "bugs": {
     "url": "https://github.com/web3-js/WebSocket-Node/issues"
   },
-  "bundleDependencies": false,
   "config": {
     "verbose": false
   },
@@ -3520,7 +3574,6 @@ module.exports={
     "typedarray-to-buffer": "^3.1.5",
     "yaeti": "^0.0.6"
   },
-  "deprecated": false,
   "description": "Websocket Client & Server Library implementing the WebSocket protocol as specified in RFC 6455.",
   "devDependencies": {
     "buffer-equal": "^1.0.0",
@@ -23890,6 +23943,12 @@ utils.intFromLE = intFromLE;
 
 },{"bn.js":58}],132:[function(require,module,exports){
 module.exports={
+  "_args": [
+    [
+      "elliptic@6.3.3",
+      "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src"
+    ]
+  ],
   "_from": "elliptic@6.3.3",
   "_id": "elliptic@6.3.3",
   "_inBundle": false,
@@ -23912,9 +23971,8 @@ module.exports={
     "/ethers"
   ],
   "_resolved": "https://registry.npmjs.org/elliptic/-/elliptic-6.3.3.tgz",
-  "_shasum": "5482d9646d54bcb89fd7d994fc9e2e9568876e3f",
-  "_spec": "elliptic@6.3.3",
-  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/maticUniswapWithEIP2585/test/src/node_modules/ethers",
+  "_spec": "6.3.3",
+  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src",
   "author": {
     "name": "Fedor Indutny",
     "email": "fedor@indutny.com"
@@ -23922,14 +23980,12 @@ module.exports={
   "bugs": {
     "url": "https://github.com/indutny/elliptic/issues"
   },
-  "bundleDependencies": false,
   "dependencies": {
     "bn.js": "^4.4.0",
     "brorand": "^1.0.1",
     "hash.js": "^1.0.0",
     "inherits": "^2.0.1"
   },
-  "deprecated": false,
   "description": "EC cryptography",
   "devDependencies": {
     "brfs": "^1.4.3",
@@ -58322,29 +58378,34 @@ utils.intFromLE = intFromLE;
 
 },{"bn.js":58,"minimalistic-assert":244,"minimalistic-crypto-utils":245}],326:[function(require,module,exports){
 module.exports={
-  "_from": "elliptic@^6.5.2",
+  "_args": [
+    [
+      "elliptic@6.5.2",
+      "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src"
+    ]
+  ],
+  "_from": "elliptic@6.5.2",
   "_id": "elliptic@6.5.2",
   "_inBundle": false,
   "_integrity": "sha512-f4x70okzZbIQl/NSRLkI/+tteV/9WqL98zx+SQ69KbXxmVrmjwsNUPn/gYJJ0sHvEak24cZgHIPegRePAtA/xw==",
   "_location": "/secp256k1/elliptic",
   "_phantomChildren": {},
   "_requested": {
-    "type": "range",
+    "type": "version",
     "registry": true,
-    "raw": "elliptic@^6.5.2",
+    "raw": "elliptic@6.5.2",
     "name": "elliptic",
     "escapedName": "elliptic",
-    "rawSpec": "^6.5.2",
+    "rawSpec": "6.5.2",
     "saveSpec": null,
-    "fetchSpec": "^6.5.2"
+    "fetchSpec": "6.5.2"
   },
   "_requiredBy": [
     "/secp256k1"
   ],
   "_resolved": "https://registry.npmjs.org/elliptic/-/elliptic-6.5.2.tgz",
-  "_shasum": "05c5678d7173c049d8ca433552224a495d0e3762",
-  "_spec": "elliptic@^6.5.2",
-  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/maticUniswapWithEIP2585/test/src/node_modules/secp256k1",
+  "_spec": "6.5.2",
+  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src",
   "author": {
     "name": "Fedor Indutny",
     "email": "fedor@indutny.com"
@@ -58352,7 +58413,6 @@ module.exports={
   "bugs": {
     "url": "https://github.com/indutny/elliptic/issues"
   },
-  "bundleDependencies": false,
   "dependencies": {
     "bn.js": "^4.4.0",
     "brorand": "^1.0.1",
@@ -58362,7 +58422,6 @@ module.exports={
     "minimalistic-assert": "^1.0.0",
     "minimalistic-crypto-utils": "^1.0.0"
   },
-  "deprecated": false,
   "description": "EC cryptography",
   "devDependencies": {
     "brfs": "^1.4.3",
@@ -70453,29 +70512,34 @@ arguments[4][130][0].apply(exports,arguments)
 arguments[4][325][0].apply(exports,arguments)
 },{"bn.js":58,"dup":325,"minimalistic-assert":244,"minimalistic-crypto-utils":245}],405:[function(require,module,exports){
 module.exports={
-  "_from": "elliptic@^6.4.0",
+  "_args": [
+    [
+      "elliptic@6.5.2",
+      "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src"
+    ]
+  ],
+  "_from": "elliptic@6.5.2",
   "_id": "elliptic@6.5.2",
   "_inBundle": false,
   "_integrity": "sha512-f4x70okzZbIQl/NSRLkI/+tteV/9WqL98zx+SQ69KbXxmVrmjwsNUPn/gYJJ0sHvEak24cZgHIPegRePAtA/xw==",
   "_location": "/web3-eth-accounts/elliptic",
   "_phantomChildren": {},
   "_requested": {
-    "type": "range",
+    "type": "version",
     "registry": true,
-    "raw": "elliptic@^6.4.0",
+    "raw": "elliptic@6.5.2",
     "name": "elliptic",
     "escapedName": "elliptic",
-    "rawSpec": "^6.4.0",
+    "rawSpec": "6.5.2",
     "saveSpec": null,
-    "fetchSpec": "^6.4.0"
+    "fetchSpec": "6.5.2"
   },
   "_requiredBy": [
     "/web3-eth-accounts/eth-lib"
   ],
   "_resolved": "https://registry.npmjs.org/elliptic/-/elliptic-6.5.2.tgz",
-  "_shasum": "05c5678d7173c049d8ca433552224a495d0e3762",
-  "_spec": "elliptic@^6.4.0",
-  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/maticUniswapWithEIP2585/test/src/node_modules/web3-eth-accounts/node_modules/eth-lib",
+  "_spec": "6.5.2",
+  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src",
   "author": {
     "name": "Fedor Indutny",
     "email": "fedor@indutny.com"
@@ -70483,7 +70547,6 @@ module.exports={
   "bugs": {
     "url": "https://github.com/indutny/elliptic/issues"
   },
-  "bundleDependencies": false,
   "dependencies": {
     "bn.js": "^4.4.0",
     "brorand": "^1.0.1",
@@ -70493,7 +70556,6 @@ module.exports={
     "minimalistic-assert": "^1.0.0",
     "minimalistic-crypto-utils": "^1.0.0"
   },
-  "deprecated": false,
   "description": "EC cryptography",
   "devDependencies": {
     "brfs": "^1.4.3",
@@ -78747,30 +78809,35 @@ module.exports = {
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
 },{"../../is-buffer/index.js":230,"bn.js":58,"eth-lib/lib/hash":135,"ethereum-bloom-filters":145,"number-to-bn":247,"underscore":368,"utf8":372}],440:[function(require,module,exports){
 module.exports={
-  "_from": "web3@^1.2.6",
+  "_args": [
+    [
+      "web3@1.2.7",
+      "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src"
+    ]
+  ],
+  "_from": "web3@1.2.7",
   "_id": "web3@1.2.7",
   "_inBundle": false,
   "_integrity": "sha512-jAAJHMfUlTps+jH2li1ckDFEpPrEEriU/ubegSTGRl3KRdNhEqT93+3kd7FHJTn3NgjcyURo2+f7Da1YcZL8Mw==",
   "_location": "/web3",
   "_phantomChildren": {},
   "_requested": {
-    "type": "range",
+    "type": "version",
     "registry": true,
-    "raw": "web3@^1.2.6",
+    "raw": "web3@1.2.7",
     "name": "web3",
     "escapedName": "web3",
-    "rawSpec": "^1.2.6",
+    "rawSpec": "1.2.7",
     "saveSpec": null,
-    "fetchSpec": "^1.2.6"
+    "fetchSpec": "1.2.7"
   },
   "_requiredBy": [
     "/",
     "/@biconomy/mexa"
   ],
   "_resolved": "https://registry.npmjs.org/web3/-/web3-1.2.7.tgz",
-  "_shasum": "fcb83571036c1c6f475bc984785982a444e8d78e",
-  "_spec": "web3@^1.2.6",
-  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/maticUniswapWithEIP2585/test/src",
+  "_spec": "1.2.7",
+  "_where": "/home/safu/ethereum/maticUniswapWithEIP2585/addLiquidityTry/gasless-uniswap/src",
   "author": {
     "name": "ethereum.org"
   },
@@ -78803,7 +78870,6 @@ module.exports={
   "bugs": {
     "url": "https://github.com/ethereum/web3.js/issues"
   },
-  "bundleDependencies": false,
   "dependencies": {
     "web3-bzz": "1.2.7",
     "web3-core": "1.2.7",
@@ -78813,7 +78879,6 @@ module.exports={
     "web3-shh": "1.2.7",
     "web3-utils": "1.2.7"
   },
-  "deprecated": false,
   "description": "Ethereum JavaScript API",
   "devDependencies": {
     "@types/node": "^12.12.34",

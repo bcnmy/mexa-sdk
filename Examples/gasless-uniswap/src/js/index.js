@@ -45,14 +45,17 @@ let domainDataERC20 = {
 }
 const showFaucetLink = function () {
     if (netowrkName == 'ropsten') {
-        tempString = 'https://oneclickdapp.com/cecilia-crash/'
+        mDAILink = 'https://oneclickdapp.com/cecilia-crash/'
+        MANALink = 'https://oneclickdapp.com/velvet-papa/'
     }
     if (netowrkName == 'matic') {
-        tempString = 'https://oneclickdapp.com/alias-type/'
+        mDAILink = 'https://oneclickdapp.com/alias-type/'
+        MANALink = 'https://oneclickdapp.com/street-mineral/'
     }
     var a = document.createElement('a')
-    a.href = tempString
+    a.href = mDAILink
     a.title = 'faucet'
+    a.target = '_blank'
     var link = document.createTextNode('mDAI faucet')
     a.appendChild(link)
 
@@ -61,8 +64,17 @@ const showFaucetLink = function () {
         '  :mint yourself 10000000000000000000 to be equal to 10 (Because of decimals): This action is not gasless'
     )
     x.appendChild(t)
+    var a1 = document.createElement('a')
+    a1.href = MANALink
+    a1.title = 'faucet'
+    a1.target = '_blank'
+    var link1 = document.createTextNode('MANA faucet')
+    a1.appendChild(link1)
     document.body.prepend(x)
+    var br = document.createElement('br')
+    a1.appendChild(br)
     document.body.prepend(a)
+    document.body.prepend(a1)
 }
 const forwarderEIP2585 = async function (_data) {
     var EIP712ForwarderContract = new web3.eth.Contract(
@@ -153,9 +165,10 @@ const forwarderEIP2585 = async function (_data) {
                 a.title = tempString
                 var link = document.createTextNode(tempString)
                 a.appendChild(link)
-                document.body.prepend(a)
-                var br = document.createElement('br')
-                a.appendChild(br)
+                // document.body.prepend(a)
+                // var br = document.createElement('br')
+                // a.appendChild(br)
+                alert(a)
             }).once('confirmation', function (confirmationNumber, receipt) {
                 console.log(receipt)
             })
@@ -169,6 +182,7 @@ const connectWallet = async function () {
         const provider = window['ethereum']
         let accounts = await provider.enable()
         document.getElementById('toWhom').value = accounts[0]
+        document.getElementById('toWhom1').value = accounts[0]
         console.log(provider.networkVersion)
         var _chainId = provider.networkVersion
 
@@ -274,6 +288,7 @@ const sendPermitTransaction = async (
                 let elements = document.getElementsByClassName('loader')
                 elements[0].style.display = 'none'
                 console.log(receipt)
+                alert('tokens unlocked')
             })
         } catch (error) {
             console.log(error)
@@ -409,15 +424,15 @@ const getBalanceERC20 = async function (ERC20address, wadAddress) {
     let balanceWithDecimals = web3.utils.fromWei(balance)
     return balanceWithDecimals
 }
-const getMax = async function () {
+const getMax = async function (inputElementId, outputElementId) {
     let wadAddress = ethereum.selectedAddress
     console.log(wadAddress)
-    let inputToken = document.getElementById('inputToken')
+    let inputToken = document.getElementById(inputElementId)
     let inputTokenName = inputToken.options[inputToken.selectedIndex].value
     let inputTokenaddress = config[netowrkName][inputTokenName]
     console.log(inputTokenaddress)
     let balance = await getBalanceERC20(inputTokenaddress, wadAddress)
-    document.getElementById('input').value = balance
+    document.getElementById(outputElementId).value = balance
 }
 const swap = async function () {
     let inputToken = document.getElementById('inputToken')
@@ -436,10 +451,10 @@ const swap = async function () {
     )
 }
 
-const unlockToken = async function () {
-    let inputToken = document.getElementById('inputToken')
+const unlockToken = async function (inputSelectElementId, inputValueElementId) {
+    let inputToken = document.getElementById(inputSelectElementId)
     let inputTokenName = inputToken.options[inputToken.selectedIndex].value
-    let inputAmount = document.getElementById('input').value
+    let inputAmount = document.getElementById(inputValueElementId).value
     await getPermit(inputTokenName, inputAmount)
 }
 
@@ -468,8 +483,43 @@ const getExchangeRate = async function () {
     // // let amountsOut = web3.utils.fromWei(amountsOutDecimals,"ether");
     // console.log(amountsOutDecimals.toString());
 }
+const addLiquidity = async function () {
+    let inputToken1 = document.getElementById('inputToken1')
+    let inputToken1Name = inputToken1.options[inputToken1.selectedIndex].value
+    let inputToken2 = document.getElementById('inputToken2')
+    let inputToken2Name = inputToken1.options[inputToken2.selectedIndex].value
+
+    let inputAmount1 = document.getElementById('input1').value
+    let inputAmount2 = document.getElementById('input2').value
+
+    let toWhom = document.getElementById('toWhom1').value
+    let now = await getNow()
+    let expiry = now + 3600
+    console.log(toWhom)
+
+    let data = contract.methods
+        .addLiquidity(
+            config[netowrkName][inputToken1Name],
+            config[netowrkName][inputToken2Name],
+            web3.utils.toWei(inputAmount1.toString(), 'ether'),
+            web3.utils.toWei(inputAmount2.toString(), 'ether'),
+            0,
+            0,
+            toWhom,
+            expiry
+        )
+        .encodeABI()
+    forwarderEIP2585(data)
+}
 
 // init();
 
-var moduleTry = { connectWallet, getExchangeRate, swap, unlockToken, getMax }
+var moduleTry = {
+    connectWallet,
+    getExchangeRate,
+    swap,
+    unlockToken,
+    getMax,
+    addLiquidity,
+}
 module.exports = moduleTry
