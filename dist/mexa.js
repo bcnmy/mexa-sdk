@@ -59821,14 +59821,14 @@ function _sendTransaction(engine, account, api, data, cb) {
 		.then(response=>response.json())
 	    .then(function(result) {
 			_logMessage(result);
-			if(result.flag && result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE
+			if(!result.txHash && result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE
 				&& result.flag != BICONOMY_RESPONSE_CODES.SUCCESS) {
 				let error = {};
-				error.code = result.flag;
+				error.code = result.flag || result.code;
 				if(result.flag == BICONOMY_RESPONSE_CODES.USER_CONTRACT_NOT_FOUND) {
 					error.code = RESPONSE_CODES.USER_CONTRACT_NOT_FOUND;
 				}
-				error.message = result.log;
+				error.message = result.log || result.message;
 				if(cb) cb(error);
 			} else {
 				if(cb) cb(null, result.txHash);
