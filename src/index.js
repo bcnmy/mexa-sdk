@@ -68,7 +68,7 @@ Biconomy.prototype.walletSelect = async function() {
         await onboard.walletSelect();
     } catch (error) {
         eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_SELECT, "Error while selecting Wallet"), error);
+            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_SELECT, "Error while selecting Wallet"));
     }
 }
 
@@ -88,7 +88,7 @@ Biconomy.prototype.walletCheck = async function() {
         onboardWalletCallback(onboardWalletCallbackParam);
     } catch (error) {
         eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_CHECK, "Error while checking Wallet"), error);
+            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_CHECK, "Error while checking Wallet"));
     }
 }
 
@@ -354,11 +354,11 @@ function onboardObjectInitializer(onboardParams) {
             onboard = Onboard(onboardParams);
         } else {
             eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"), error);
+                formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"));
         }
     } catch (error) {
         eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-            formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"), error);
+            formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"));
     }
 }
 
