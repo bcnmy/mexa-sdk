@@ -1,44 +1,43 @@
 {
-  "name": "@biconomy/mexa",
-  "version": "1.5.4",
-  "description": "Mexa SDK to enable meta transaction in your DApps",
-  "main": "src/index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "browserify ./src/index.js -o ./dist/mexa.js -p esmify -s Biconomy"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bcnmy/mexa-sdk.git"
-  },
-  "keywords": [
-    "mexa",
-    "sdk",
-    "meta-transactions",
-    "gasless",
-    "transactions"
-  ],
-  "author": "Sachin Tomar",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/bcnmy/mexa-sdk/issues"
-  },
-  "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
-  "files": [
-    "*.js",
-    "/dist/*.js"
-  ],
-  "dependencies": {
-    "abi-decoder": "^2.2.2",
-    "axios": "^0.19.0",
-    "bnc-onboard": "^1.7.6",
-    "ethereum-tx-decoder": "^3.0.0",
-    "events": "^3.0.0",
-    "promise": "^8.0.3",
-    "web3": "^1.2.1"
-  },
-  "devDependencies": {
-    "browserify": "^16.5.0",
-    "esmify": "^2.1.1"
-  }
+    "name": "@biconomy/mexa",
+    "version": "1.5.10",
+    "description": "Mexa SDK to enable meta transaction in your DApps",
+    "main": "src/index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "browserify ./src/index.js -o ./dist/mexa.js -p esmify -s Biconomy"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/bcnmy/mexa-sdk.git"
+    },
+    "keywords": [
+        "mexa",
+        "sdk",
+        "meta-transactions",
+        "gasless",
+        "transactions"
+    ],
+    "author": "Sachin Tomar",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/bcnmy/mexa-sdk/issues"
+    },
+    "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
+    "files": [
+        "*.js",
+        "/dist/*.js"
+    ],
+    "dependencies": {
+        "abi-decoder": "^2.2.2",
+        "ethereum-tx-decoder": "^3.0.0",
+        "events": "^3.0.0",
+        "node-fetch": "^2.6.0",
+        "promise": "^8.0.3",
+        "web3": "^1.2.1"
+    },
+    "devDependencies": {
+        "browserify": "^16.5.0",
+        "esmify": "^2.1.1"
+    }
 }

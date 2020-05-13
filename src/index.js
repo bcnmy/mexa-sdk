@@ -1,4 +1,3 @@
-const axios = require("axios");
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
 const { config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS } = require('./config');
@@ -32,78 +31,81 @@ let domainData = {
 let loginDomainType, loginMessageType, loginDomainData;
 
 function Biconomy(provider, options) {
-    _validate(options);
-    this.isBiconomy = true;
-    this.status = STATUS.INIT;
-    this.apiKey = options.apiKey;
-    this.isLogin = false;
-    this.dappAPIMap = {};
-    this.strictMode = options.strictMode || false;
-    this.providerId = options.providerId || 0;
-    this.readViaContract = options.readViaContract || false;
-    this.READY = STATUS.BICONOMY_READY;
-    this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
-    this.ERROR = EVENTS.BICONOMY_ERROR;
-    this.pendingLoginTransactions = {};
-    if (options.debug) {
-        config.logsEnabled = true;
-    }
-    _init(this.apiKey, this);
+	if(typeof fetch == "undefined") {
+		fetch = require('node-fetch');
+	}
+	_validate(options);
+	this.isBiconomy = true;
+	this.status = STATUS.INIT;
+	this.apiKey = options.apiKey;
+	this.isLogin = false;
+	this.dappAPIMap = {};
+	this.strictMode = options.strictMode || false;
+	this.providerId = options.providerId || 0;
+	this.readViaContract = options.readViaContract || false;
+	this.READY = STATUS.BICONOMY_READY;
+	this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
+	this.ERROR = EVENTS.BICONOMY_ERROR;
+	this.pendingLoginTransactions = {};
+	if(options.debug) {
+		config.logsEnabled = true;
+	}
+	_init(this.apiKey, this);
 
-    if (provider) {
-        web3 = new Web3(provider);
-        if (options.defaultAccount) {
-            web3.eth.defaultAccount = options.defaultAccount;
-        }
-        const proto = Object.getPrototypeOf(provider)
-        const keys = Object.getOwnPropertyNames(proto)
+	if(provider) {
+		web3 = new Web3(provider);
+		if(options.defaultAccount) {
+			web3.eth.defaultAccount = options.defaultAccount;
+		}
+		const proto = Object.getPrototypeOf(provider)
+		const keys = Object.getOwnPropertyNames(proto)
 
-        for (var i = 0; i < keys.length; i++) {
-            this[keys[i]] = provider[keys[i]];
-        }
+		for(var i=0;i<keys.length;i++){
+			this[keys[i]] = provider[keys[i]];
+		}
 
-        for (var key in provider) {
-            if (!this[key]) {
-                this[key] = provider[key];
-            }
-        }
+		for(var key in provider) {
+			if(!this[key]) {
+				this[key] = provider[key];
+			}
+		}
 
-        this.providerSend = provider.send || provider.sendAsync;
-        this.send = function(payload, cb) {
-            if (payload.method == 'eth_sendTransaction') {
+		this.providerSend = provider.send || provider.sendAsync;
+		this.send = function(payload, cb) {
+			if(payload.method == 'eth_sendTransaction') {
 
-                handleSendTransaction(this, payload, (error, result) => {
-                    let response = _createJsonRpcResponse(payload, error, result);
-                    if (cb) {
-                        cb(error, response);
-                    }
-                });
+				handleSendTransaction(this, payload, (error, result) => {
+					let response = _createJsonRpcResponse(payload, error, result);
+					if(cb)  {
+						cb(error, response);
+					}
+				});
 
-            } else if (payload.method == 'eth_sendRawTransaction') {
+			} else if(payload.method == 'eth_sendRawTransaction') {
 
-                sendSignedTransaction(this, payload, (error, result) => {
-                    let response = _createJsonRpcResponse(payload, error, result);
-                    if (cb) {
-                        cb(error, response);
-                    }
-                });
+				sendSignedTransaction(this, payload, (error, result) => {
+					let response = _createJsonRpcResponse(payload, error, result);
+					if(cb) {
+						cb(error, response);
+					}
+				});
 
-            } else if (payload.method == 'eth_call') {
-                let userContract = getFromStorage(USER_CONTRACT);
-                if (this.readViaContract && this.isLogin && userContract) {
-                    if (payload && payload.params && payload.params[0]) {
-                        payload.params[0].from = userContract;
-                    }
-                }
-                web3.currentProvider.send(payload, cb);
-            } else {
-                web3.currentProvider.send(payload, cb);
-            }
-        };
-        this.sendAsync = this.send;
-    } else {
-        throw new Error('Please pass a provider to Biconomy.');
-    }
+			} else if(payload.method == 'eth_call') {
+				let userContract = getFromStorage(USER_CONTRACT);
+				if(this.readViaContract && this.isLogin && userContract) {
+					if(payload && payload.params && payload.params[0]) {
+						payload.params[0].from = userContract;
+					}
+				}
+				web3.currentProvider.send(payload, cb);
+			} else {
+				web3.currentProvider.send(payload, cb);
+			}
+		};
+		this.sendAsync = this.send;
+	} else {
+		throw new Error('Please pass a provider to Biconomy.');
+	}
 }
 
 /**
@@ -171,96 +173,96 @@ Biconomy.prototype.getLoginMessageToSign = function(signer) {
  * ]
  */
 Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
-    let engine = this;
-    return new Promise(async(resolve, reject) => {
+	let engine = this;
+	return new Promise(async (resolve, reject)=>{
 
-        if (rawTransaction) {
-            let decodedTx = txDecoder.decodeTx(rawTransaction);
-            if (decodedTx.to && decodedTx.data && decodedTx.value) {
-                let to = decodedTx.to.toLowerCase();
-                let methodInfo = decodeMethod(to, decodedTx.data);
-                if (!methodInfo) {
-                    let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
-                        `Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
-                    if (cb) cb(error);
-                    return reject(error);
-                }
-                let methodName = methodInfo.name;
-                let api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
-                if (!api) {
-                    api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
-                }
-                if (!api) {
-                    _logMessage(`API not found for method ${methodName}`);
-                    let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, `No API found on dashboard for called method ${methodName}`);
-                    if (cb) cb(error);
-                    return reject(error);
-                }
-                _logMessage('API found');
-                let params = methodInfo.params;
-                let paramArray = [];
-                for (let i = 0; i < params.length; i++) {
-                    paramArray.push(_getParamValue(params[i]));
-                }
+		if(rawTransaction) {
+			let decodedTx = txDecoder.decodeTx(rawTransaction);
+			if(decodedTx.to && decodedTx.data && decodedTx.value) {
+				let to = decodedTx.to.toLowerCase();
+				let methodInfo = decodeMethod(to, decodedTx.data);
+				if(!methodInfo) {
+					let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
+						`Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
+					if(cb) cb(error);
+					return reject(error);
+				}
+				let methodName = methodInfo.name;
+				let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
+				if(!api){
+					api = engine.dappAPIMap[config.SCW]?engine.dappAPIMap[config.SCW][methodName]:undefined;
+				}
+				if(!api) {
+					_logMessage(`API not found for method ${methodName}`);
+					let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND ,`No API found on dashboard for called method ${methodName}`);
+					if(cb) cb(error);
+					return reject(error);
+				}
+				_logMessage('API found');
+				let params = methodInfo.params;
+				let paramArray = [];
+				for(let i = 0; i < params.length; i++) {
+					paramArray.push(_getParamValue(params[i]));
+				}
 
-                let account = web3.eth.accounts.recoverTransaction(rawTransaction);
-                _logMessage(`signer is ${account}`);
-                if (!account) {
-                    let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Not able to get user account from signed transaction`);
-                    return end(error);
-                }
+				let account = web3.eth.accounts.recoverTransaction(rawTransaction);
+				_logMessage(`signer is ${account}`);
+				if(!account) {
+					let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE ,`Not able to get user account from signed transaction`);
+					return end(error);
+				}
 
-                let userContractWallet = await _getUserContractWallet(engine, account);
-                _logMessage(`User contract wallet ${userContractWallet}`);
+				let userContractWallet = await _getUserContractWallet(engine, account);
+				_logMessage(`User contract wallet ${userContractWallet}`);
 
-                if (!userContractWallet) {
-                    let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
-                    if (cb) cb(error);
-                    return reject(error);
-                }
+				if(!userContractWallet) {
+					let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND ,`User contract wallet not found`);
+					if(cb) cb(error);
+					return reject(error);
+				}
 
-                let metaInfo = {};
-                metaInfo.contractWallet = userContractWallet;
+				let metaInfo = {};
+				metaInfo.contractWallet =  userContractWallet;
 
-                let relayerPayment = {};
-                relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-                relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
+				let relayerPayment = {};
+				relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
+				relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
 
-                let message = {};
-                message.from = account;
-                message.to = to;
-                message.data = decodedTx.data;
-                message.batchId = config.NONCE_BATCH_ID;
-                let nonce = await _getUserContractNonce(account, engine);
-                message.nonce = parseInt(nonce);
-                message.value = web3.utils.toHex(decodedTx.value);
-                message.txGas = decodedTx.gasLimit.toString() ? decodedTx.gasLimit.toString() : 0;
-                message.expiry = config.EXPIRY;
-                message.baseGas = config.BASE_GAS;
-                message.metaInfo = metaInfo;
-                message.relayerPayment = relayerPayment;
+				let message = {};
+				message.from = account;
+				message.to = to;
+				message.data = decodedTx.data;
+				message.batchId = config.NONCE_BATCH_ID;
+				let nonce = await _getUserContractNonce(account,engine);
+				message.nonce = parseInt(nonce);
+				message.value = web3.utils.toHex(decodedTx.value);
+				message.txGas = decodedTx.gasLimit.toString()?decodedTx.gasLimit.toString():0;
+				message.expiry = config.EXPIRY;
+				message.baseGas = config.BASE_GAS;
+				message.metaInfo = metaInfo;
+				message.relayerPayment = relayerPayment;
 
-                const dataToSign = {
-                    types: {
-                        EIP712Domain: domainType,
-                        MetaInfo: metaInfoType,
-                        RelayerPayment: relayerPaymentType,
-                        MetaTransaction: metaTransactionType
-                    },
-                    domain: domainData,
-                    primaryType: "MetaTransaction",
-                    message: message
-                };
-                if (cb) cb(null, dataToSign);
-                return resolve(dataToSign);
-            } else {
-                let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,
-                    `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
-                if (cb) cb(error);
-                return reject(error);
-            }
-        }
-    });
+				const dataToSign = {
+					types: {
+						EIP712Domain: domainType,
+						MetaInfo: metaInfoType,
+						RelayerPayment: relayerPaymentType,
+						MetaTransaction: metaTransactionType
+					},
+					domain: domainData,
+					primaryType: "MetaTransaction",
+					message: message
+				};
+				if(cb) cb(null, dataToSign);
+				return resolve(dataToSign);
+			} else {
+				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
+					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+				if(cb) cb(error);
+				return reject(error);
+			}
+		}
+	});
 }
 
 /**
@@ -279,19 +281,24 @@ Biconomy.prototype.onEvent = function(type, callback) {
  * Create a JSON RPC response from the given error and result parameter.
  **/
 function _createJsonRpcResponse(payload, error, result) {
-    let response = {};
-    response.id = payload.id;
-    response.jsonrpc = JSON_RPC_VERSION;
-    if (error) {
-        response.error = error;
-    } else if (result.error) {
-        response.error = result.error;
-    } else if (web3.utils.isHex(result)) {
-        response.result = result;
-    } else {
-        response = result;
-    }
-    return response;
+	let response = {};
+	response.id = payload.id;
+	response.jsonrpc = JSON_RPC_VERSION;
+	if((!error || error == null) && !result) {
+		response.error = "Unexpected error has occured. Please contact Biconomy Team";
+		return response;
+	}
+
+	if(error) {
+		response.error = error;
+	} else if(result && result.error) {
+		response.error = result.error;
+	} else if(web3.utils.isHex(result)) {
+		response.result = result;
+	} else {
+		response = result;
+	}
+	return response;
 }
 
 function decodeMethod(to, data) {
@@ -315,134 +322,133 @@ function decodeMethod(to, data) {
  */
 async function sendSignedTransaction(engine, payload, end) {
 
-    if (payload && payload.params[0]) {
-        let data = payload.params[0];
-        let rawTransaction, signature;
+	if(payload && payload.params[0]) {
+		let data = payload.params[0];
+		let rawTransaction, signature;
 
-        if (typeof data == "string") {
-            // Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
-            rawTransaction = data;
-        } else if (typeof data == "object") {
-            // Here user wrapped raw Transaction in json object along with signature
-            signature = data.signature;
-            rawTransaction = data.rawTransaction;
-        }
+		if(typeof data == "string") {
+			// Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
+			rawTransaction = data;
+		} else if(typeof data == "object") {
+			// Here user wrapped raw Transaction in json object along with signature
+			signature = data.signature;
+			rawTransaction = data.rawTransaction;
+		}
 
-        if (rawTransaction) {
-            let decodedTx = txDecoder.decodeTx(rawTransaction);
+		if(rawTransaction) {
+			let decodedTx = txDecoder.decodeTx(rawTransaction);
 
-            if (decodedTx.to && decodedTx.data && decodedTx.value) {
-                let to = decodedTx.to.toLowerCase();
-                let methodInfo = decodeMethod(to, decodedTx.data);
-                if (!methodInfo) {
-                    methodInfo = decodeMethod(config.SCW, decodedTx.data);
-                    if (!methodInfo) {
-                        if (engine.strictMode) {
-                            let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
-                                `No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
-                            return end(error);
-                        } else {
-                            _logMessage("Strict mode is off so falling back to default provider for handling transaction");
-                            return engine.providerSend(rawTransaction, end);
-                        }
-                    }
-                }
-                let methodName = methodInfo.name;
-                let api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
-                if (!api) {
-                    api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
-                }
-                if (!api) {
-                    _logMessage(`API not found for method ${methodName}`);
-                    _logMessage(`Strict mode ${engine.strictMode}`);
-                    if (engine.strictMode) {
-                        let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND,
-                            `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`);
-                        return end(error, null);
-                    } else {
-                        _logMessage(`Falling back to default provider as strict mode is false in biconomy`);
-                        return engine.providerSend(rawTransaction, end);
-                    }
-                }
-                _logMessage('API found');
-                let params = methodInfo.params;
-                let paramArray = [];
-                for (let i = 0; i < params.length; i++) {
-                    paramArray.push(_getParamValue(params[i]));
-                }
+			if(decodedTx.to && decodedTx.data && decodedTx.value) {
+				let to = decodedTx.to.toLowerCase();
+				let methodInfo = decodeMethod(to, decodedTx.data);
+				if(!methodInfo) {
+					methodInfo = decodeMethod(config.SCW, decodedTx.data);
+					if(!methodInfo) {
+						if(engine.strictMode) {
+							let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
+								`No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
+							return end(error);
+						} else {
+							_logMessage("Strict mode is off so falling back to default provider for handling transaction");
+							return engine.providerSend(rawTransaction, end);
+						}
+					}
+				}
+				let methodName = methodInfo.name;
+				let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
+				if(!api){
+					api = engine.dappAPIMap[config.SCW]?engine.dappAPIMap[config.SCW][methodName]:undefined;
+				}
+				if(!api) {
+					_logMessage(`API not found for method ${methodName}`);
+					_logMessage(`Strict mode ${engine.strictMode}`);
+					if(engine.strictMode) {
+						let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND,
+							`Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`);
+						return end(error, null);
+					} else {
+						_logMessage(`Falling back to default provider as strict mode is false in biconomy`);
+						return engine.providerSend(rawTransaction, end);
+					}
+				}
+				_logMessage('API found');
+				let params = methodInfo.params;
+				let paramArray = [];
+				for(let i = 0; i < params.length; i++) {
+					paramArray.push(_getParamValue(params[i]));
+				}
 
-                let account = web3.eth.accounts.recoverTransaction(rawTransaction);
-                _logMessage(`signer is ${account}`);
-                if (!account) {
-                    let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Not able to get user account from signed transaction`);
-                    return end(error);
-                }
-                if (api.url == NATIVE_META_TX_URL) {
-                    let data = {};
-                    data.from = account;
-                    data.apiId = api.id;
-                    data.params = paramArray;
-                    data.gasLimit = decodedTx.gasLimit.toString();
-                    data.gasPrice = decodedTx.gasPrice.toString();
-                    data.to = decodedTx.to.toLowerCase();
-                    _sendTransaction(engine, account, api, data, end);
-                } else {
-                    if (!engine.isLogin) {
-                        let error = {};
-                        error.message = 'User not logged in to biconomy';
-                        error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
-                        return end(error);
-                    } else {
-                        if (signature) {
+				let account = web3.eth.accounts.recoverTransaction(rawTransaction);
+				_logMessage(`signer is ${account}`);
+				if(!account) {
+					let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE ,`Not able to get user account from signed transaction`);
+					return end(error);
+				}
+				if(api.url == NATIVE_META_TX_URL) {
+					let data = {};
+					data.from = account;
+					data.apiId = api.id;
+					data.params = paramArray;
+					data.gasLimit = decodedTx.gasLimit.toString();
+					data.to = decodedTx.to.toLowerCase();
+					_sendTransaction(engine, account, api, data, end);
+				}
+				else{
+					if(!engine.isLogin){
+						let error = {};
+						error.message = 'User not logged in to biconomy';
+						error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
+						return end(error);
+					} else {
+						if(signature ) {
 
-                            let relayerPayment = {};
-                            relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-                            relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
+							let relayerPayment = {};
+							relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
+							relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
 
-                            let data = {};
-                            data.rawTx = rawTransaction;
-                            data.signature = signature;
-                            data.to = to;
-                            data.from = account;
-                            data.apiId = api.id;
-                            data.data = decodedTx.data;
-                            data.value = web3.utils.toHex(decodedTx.value)
-                            data.gasLimit = decodedTx.gasLimit.toString();
-                            data.gasPrice = decodedTx.gasPrice.toString();
-                            data.nonceBatchId = config.NONCE_BATCH_ID;
-                            data.expiry = config.EXPIRY;
-                            data.baseGas = config.BASE_GAS;
-                            data.relayerPayment = {
-                                token: relayerPayment.token,
-                                amount: relayerPayment.amount
-                            };
-                            _sendTransaction(engine, account, api, data, end);
-                        } else {
-                            let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD,
-                                `Invalid payload data ${JSON.stringify(payload.params[0])}. message and signature are required in param object`);
-                            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-                            end(error);
-                        }
-                    }
-                }
-            } else {
-                let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD,
-                    `Not able to deode the data in rawTransaction using ethereum-tx-decoder. Please check the data sent.`);
-                eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-                end(error);
-            }
-        } else {
-            let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD,
-                `Invalid payload data ${JSON.stringify(payload.params[0])}.rawTransaction is required in param object`);
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-            end(error);
-        }
-    } else {
-        let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD,
-            `Invalid payload data ${JSON.stringify(payload.params[0])}. Non empty Array expected in params key`);
-        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        end(error);
-    }
+							let data = {};
+							data.rawTx = rawTransaction;
+							data.signature = signature;
+							data.to = to;
+							data.from = account;
+							data.apiId = api.id;
+							data.data = decodedTx.data;
+							data.value = web3.utils.toHex(decodedTx.value)
+							data.gasLimit = decodedTx.gasLimit.toString();
+							data.nonceBatchId = config.NONCE_BATCH_ID;
+							data.expiry = config.EXPIRY;
+							data.baseGas = config.BASE_GAS;
+							data.relayerPayment = {
+								token: relayerPayment.token,
+								amount: relayerPayment.amount
+							};
+							_sendTransaction(engine, account, api, data, end);
+						} else {
+							let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+								`Invalid payload data ${JSON.stringify(payload.params[0])}. message and signature are required in param object`);
+							eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+							end(error);
+						}
+					}
+				}
+			} else {
+				let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+					`Not able to deode the data in rawTransaction using ethereum-tx-decoder. Please check the data sent.`);
+				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+				end(error);
+			}
+		} else {
+			let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+				`Invalid payload data ${JSON.stringify(payload.params[0])}.rawTransaction is required in param object`);
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+			end(error);
+		}
+	} else {
+		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+			`Invalid payload data ${JSON.stringify(payload.params[0])}. Non empty Array expected in params key`);
+		eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+		end(error);
+	}
 }
 
 /**
@@ -454,281 +460,282 @@ async function sendSignedTransaction(engine, payload, end) {
  * Returns a promise that resolves to result object containing withdraw transaction hash.
  */
 Biconomy.prototype.withdrawFunds = function(receiverAddress, withdrawAmount, cb) {
-        let engine = this;
-        return new Promise(async(resolve, reject) => {
-            let account = await _getUserAccount(this);
-            let nonce = await _getUserContractNonce(account, this);
-            let userContractWallet = await _getUserContractWallet(engine, account);
-            if (!userContractWallet) {
-                let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
-                eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-                if (cb) cb(error);
-                return reject(error);
-            }
-            let metaInfo = {};
-            metaInfo.contractWallet = userContractWallet;
+	let engine = this;
+	return new Promise(async (resolve, reject)=>{
+		let account = await _getUserAccount(this);
+		let nonce = await _getUserContractNonce(account,this);
+		let userContractWallet = await _getUserContractWallet(engine, account);
+		if(!userContractWallet) {
+			let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND ,`User contract wallet not found`);
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+			if(cb) cb(error);
+			return reject(error);
+		}
+		let metaInfo = {};
+		metaInfo.contractWallet =  userContractWallet;
 
-            let relayerPayment = {};
-            relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-            relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
+		let relayerPayment = {};
+		relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
+		relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
 
-            let message = {};
-            message.from = account;
-            message.to = receiverAddress;
-            message.data = "0x0";
-            message.batchId = config.NONCE_BATCH_ID;
-            message.nonce = parseInt(nonce);
-            message.value = web3.utils.toHex(withdrawAmount || 0);
-            message.txGas = 0;
-            message.expiry = config.EXPIRY;
-            message.baseGas = config.BASE_GAS;
-            message.metaInfo = metaInfo;
-            message.relayerPayment = relayerPayment;
-            const dataToSign = JSON.stringify({
-                types: {
-                    EIP712Domain: domainType,
-                    MetaInfo: metaInfoType,
-                    RelayerPayment: relayerPaymentType,
-                    MetaTransaction: metaTransactionType
-                },
-                domain: domainData,
-                primaryType: "MetaTransaction",
-                message: message
-            });
+		let message = {};
+		message.from = account;
+		message.to = receiverAddress;
+		message.data = "0x0";
+		message.batchId = config.NONCE_BATCH_ID;
+		message.nonce = parseInt(nonce);
+		message.value = web3.utils.toHex(withdrawAmount || 0);
+		message.txGas = 0;
+		message.expiry = config.EXPIRY;
+		message.baseGas = config.BASE_GAS;
+		message.metaInfo = metaInfo;
+		message.relayerPayment = relayerPayment;
+		const dataToSign = JSON.stringify({
+			types: {
+				EIP712Domain: domainType,
+				MetaInfo: metaInfoType,
+				RelayerPayment: relayerPaymentType,
+				MetaTransaction: metaTransactionType
+			},
+			domain: domainData,
+			primaryType: "MetaTransaction",
+			message: message
+		});
 
-            try {
-                web3.currentProvider.send({
-                    jsonrpc: JSON_RPC_VERSION,
-                    id: DEFAULT_PAYLOAD_ID,
-                    method: config.signTypedV3Method,
-                    params: [account, dataToSign]
-                }, function(error, response) {
-                    _logMessage(`User signature for payload id ${DEFAULT_PAYLOAD_ID} is ${response.result}`);
-                    if (error) {
-                        if (cb) {
-                            cb(error);
-                        }
-                        reject(error);
-                    } else if (response && response.error) {
-                        if (cb) cb(response.error);
-                        reject(response.error);
-                    } else if (response && response.result) {
-                        let data = {};
-                        data.signature = response.result;
-                        data.to = receiverAddress;
-                        data.value = web3.utils.toHex(withdrawAmount) || 0;
-                        data.from = account;
-                        data.data = "0x0";
-                        data.expiry = config.EXPIRY;
-                        data.baseGas = config.BASE_GAS;
-                        data.gasLimit = 0;
-                        data.nonceBatchId = config.NONCE_BATCH_ID;
-                        data.relayerPayment = relayerPayment;
+		try{
+			web3.currentProvider.send({
+				jsonrpc: JSON_RPC_VERSION,
+				id: DEFAULT_PAYLOAD_ID,
+				method: config.signTypedV3Method,
+				params: [account, dataToSign]
+			}, function(error, response) {
+				_logMessage(`User signature for payload id ${DEFAULT_PAYLOAD_ID} is ${response.result}`);
+				if(error) {
+					if(cb){
+						cb(error);
+					}
+					reject(error);
+				} else if(response && response.error) {
+					if(cb) cb(response.error);
+					reject(response.error);
+				} else if(response && response.result) {
+					let data = {};
+					data.signature = response.result;
+					data.to = receiverAddress;
+					data.value = web3.utils.toHex(withdrawAmount) || 0;
+					data.from = account;
+					data.data = "0x0";
+					data.expiry = config.EXPIRY;
+					data.baseGas = config.BASE_GAS;
+					data.gasLimit = 0;
+					data.nonceBatchId = config.NONCE_BATCH_ID;
+					data.relayerPayment = relayerPayment;
 
-                        axios.defaults.headers.common["x-api-key"] = engine.apiKey;
-                        axios.post(`${baseURL}${withdrawFundsUrl}`, data)
-                            .then(function(response) {
-                                if (response && response.data) {
-                                    if (cb) cb(null, response.data);
-                                    let result = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE, response.data.log);
-                                    result.txHash = response.data.txHash;
-                                    resolve(result);
-                                } else {
-                                    let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Unable to get response for api ${withdrawFundsUrl}`);
-                                    if (cb) cb(error);
-                                    reject(error);
-                                }
-                            })
-                            .catch(function(error) {
-                                if (cb) cb(formatMessage(error.flag, error.log));
-                                reject(formatMessage(error.flag, error.log));
-                            });
-                    }
-                });
-            } catch (error) {
-                if (cb) cb(error);
-                reject(error);
-            }
-        });
-    }
-    /**
-     * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v3
-     * method and send the request to biconomy for processing and call the callback method 'end'
-     * with transaction hash.
-     *
-     * This is an internal function that is called while intercepting eth_sendTransaction RPC method call.
-     **/
+					let fetchOptions = getFetchOptions('POST', engine.apiKey);
+					fetchOptions.body = JSON.stringify(data);
+					fetch(`${baseURL}${withdrawFundsUrl}`, fetchOptions)
+					.then(response => response.json())
+					.then(function(response) {
+						if(response) {
+							if(cb) cb(null, response);
+							let result = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE,response.log);
+							result.txHash = response.txHash;
+							resolve(result);
+						} else {
+							let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Unable to get response for api ${withdrawFundsUrl}`);
+							if(cb) cb(error);
+							reject(error);
+						}
+					})
+					.catch(function(error) {
+						if(cb) cb(formatMessage(error.flag,error.log));
+						reject(formatMessage(error.flag,error.log));
+					});
+				}
+			});
+		} catch(error) {
+			if(cb) cb(error);
+			reject(error);
+		}
+	});
+}
+/**
+ * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v3
+ * method and send the request to biconomy for processing and call the callback method 'end'
+ * with transaction hash.
+ *
+ * This is an internal function that is called while intercepting eth_sendTransaction RPC method call.
+ **/
 async function handleSendTransaction(engine, payload, end) {
-    _logMessage('Handle transaction with payload');
-    _logMessage(payload);
-    if (payload.params && payload.params[0] && payload.params[0].to) {
-        let to = payload.params[0].to.toLowerCase();
-        if (decoderMap[to] || decoderMap[config.SCW]) {
-            let methodInfo = decodeMethod(to, payload.params[0].data);
+	_logMessage('Handle transaction with payload');
+	_logMessage(payload);
+	if(payload.params && payload.params[0] && payload.params[0].to) {
+		let to = payload.params[0].to.toLowerCase();
+		if(decoderMap[to] || decoderMap[config.SCW]) {
+			let methodInfo = decodeMethod(to, payload.params[0].data);
 
-            // Check if the Smart Contract Wallet is registered on dashboard
-            if (!methodInfo) {
-                methodInfo = decodeMethod(config.SCW, payload.params[0].data);
-            }
-            let methodName = methodInfo.name;
-            let api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
-            if (!api) {
-                api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
-            }
-            let gasPrice = payload.params[0].gasPrice;
-            let gasLimit = payload.params[0].gas;
-            _logMessage(api);
+			// Check if the Smart Contract Wallet is registered on dashboard
+			if(!methodInfo) {
+				methodInfo = decodeMethod(config.SCW, payload.params[0].data);
+			}
+			let methodName = methodInfo.name;
+			let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
+			if(!api){
+				api = engine.dappAPIMap[config.SCW]?engine.dappAPIMap[config.SCW][methodName]:undefined;
+			}
+			let gasPrice = payload.params[0].gasPrice;
+			let gasLimit = payload.params[0].gas;
+			_logMessage(api);
 
-            if (!api) {
-                _logMessage(`API not found for method ${methodName}`);
-                _logMessage(`Strict mode ${engine.strictMode}`);
-                if (engine.strictMode) {
-                    let error = {};
-                    error.code = RESPONSE_CODES.API_NOT_FOUND;
-                    error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
-                    return end(error, null);
-                } else {
-                    _logMessage(`Falling back to default provider as strict mode is false in biconomy`);
-                    return engine.providerSend(payload, end);
-                }
-            }
-            console.info('API found');
-            let params = methodInfo.params;
-            let paramArray = [];
-            for (let i = 0; i < params.length; i++) {
-                paramArray.push(_getParamValue(params[i]));
-            }
+			if(!api) {
+				_logMessage(`API not found for method ${methodName}`);
+				_logMessage(`Strict mode ${engine.strictMode}`);
+				if(engine.strictMode) {
+					let error = {};
+					error.code = RESPONSE_CODES.API_NOT_FOUND;
+					error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
+					return end(error, null);
+				} else {
+					_logMessage(`Falling back to default provider as strict mode is false in biconomy`);
+					return engine.providerSend(payload, end);
+				}
+			}
+			_logMessage('API found');
+			let params = methodInfo.params;
+			let paramArray = [];
+			for(let i = 0; i < params.length; i++) {
+				paramArray.push(_getParamValue(params[i]));
+			}
 
-            console.info("Getting user account");
-            let account = payload.params[0].from;
-            if (!account) {
-                return end(`Not able to get user account`);
-            }
-            console.info(`User account fetched`);
-            if (api.url == NATIVE_META_TX_URL) {
-                let data = {};
-                data.from = account;
-                data.apiId = api.id;
-                data.params = paramArray;
-                data.gasPrice = gasPrice;
-                data.gasLimit = gasLimit;
-                data.to = to;
-                _sendTransaction(engine, account, api, data, end);
-            } else {
-                if (engine.isLogin) {
-                    let nonce = await _getUserContractNonce(account, engine);
-                    if (!nonce) {
-                        let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND, `User is not a registered biconomy user`);
-                        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-                        end(error);
-                    }
-                    let userContractWallet = await _getUserContractWallet(engine, account);
+			_logMessage("Getting user account");
+			let account= payload.params[0].from;
+			if(!account) {
+				return end(`Not able to get user account`);
+			}
+			_logMessage(`User account fetched`);
+			if(api.url == NATIVE_META_TX_URL) {
+				let data = {};
+				data.from = account;
+				data.apiId = api.id;
+				data.params = paramArray;
+				data.gasLimit = gasLimit;
+				data.to = to;
+				_sendTransaction(engine, account, api, data, end);
+			}
+			else{
+				if(engine.isLogin) {
+					let nonce = await _getUserContractNonce(account, engine);
+					if(!nonce) {
+						let error = formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,`User is not a registered biconomy user`);
+						eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+						end(error);
+					}
+					let userContractWallet = await _getUserContractWallet(engine, account);
 
-                    if (!userContractWallet) {
-                        let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
-                        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-                        return end(error);
-                    }
+					if(!userContractWallet) {
+						let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND ,`User contract wallet not found`);
+						eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+						return end(error);
+					}
 
-                    // Check if gas limit is present, it not calculate gas limit
-                    if (!gasLimit || parseInt(gasLimit) == 0) {
-                        let contractABI = smartContractMap[to];
-                        if (contractABI) {
-                            let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
-                            gasLimit = await contract.methods[methodName].apply(null, paramArray).estimateGas({ from: userContractWallet });
-                        }
-                    }
-                    let metaInfo = {};
-                    metaInfo.contractWallet = userContractWallet;
+					// Check if gas limit is present, it not calculate gas limit
+					if(!gasLimit || parseInt(gasLimit) == 0) {
+						let contractABI = smartContractMap[to];
+						if(contractABI) {
+							let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+							gasLimit = await contract.methods[methodName].apply(null, paramArray).estimateGas({from: userContractWallet});
+						}
+					}
+					let metaInfo = {};
+					metaInfo.contractWallet =  userContractWallet;
 
-                    let relayerPayment = {};
-                    relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-                    relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
+					let relayerPayment = {};
+					relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
+					relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
 
-                    let message = {};
-                    message.from = account;
-                    message.to = to;
-                    message.data = payload.params[0].data;
-                    message.batchId = config.NONCE_BATCH_ID;
-                    message.nonce = parseInt(nonce);
-                    message.value = web3.utils.toHex(payload.params[0].value || 0);
-                    message.txGas = gasLimit ? gasLimit : 0;
-                    message.expiry = config.EXPIRY;
-                    message.baseGas = config.BASE_GAS;
-                    message.metaInfo = metaInfo;
-                    message.relayerPayment = relayerPayment;
+					let message = {};
+					message.from = account;
+					message.to = to;
+					message.data = payload.params[0].data;
+					message.batchId = config.NONCE_BATCH_ID;
+					message.nonce = parseInt(nonce);
+					message.value = web3.utils.toHex(payload.params[0].value || 0);
+					message.txGas = gasLimit?gasLimit:0;
+					message.expiry = config.EXPIRY;
+					message.baseGas = config.BASE_GAS;
+					message.metaInfo = metaInfo;
+					message.relayerPayment = relayerPayment;
 
-                    const dataToSign = JSON.stringify({
-                        types: {
-                            EIP712Domain: domainType,
-                            MetaInfo: metaInfoType,
-                            RelayerPayment: relayerPaymentType,
-                            MetaTransaction: metaTransactionType
-                        },
-                        domain: domainData,
-                        primaryType: "MetaTransaction",
-                        message: message
-                    });
-                    console.debug(dataToSign);
-                    engine.send({
-                        jsonrpc: JSON_RPC_VERSION,
-                        id: payload.id,
-                        method: config.signTypedV3Method,
-                        params: [account, dataToSign]
-                    }, function(error, response) {
-                        console.info(`User signature for payload id ${payload.id} is ${response.result}`);
-                        if (error) {
-                            end(error);
-                        } else if (response && response.error) {
-                            end(response.error);
-                        } else if (response && response.result) {
-                            let data = {};
-                            data.signature = response.result;
-                            data.from = account;
-                            data.to = to;
-                            data.apiId = api.id;
+					const dataToSign = JSON.stringify({
+						types: {
+							EIP712Domain: domainType,
+							MetaInfo: metaInfoType,
+							RelayerPayment: relayerPaymentType,
+							MetaTransaction: metaTransactionType
+						},
+						domain: domainData,
+						primaryType: "MetaTransaction",
+						message: message
+					});
+					_logMessage(dataToSign);
+					engine.send({
+						jsonrpc: JSON_RPC_VERSION,
+						id: payload.id,
+						method: config.signTypedV3Method,
+						params: [account, dataToSign]
+					}, function(error, response) {
+						_logMessage(`User signature for payload id ${payload.id} is ${response.result}`);
+						if(error) {
+							end(error);
+						} else if(response && response.error) {
+							end(response.error);
+						} else if(response && response.result) {
+							let data = {};
+							data.signature = response.result;
+							data.from = account;
+							data.to = to;
+							data.apiId = api.id;
 
-                            data.data = payload.params[0].data;
-                            data.nonceBatchId = config.NONCE_BATCH_ID;
-                            data.expiry = config.EXPIRY;
-                            data.baseGas = config.BASE_GAS;
-                            data.userContract = userContractWallet;
-                            data.value = web3.utils.toHex(payload.params[0].value || 0);
-                            data.gasPrice = gasPrice;
-                            data.gasLimit = gasLimit ? gasLimit : 0;
-                            data.relayerPayment = {
-                                token: relayerPayment.token,
-                                amount: relayerPayment.amount
-                            };
-                            _sendTransaction(engine, account, api, data, end);
-                        } else {
-                            end();
-                        }
-                    });
-                } else {
-                    let error = {};
-                    error.message = 'User not logged in to biconomy';
-                    error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
-                    return end(error);
-                }
-            }
-        } else {
-            if (engine.strictMode) {
-                let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,
-                    `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
-                eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-                end(error);
-            } else {
-                _logMessage("Smart contract not found on dashbaord. Strict mode is on, so falling back to normal transaction mode");
-                return engine.providerSend(payload, end);
-            }
-        }
-    } else {
-        let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD,
-            `Invalid payload data ${JSON.stringify(payload)}. Expecting params key to be an array with first element having a 'to' property`);
-        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        end(error);
-    }
+							data.data = payload.params[0].data;
+							data.nonceBatchId = config.NONCE_BATCH_ID;
+							data.expiry = config.EXPIRY;
+							data.baseGas = config.BASE_GAS;
+							data.userContract = userContractWallet;
+							data.value = web3.utils.toHex(payload.params[0].value || 0);
+							data.gasLimit = gasLimit?gasLimit:0;
+							data.relayerPayment = {
+								token: relayerPayment.token,
+								amount: relayerPayment.amount
+							};
+							_sendTransaction(engine, account, api, data, end);
+						} else {
+							end();
+						}
+					});
+				} else {
+					let error = {};
+					error.message = 'User not logged in to biconomy';
+					error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
+					return end(error);
+				}
+			}
+		} else {
+			if(engine.strictMode) {
+				let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED ,
+					`Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+				end(error);
+			} else {
+				_logMessage("Smart contract not found on dashbaord. Strict mode is on, so falling back to normal transaction mode");
+				return engine.providerSend(payload, end);
+			}
+		}
+	} else {
+		let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD ,
+			`Invalid payload data ${JSON.stringify(payload)}. Expecting params key to be an array with first element having a 'to' property`);
+		eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+		end(error);
+	}
 }
 
 /**
@@ -738,20 +745,22 @@ async function handleSendTransaction(engine, payload, end) {
  * @param {object} engine Reference to Mexa object.
  */
 async function _getUserNonce(address, engine) {
-    try {
-        let getNonceAPI = `${baseURL}/api/${config.version}/dapp-user/getNonce?signer=${address}`;
-        axios.defaults.headers.common["x-api-key"] = engine.apiKey;
-        let response = await axios.get(getNonceAPI);
-        if (response && response.status == 200 && response.data) {
-            return response.data.nonce;
-        }
-        return;
-    } catch (error) {
-        if (error.response.status == 404) {
-            return 0;
-        }
-        return;
-    }
+	try {
+		let getNonceAPI = `${baseURL}/api/${config.version}/dapp-user/getNonce?signer=${address}`;
+		let response = await fetch(getNonceAPI, getFetchOptions('GET', engine.apiKey));
+		if(response.ok) {
+			response = await response.json();
+			if(response) {
+				return response.nonce;
+			}
+		}
+		return;
+	} catch(error) {
+		if(error.response.status == 404) {
+			return 0;
+		}
+		return;
+	}
 }
 
 /**
@@ -761,47 +770,52 @@ async function _getUserNonce(address, engine) {
  * @param {object} engine Reference to mexa object
  */
 async function _getUserContractNonce(address, engine) {
-    try {
-        let getNonceAPI = `${baseURL}/api/${config.version2}/dapp-user/getContractNonce?signer=${address}`;
-        axios.defaults.headers.common["x-api-key"] = engine.apiKey;
-        let response = await axios.get(getNonceAPI);
-        if (response && response.status == 200 && response.data) {
-            return response.data.nonce;
-        }
-        return;
-    } catch (error) {
-        _logMessage(error);
-        return;
-    }
+	try {
+		let getNonceAPI = `${baseURL}/api/${config.version2}/dapp-user/getContractNonce?signer=${address}`;
+		let response = await fetch(getNonceAPI, getFetchOptions('GET', engine.apiKey));
+		if(response && response.ok) {
+			let data = await response.json();
+			if(data) {
+				return data.nonce;
+			}
+		}
+		return;
+	} catch(error) {
+		_logMessage(error);
+		return;
+	}
 }
 
 
 // On getting smart contract data get the API data also
-eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine) => {
-    // Get DApp API information from Database
+eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
+	// Get DApp API information from Database
     let getAPIInfoAPI = `${baseURL}/api/${config.version}/meta-api`;
-    axios.get(getAPIInfoAPI).then(function(response) {
-        if (response && response.data && response.data.listApis) {
-            let apiList = response.data.listApis;
-            for (let i = 0; i < apiList.length; i++) {
-                let contractAddress = apiList[i].contractAddress;
-                // TODO: In case of SCW(Smart Contract Wallet) there'll be no contract address. Save SCW as key in that case.
-                if (contractAddress) {
-                    if (!engine.dappAPIMap[contractAddress]) {
-                        engine.dappAPIMap[contractAddress] = {};
-                    }
-                    engine.dappAPIMap[contractAddress][apiList[i].method] = apiList[i];
-                } else {
-                    if (!engine.dappAPIMap[config.SCW]) {
-                        engine.dappAPIMap[config.SCW] = {};
-                    }
-                    engine.dappAPIMap[config.SCW][apiList[i].method] = apiList[i];
-                }
-            }
-            eventEmitter.emit(EVENTS.DAPP_API_DATA_READY, engine);
-        }
-    }).catch(function(error) {
-        console.error(error);
+	fetch(getAPIInfoAPI, getFetchOptions('GET', engine.apiKey))
+	.then(response => response.json())
+	.then(function(response) {
+		if(response && response.listApis) {
+			let apiList = response.listApis;
+			for(let i=0;i<apiList.length;i++) {
+				let contractAddress = apiList[i].contractAddress;
+				// TODO: In case of SCW(Smart Contract Wallet) there'll be no contract address. Save SCW as key in that case.
+				if(contractAddress) {
+					if(!engine.dappAPIMap[contractAddress]) {
+						engine.dappAPIMap[contractAddress] = {};
+					}
+					engine.dappAPIMap[contractAddress][apiList[i].method] = apiList[i];
+				}
+				else{
+					if(!engine.dappAPIMap[config.SCW]) {
+						engine.dappAPIMap[config.SCW] = {};
+					}
+					engine.dappAPIMap[config.SCW][apiList[i].method] = apiList[i];
+				}
+			}
+			eventEmitter.emit(EVENTS.DAPP_API_DATA_READY, engine);
+		}
+	}).catch(function(error) {
+      _logMessage(error);
     });
 });
 
@@ -852,12 +866,12 @@ function _getUserAccount(engine, payload, cb) {
  * Validate parameters passed to biconomy object. Dapp id and api key are mandatory.
  **/
 function _validate(options) {
-    if (!options) {
-        throw new Error(`Options object needs to be passed to Biconomy Object with apiKey as mandatory key`);
-    }
-    if (!options.apiKey) {
-        throw new Error(`apiKey is required in options object when creating Biconomy object`);
-    }
+	if(!options) {
+		throw new Error(`Options object needs to be passed to Biconomy Object with apiKey as mandatory key`);
+	}
+	if(!options.apiKey) {
+		throw new Error(`apiKey is required in options object when creating Biconomy object`);
+	}
 }
 
 /**
@@ -898,39 +912,35 @@ function _getParamValue(paramObj) {
  * @param cb Callback method to be called to pass result or send error
  **/
 function _sendTransaction(engine, account, api, data, cb) {
-    if (engine && account && api && data) {
-        let url = api.url;
-        axios
-            .post(`${baseURL}${url}`, data)
-            .then(function(response) {
-                if (response && response.data) {
-                    const result = response.data;
-                    _logMessage(result);
-                    if (result.flag && result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE &&
-                        result.flag != BICONOMY_RESPONSE_CODES.SUCCESS) {
-                        let error = {};
-                        error.code = result.flag;
-                        if (result.flag == BICONOMY_RESPONSE_CODES.USER_CONTRACT_NOT_FOUND) {
-                            error.code = RESPONSE_CODES.USER_CONTRACT_NOT_FOUND;
-                        }
-                        error.message = result.log;
-                        if (cb) cb(error);
-                    } else {
-                        if (cb) cb(null, result.txHash);
-                    }
-                } else {
-                    _logMessage(response);
-                    if (cb) cb(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Invalid response from api ${url}`));
-                }
-            })
-            .catch(function(error) {
-                _logMessage(error);
-                if (cb) cb(error);
-            });
-    } else {
-        _logMessage(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`);
-        if (cb) cb(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`, null);
-    }
+	if(engine && account && api && data) {
+		let url = api.url;
+		let fetchOption = getFetchOptions('POST', engine.apiKey);
+		fetchOption.body = JSON.stringify(data);
+		fetch(`${baseURL}${url}`, fetchOption)
+		.then(response=>response.json())
+	    .then(function(result) {
+			_logMessage(result);
+			if(!result.txHash && result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE
+				&& result.flag != BICONOMY_RESPONSE_CODES.SUCCESS) {
+				let error = {};
+				error.code = result.flag || result.code;
+				if(result.flag == BICONOMY_RESPONSE_CODES.USER_CONTRACT_NOT_FOUND) {
+					error.code = RESPONSE_CODES.USER_CONTRACT_NOT_FOUND;
+				}
+				error.message = result.log || result.message;
+				if(cb) cb(error);
+			} else {
+				if(cb) cb(null, result.txHash);
+			}
+	      })
+	      .catch(function(error) {
+	        _logMessage(error);
+	        if(cb) cb(error);
+	      });
+	} else {
+		_logMessage(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`);
+		if(cb) cb(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`, null);
+	}
 }
 
 /**
@@ -942,136 +952,138 @@ function _sendTransaction(engine, account, api, data, cb) {
  * @param _this object representing biconomy provider
  **/
 async function _init(apiKey, engine) {
-    try {
-        // Check current network id and dapp network id registered on dashboard
-        let getDappAPI = `${baseURL}/api/${config.version}/dapp`;
-        axios.defaults.headers.common["x-api-key"] = apiKey;
-        axios.get(getDappAPI).then(function(response) {
-            let dappResponse = response.data;
-            if (dappResponse && dappResponse.dapp) {
-                let dappNetworkId = dappResponse.dapp.networkId;
-                let dappId = dappResponse.dapp._id;
-                _logMessage(`Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`);
-                web3.currentProvider.send({
-                    jsonrpc: JSON_RPC_VERSION,
-                    id: '102',
-                    method: 'net_version',
-                    params: []
-                }, function(error, networkResponse) {
-                    if (error || (networkResponse && networkResponse.error)) {
-                        return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                            formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), error || networkResponse.error);
-                    } else {
-                        let providerNetworkId = networkResponse.result;
-                        _logMessage(`Current provider network id: ${providerNetworkId}`);
-                        if (providerNetworkId != dappNetworkId) {
-                            return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                                formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH,
-                                    `Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${dappNetworkId}`));
-                        } else {
-                            domainData.chainId = providerNetworkId;
-                            axios.get(`${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`)
-                                .then(signatureTypesResult => {
-                                    if (signatureTypesResult && signatureTypesResult.data) {
-                                        let systemInfo = signatureTypesResult.data;
-                                        domainType = systemInfo.domainType;
-                                        metaInfoType = systemInfo.metaInfoType;
-                                        relayerPaymentType = systemInfo.relayerPaymentType;
-                                        metaTransactionType = systemInfo.metaTransactionType;
-                                        loginDomainType = systemInfo.loginDomainType;
-                                        loginMessageType = systemInfo.loginMessageType;
-                                        loginDomainData = systemInfo.loginDomainData;
+	try {
+		// Check current network id and dapp network id registered on dashboard
+		let getDappAPI = `${baseURL}/api/${config.version}/dapp`;
+		fetch(getDappAPI, getFetchOptions('GET', apiKey)).then(function(response) {
+			return response.json();
+		}).then(function(dappResponse) {
+			_logMessage(dappResponse);
+			if(dappResponse && dappResponse.dapp) {
+				let dappNetworkId = dappResponse.dapp.networkId;
+				let dappId = dappResponse.dapp._id;
+				_logMessage(`Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`);
+				web3.currentProvider.send({
+					jsonrpc: JSON_RPC_VERSION,
+					id: '102',
+					method: 'net_version',
+					params: []
+				}, function(error, networkResponse){
+					if(error || (networkResponse && networkResponse.error)) {
+						return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+							formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND , "Could not get network version"), error || networkResponse.error);
+					} else {
+						let providerNetworkId = networkResponse.result;
+						_logMessage(`Current provider network id: ${providerNetworkId}`);
+						if(providerNetworkId != dappNetworkId) {
+							return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+								formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH,
+								`Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${dappNetworkId}`));
+						} else {
+							domainData.chainId = providerNetworkId;
+							fetch(`${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`)
+							.then(response=>response.json())
+							.then(systemInfo => {
+								if(systemInfo) {
+									domainType = systemInfo.domainType;
+									metaInfoType = systemInfo.metaInfoType;
+									relayerPaymentType = systemInfo.relayerPaymentType;
+									metaTransactionType = systemInfo.metaTransactionType;
+									loginDomainType = systemInfo.loginDomainType;
+									loginMessageType = systemInfo.loginMessageType;
+									loginDomainData = systemInfo.loginDomainData;
 
-                                        if (systemInfo.relayHubAddress) {
-                                            domainData.verifyingContract = systemInfo.relayHubAddress;
-                                        }
-                                    } else {
-                                        return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                                            formatMessage(RESPONSE_CODES.INVALID_DATA,
-                                                "Could not get signature types from server. Contact Biconomy Team"));
-                                    }
-                                    // Get dapps smart contract data from biconomy servers
-                                    let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
-                                    axios.get(getDAppInfoAPI).then(function(response) {
-                                            let result = response.data;
-                                            if (!result && result.flag != 143) {
-                                                return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                                                    formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
-                                                        `Error getting smart contract for dappId ${dappId}`));
-                                            }
-                                            let smartContractList = result.smartContracts;
-                                            if (smartContractList && smartContractList.length > 0) {
-                                                smartContractList.forEach(contract => {
-                                                    let abiDecoder = require('abi-decoder');
-                                                    if (contract.type === config.SCW) {
-                                                        abiDecoder.addABI(JSON.parse(contract.abi));
-                                                        decoderMap[config.SCW] = abiDecoder;
-                                                        smartContractMap[config.SCW] = contract.abi;
-                                                    } else {
-                                                        abiDecoder.addABI(JSON.parse(contract.abi));
-                                                        decoderMap[contract.address.toLowerCase()] = abiDecoder;
-                                                        smartContractMap[contract.address.toLowerCase()] = contract.abi;
-                                                    }
-                                                });
+									if(systemInfo.relayHubAddress) {
+										domainData.verifyingContract = systemInfo.relayHubAddress;
+									}
+								} else {
+									return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+										formatMessage(RESPONSE_CODES.INVALID_DATA ,
+											"Could not get signature types from server. Contact Biconomy Team"));
+								}
+								// Get dapps smart contract data from biconomy servers
+								let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
+								fetch(getDAppInfoAPI, getFetchOptions('GET', apiKey))
+								.then(response=>response.json())
+								.then(function(result) {
+									if(!result && result.flag != 143) {
+										return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+											formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
+												`Error getting smart contract for dappId ${dappId}`));
+									}
+									let smartContractList = result.smartContracts;
+									if(smartContractList && smartContractList.length > 0) {
+										smartContractList.forEach(contract => {
+											let abiDecoder = require('abi-decoder');
+											if(contract.type === config.SCW) {
+												abiDecoder.addABI(JSON.parse(contract.abi));
+												decoderMap[config.SCW] = abiDecoder;
+												smartContractMap[config.SCW] = contract.abi;
+											} else {
+												abiDecoder.addABI(JSON.parse(contract.abi));
+												decoderMap[contract.address.toLowerCase()] = abiDecoder;
+												smartContractMap[contract.address.toLowerCase()] = contract.abi;
+											}
+										});
 
-                                                let userLocalAccount = getFromStorage(USER_ACCOUNT);
-                                                let userLocalContract = getFromStorage(USER_CONTRACT);
-                                                if (userLocalContract && userLocalAccount) {
-                                                    _getUserAccount(engine, undefined, (error, response) => {
-                                                        if (error || !response || response.error) {
-                                                            return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                                                                formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND,
-                                                                    "Could not get user account"));
-                                                        }
-                                                        let account = response.result[0];
-                                                        _getUserContractWallet(engine, account, (error, userContract) => {
-                                                            if (userContract && account && account.toUpperCase() == userLocalAccount.toUpperCase() &&
-                                                                userContract.toUpperCase() == userLocalContract.toUpperCase()) {
-                                                                engine.isLogin = true;
-                                                                _logMessage('Biconomy user login set to true');
-                                                            }
-                                                            eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
-                                                        });
-                                                    });
-                                                } else {
-                                                    eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
-                                                }
-                                            } else {
-                                                if (engine.strictMode) {
-                                                    engine.status = STATUS.NO_DATA;
-                                                    eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                                                        formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
-                                                            `No smart contract registered for dappId ${dappId} on Mexa Dashboard`));
-                                                } else {
-                                                    eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
-                                                }
-                                            }
-                                        })
-                                        .catch(function(error) {
-                                            eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                                                formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
-                                        });
-                                });
-                        }
-                    }
-                });
-            } else {
-                if (dappResponse.log) {
-                    eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                        formatMessage(RESPONSE_CODES.ERROR_RESPONSE, dappResponse.log));
-                } else {
-                    eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                        formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with apikey ${apiKey}`));
-                }
-            }
-        }).catch(function(error) {
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
-        });
-    } catch (error) {
-        eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-            formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
-    }
+										let userLocalAccount = getFromStorage(USER_ACCOUNT);
+										let userLocalContract = getFromStorage(USER_CONTRACT);
+										if(userLocalContract && userLocalAccount) {
+											_getUserAccount(engine, undefined, (error, response) => {
+												if(error || !response || response.error) {
+													return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+														formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,
+															"Could not get user account"));
+												}
+												let account = response.result[0];
+												_getUserContractWallet(engine, account, (error, userContract) => {
+													if(userContract && account && account.toUpperCase() == userLocalAccount.toUpperCase()
+														&& userContract.toUpperCase() == userLocalContract.toUpperCase()) {
+														engine.isLogin = true;
+														_logMessage('Biconomy user login set to true');
+													}
+													eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
+												});
+											});
+										} else {
+											eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
+										}
+									} else {
+										if(engine.strictMode) {
+											engine.status = STATUS.NO_DATA;
+											eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+												formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
+													`No smart contract registered for dappId ${dappId} on Mexa Dashboard`));
+										} else {
+											eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
+										}
+									}
+								})
+								.catch(function(error) {
+									eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+										formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
+								});
+							});
+						}
+					}
+				});
+			} else {
+				if(dappResponse.log) {
+					eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+						formatMessage(RESPONSE_CODES.ERROR_RESPONSE, dappResponse.log));
+				} else {
+					eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+						formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, `No Dapp Registered with apikey ${apiKey}`));
+				}
+			}
+		}).catch(function(error) {
+			eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+				formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
+		});
+	} catch(error) {
+		eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+			formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
+	}
 
 }
 
@@ -1079,55 +1091,54 @@ async function _init(apiKey, engine) {
  * Method to get user contract wallet from biconomy server.
  **/
 async function _getUserContractWallet(engine, address, cb) {
-    let promise = new Promise((resolve, reject) => {
-        if (address) {
-            engine.sendAsync({
-                jsonrpc: JSON_RPC_VERSION,
-                id: '102',
-                method: 'net_version',
-                params: []
-            }, function(error, response) {
-                if (error || (response && response.error)) {
-                    console.error(error || response.error);
-                    eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-                        formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), error || networkResponse.error);
-                    reject("Could not get network version");
-                } else {
-                    let networkId = response.result;
-                    let data = { owner: address, networkId: networkId };
-                    axios
-                        .get(`${baseURL}${getUserContractPath}`, { params: data })
-                        .then(function(response) {
-                            const data = response.data;
-                            console.debug(data);
-                            if (data.flag && data.flag == BICONOMY_RESPONSE_CODES.SUCCESS) {
-                                if (cb) {
-                                    cb(null, data.userContract);
-                                }
-                                resolve(data.userContract);
-                            } else {
-                                if (cb) {
-                                    cb("User contract not found");
-                                }
-                                reject("User contract not found");
-                            }
-                        })
-                        .catch(function(error) {
-                            _logMessage(error);
-                            let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE,
-                                `Error while fetching user contract ${JSON.stringify(error)}`);
-                            if (cb) cb(response);
-                            reject(response);
-                        });
-                }
-            });
-        } else {
-            let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "Input address is not valid");
-            if (cb) cb(response);
-            reject(response);
-        }
-    });
-    return promise;
+	let promise = new Promise((resolve, reject) => {
+		if(address) {
+			engine.sendAsync({
+				jsonrpc: JSON_RPC_VERSION,
+				id: '102',
+				method: 'net_version',
+				params: []
+			}, function(error, response){
+				if(error || (response && response.error)) {
+					_logMessage(error || response.error);
+					eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+						formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND , "Could not get network version"), error || networkResponse.error);
+					reject("Could not get network version");
+				} else {
+					let networkId = response.result;
+					fetch(`${baseURL}${getUserContractPath}?owner=${address}&&networkId=${networkId}`,
+					getFetchOptions('GET', engine.apiKey))
+					.then(response => response.json())
+					.then(function(data) {
+						_logMessage(data);
+						if(data.flag && data.flag == BICONOMY_RESPONSE_CODES.SUCCESS) {
+							if(cb) {
+								cb(null, data.userContract);
+							}
+							resolve(data.userContract);
+						} else {
+							if(cb) {
+								cb("User contract not found");
+							}
+							reject("User contract not found");
+						}
+					  })
+					  .catch(function(error) {
+						_logMessage(error);
+						let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE,
+							`Error while fetching user contract ${JSON.stringify(error)}`);
+						if(cb) cb(response);
+						reject(response);
+					  });
+				}
+			});
+		} else {
+			let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "Input address is not valid");
+			if(cb) cb(response);
+			reject(response);
+		}
+	});
+	return promise;
 }
 
 /**
@@ -1146,53 +1157,54 @@ async function _getUserContractWallet(engine, address, cb) {
  * Refer to https://docs.biconomy.io for more details on how to use it.
  */
 Biconomy.prototype.accountLogin = async function(signer, signature, cb) {
-    let engine = this;
-    return new Promise(async(resolve, reject) => {
-        let data = {};
-        data.signature = signature;
-        data.from = signer;
-        data.providerId = engine.providerId;
-        axios
-            .post(`${baseURL}${userLoginPath}`, data)
-            .then(function(response) {
-                const data = response ? response.data : undefined;
-                _logMessage(data);
-                if (data) {
-                    let result = {}
-                    if (data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
-                        result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
-                        if (data.userContract) {
-                            result.message = `User login successfull`;
-                            result.userContract = data.userContract;
-                            engine.isLogin = true;
-                            _setLocalData(signer, data.userContract);
-                        } else if (data.transactionHash) {
-                            result.message = `User contract creation initiated`;
-                            result.transactionHash = data.transactionHash;
-                            loginInterval = setInterval(function() {
-                                getLoginTransactionReceipt(engine, data.transactionHash, signer)
-                            }, 2000);
-                        }
-                        if (cb) cb(null, result);
-                        resolve(result);
-                    } else {
-                        result.code = RESPONSE_CODES.ERROR_RESPONSE;
-                        result.message = data.log;
-                        if (cb) cb(result, null);
-                        reject(result);
-                    }
-                } else {
-                    let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Invalid response from api ${url}`);
-                    if (cb) cb(error);
-                    reject(error);
-                }
-            })
-            .catch(function(error) {
-                _logMessage(error);
-                cb(error, null);
-                reject(error);
-            });
-    });
+	let engine = this;
+	return new Promise(async (resolve, reject) => {
+		let data = {};
+		data.signature = signature;
+		data.from = signer;
+		data.providerId = engine.providerId;
+		let fetchOption = getFetchOptions('POST', engine.apiKey);
+		fetchOption.body = JSON.stringify(data);
+
+		fetch(`${baseURL}${userLoginPath}`, fetchOption)
+		.then(response=>response.json())
+		.then(function(data) {
+			if(data) {
+				let result = {}
+				if(data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
+					result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
+					if(data.userContract) {
+						result.message = `User login successfull`;
+						result.userContract = data.userContract;
+						engine.isLogin = true;
+						_setLocalData(signer, data.userContract);
+					} else if(data.transactionHash) {
+						result.message = `User contract creation initiated`;
+						result.transactionHash = data.transactionHash;
+						loginInterval = setInterval(function(){
+							getLoginTransactionReceipt(engine,data.transactionHash,signer)
+						}, 2000);
+					}
+					if(cb) cb(null, result);
+					resolve(result);
+				} else {
+					result.code = RESPONSE_CODES.ERROR_RESPONSE;
+					result.message = data.log;
+					if(cb) cb(result, null);
+					reject(result);
+				}
+			} else {
+				let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Invalid response from api ${url}`);
+				if(cb) cb(error);
+				reject(error);
+			}
+		})
+		.catch(function(error) {
+			_logMessage(error);
+			cb(error, null);
+			reject(error);
+		});
+	});
 }
 
 const getLoginTransactionReceipt = async(engine, txHash, userAddress) => {
@@ -1219,6 +1231,7 @@ Biconomy.prototype.isReady = function() {
     return (this.status === STATUS.BICONOMY_READY);
 }
 
+
 /**
  * Method used to login to biconomy. It takes user's public address as input
  * and if user contract wallet is not found for the user then it deploys
@@ -1227,93 +1240,95 @@ Biconomy.prototype.isReady = function() {
  *
  * @returns Promise object that resolve to either transactionHash info or Contract wallet address
  **/
-Biconomy.prototype.login = async function(signer, cb) {
-    return new Promise(async(resolve, reject) => {
-        if (!signer || typeof signer != 'string') {
-            let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "signer parameter is mandatory and should be of type 'string'");
-            if (cb) cb(response);
-            reject(response);
-            return;
-        }
-        let engine = this;
-        let message = {};
-        message.userAddress = signer.toLowerCase();
-        message.providerId = engine.providerId
-        let nonce = await _getUserNonce(signer, this);
-        if (!nonce) {
-            nonce = 0;
-        }
-        message.nonce = nonce;
+Biconomy.prototype.login = async function(signer, cb){
+	return new Promise(async (resolve, reject)=> {
+		if(!signer || typeof signer != 'string') {
+			let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "signer parameter is mandatory and should be of type 'string'");
+			if(cb) cb(response);
+			reject(response);
+			return;
+		}
+		let engine = this;
+		let message = {};
+		message.userAddress = signer.toLowerCase();
+		message.providerId = engine.providerId
+		let nonce = await _getUserNonce(signer, this);
+		if(!nonce) {
+			nonce = 0;
+		}
+		message.nonce = nonce;
 
-        const dataToSign = JSON.stringify({
-            types: {
-                EIP712Domain: loginDomainType,
-                LoginMessage: loginMessageType
-            },
-            domain: loginDomainData,
-            primaryType: "LoginMessage",
-            message: message
-        });
+		const dataToSign = JSON.stringify({
+			types: {
+				EIP712Domain: loginDomainType,
+				LoginMessage: loginMessageType
+			},
+			domain: loginDomainData,
+			primaryType: "LoginMessage",
+			message: message
+		});
 
-        console.debug(`Biconomy engine status ${engine.status}`);
-        if (engine.status != STATUS.BICONOMY_READY) {
-            let response = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, 'Biconomy SDK is not initialized properly');
-            if (cb) cb(response);
-            return reject(response);
-        }
-        web3.currentProvider.sendAsync({
-            jsonrpc: JSON_RPC_VERSION,
-            id: '101',
-            method: config.signTypedV3Method,
-            params: [signer, dataToSign]
-        }, function(error, signature) {
-            if (error) {
-                let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
-                if (cb) cb(response);
-                reject(response);
-            } else {
-                let data = {};
-                data.signature = signature.result;
-                data.from = signer;
-                data.providerId = engine.providerId;
-                axios
-                    .post(`${baseURL}${userLoginPath}`, data)
-                    .then(function(response) {
-                        const data = response.data;
-                        console.debug(data);
-                        let result = {}
-                        if (data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
-                            result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
-                            if (data.userContract) {
-                                result.message = `User login successfull`;
-                                result.userContract = data.userContract;
-                                engine.isLogin = true;
-                                _setLocalData(signer, data.userContract);
-                            } else if (data.transactionHash) {
-                                result.message = `User contract creation initiated`;
-                                result.transactionHash = data.transactionHash;
-                                loginInterval = setInterval(function() {
-                                    getLoginTransactionReceipt(engine, data.transactionHash, signer)
-                                }, 2000);
-                            }
-                            if (cb) cb(null, result);
-                            resolve(result);
-                        } else {
-                            result.code = RESPONSE_CODES.ERROR_RESPONSE;
-                            result.message = data.log;
-                            if (cb) cb(result, null);
-                            reject(result);
-                        }
-                    })
-                    .catch(function(error) {
-                        console.debug(error);
-                        let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
-                        if (cb) cb(response);
-                        reject(response);
-                    });
-            }
-        });
-    });
+		_logMessage(`Biconomy engine status ${engine.status}`);
+		if(engine.status != STATUS.BICONOMY_READY) {
+			let response = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,'Biconomy SDK is not initialized properly');
+			if(cb) cb(response);
+			return reject(response);
+		}
+		web3.currentProvider.sendAsync({
+			jsonrpc: JSON_RPC_VERSION,
+			id: '101',
+			method: config.signTypedV3Method,
+			params: [signer, dataToSign]
+		}, function(error, signature){
+			if(error) {
+				let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
+				if(cb) cb(response);
+				reject(response);
+			} else {
+				let data = {};
+				data.signature = signature.result;
+				data.from = signer;
+				data.providerId = engine.providerId;
+
+				let fetchOption = getFetchOptions('POST', engine.apiKey);
+				fetchOption.body = JSON.stringify(data);
+				fetch(`${baseURL}${userLoginPath}`, fetchOption)
+				.then(response=>response.json())
+				.then(function(data) {
+					_logMessage(data);
+					let result = {}
+					if(data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
+						result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
+						if(data.userContract) {
+							result.message = `User login successfull`;
+							result.userContract = data.userContract;
+							engine.isLogin = true;
+							_setLocalData(signer, data.userContract);
+						} else if(data.transactionHash) {
+							result.message = `User contract creation initiated`;
+							result.transactionHash = data.transactionHash;
+							loginInterval = setInterval(function(){
+								getLoginTransactionReceipt(engine,data.transactionHash,signer)
+							}, 2000);
+						}
+						if(cb) cb(null, result);
+						resolve(result);
+					} else {
+						result.code = RESPONSE_CODES.ERROR_RESPONSE;
+						result.message = data.log;
+						if(cb) cb(result, null);
+						reject(result);
+					}
+				})
+				.catch(function(error) {
+					_logMessage(error);
+					let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
+					if(cb) cb(response);
+					reject(response);
+				});
+			}
+		});
+	});
 };
 
 /**
@@ -1358,6 +1373,16 @@ Biconomy.prototype.getUserContract = async function(userAddress) {
 
 Biconomy.prototype.getUserAccount = async function() {
     return await _getUserAccount(this);
+}
+
+function getFetchOptions(method, apiKey) {
+	return {
+		method: method,
+		headers: {
+			"x-api-key" : apiKey,
+			'Content-Type': 'application/json;charset=utf-8'
+		}
+	}
 }
 
 function formatMessage(code, message) {
