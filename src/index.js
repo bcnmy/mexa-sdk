@@ -30,27 +30,53 @@ let domainData = {
 // EIP712 format data for login
 let loginDomainType, loginMessageType, loginDomainData;
 
-function Biconomy(provider, options) {
+function Biconomy(argument1, argument2) {
+    try {
+        let provider;
+        let onboardParams;
+        let engine = this;
+        if (argument2 != null) {
+            provider = argument1;
+            options = argument2;
+            biconomyInitializer(engine, provider, options);
+        } else {
+            console.log(argument1);
+            options = argument1.options;
+            onboardParams = argument1.onboard;
+            onboardObjectInitializer(onboardParams);
+        }
+    } catch (error) {
+        throw new Error(error);
+    }
+}
+
+
+
+/**
+ * This method initializes the biconomy parameters and 
+ * handles function calls to send transactions.
+ */
+function biconomyInitializer(engine, provider, options) {
     if (typeof fetch == "undefined") {
         fetch = require('node-fetch');
     }
     _validate(options);
-    this.isBiconomy = true;
-    this.status = STATUS.INIT;
-    this.apiKey = options.apiKey;
-    this.isLogin = false;
-    this.dappAPIMap = {};
-    this.strictMode = options.strictMode || false;
-    this.providerId = options.providerId || 0;
-    this.readViaContract = options.readViaContract || false;
-    this.READY = STATUS.BICONOMY_READY;
-    this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
-    this.ERROR = EVENTS.BICONOMY_ERROR;
-    this.pendingLoginTransactions = {};
+    engine.status = STATUS.INIT;
+    engine.dappId = options.dappId;
+    engine.apiKey = options.apiKey;
+    engine.isLogin = false;
+    engine.dappAPIMap = {};
+    engine.strictMode = options.strictMode || false;
+    engine.providerId = options.providerId || 0;
+    engine.readViaContract = options.readViaContract || false;
+    engine.READY = STATUS.BICONOMY_READY;
+    engine.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
+    engine.ERROR = EVENTS.BICONOMY_ERROR;
+    engine.pendingLoginTransactions = {};
     if (options.debug) {
         config.logsEnabled = true;
     }
-    _init(this.apiKey, this);
+    _init(engine.dappId, engine.apiKey, engine);
 
     if (provider) {
         web3 = new Web3(provider);
@@ -61,20 +87,20 @@ function Biconomy(provider, options) {
         const keys = Object.getOwnPropertyNames(proto)
 
         for (var i = 0; i < keys.length; i++) {
-            this[keys[i]] = provider[keys[i]];
+            engine[keys[i]] = provider[keys[i]];
         }
 
         for (var key in provider) {
-            if (!this[key]) {
-                this[key] = provider[key];
+            if (!engine[key]) {
+                engine[key] = provider[key];
             }
         }
 
-        this.providerSend = provider.send || provider.sendAsync;
-        this.send = function(payload, cb) {
+        engine.providerSend = provider.send || provider.sendAsync;
+        engine.send = function(payload, cb) {
             if (payload.method == 'eth_sendTransaction') {
 
-                handleSendTransaction(this, payload, (error, result) => {
+                handleSendTransaction(engine, payload, (error, result) => {
                     let response = _createJsonRpcResponse(payload, error, result);
                     if (cb) {
                         cb(error, response);
@@ -83,7 +109,7 @@ function Biconomy(provider, options) {
 
             } else if (payload.method == 'eth_sendRawTransaction') {
 
-                sendSignedTransaction(this, payload, (error, result) => {
+                sendSignedTransaction(engine, payload, (error, result) => {
                     let response = _createJsonRpcResponse(payload, error, result);
                     if (cb) {
                         cb(error, response);
@@ -92,7 +118,7 @@ function Biconomy(provider, options) {
 
             } else if (payload.method == 'eth_call') {
                 let userContract = getFromStorage(USER_CONTRACT);
-                if (this.readViaContract && this.isLogin && userContract) {
+                if (engine.readViaContract && engine.isLogin && userContract) {
                     if (payload && payload.params && payload.params[0]) {
                         payload.params[0].from = userContract;
                     }
@@ -102,9 +128,43 @@ function Biconomy(provider, options) {
                 web3.currentProvider.send(payload, cb);
             }
         };
-        this.sendAsync = this.send;
+        engine.sendAsync = engine.send;
     } else {
         throw new Error('Please pass a provider to Biconomy.');
+    }
+}
+
+
+/**
+ * This method calls the onboard's walletSelect method
+ * which asks the user to select the wallet from the 
+ * list of wallets provided by the user.
+ */
+Biconomy.prototype.walletSelect = async function() {
+    try {
+        await onboard.walletSelect();
+    } catch (error) {
+        eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_SELECT, "Error while selecting Wallet"));
+    }
+}
+
+
+/**
+ * This method calls the onboard's walletCheck method
+ * which checks the wallet login credentials, and then the
+ * biconomyInitialixer function is called;
+ */
+Biconomy.prototype.walletCheck = async function() {
+    try {
+        let engine = this;
+        await onboard.walletCheck();
+        biconomyInitializer(engine, web3Provider, options);
+        onboardWalletCallbackParam.provider = engine;
+        onboardWalletCallback(onboardWalletCallbackParam);
+    } catch (error) {
+        eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_CHECK, "Error while checking Wallet"));
     }
 }
 
@@ -274,6 +334,33 @@ Biconomy.prototype.onEvent = function(type, callback) {
         return this;
     } else {
         throw formatMessage(RESPONSE_CODES.EVENT_NOT_SUPPORTED, `${type} event is not supported.`);
+    }
+}
+
+/**
+ * This method initializes the onboard object and
+ * returns the updated web3 Provider
+ */
+function onboardObjectInitializer(onboardParams) {
+
+    let biconomyWalletCallback = (wallet) => {
+        web3Provider = wallet.provider;
+        onboardWalletCallbackParam = wallet;
+    }
+    try {
+        if (onboardParams) {
+            console.log(onboardParams);
+            onboardWalletCallback = onboardParams.subscriptions.wallet;
+            onboardParams.subscriptions.wallet = biconomyWalletCallback;
+            onboard = Onboard(onboardParams);
+            console.log('///');
+        } else {
+            eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+                formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"));
+        }
+    } catch (error) {
+        eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+            formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"));
     }
 }
 
