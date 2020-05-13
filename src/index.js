@@ -11,6 +11,7 @@ const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
 const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
+const Onboard = require('bnc-onboard').default;
 
 let decoderMap = {},
     smartContractMap = {};
@@ -18,6 +19,12 @@ let web3;
 const events = require('events');
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
+
+let onboard;
+let web3Provider;
+let options;
+var onboardWalletCallback;
+var onboardWalletCallbackParam;
 
 let domainType, metaInfoType, relayerPaymentType, metaTransactionType;
 
@@ -40,7 +47,6 @@ function Biconomy(argument1, argument2) {
             options = argument2;
             biconomyInitializer(engine, provider, options);
         } else {
-            console.log(argument1);
             options = argument1.options;
             onboardParams = argument1.onboard;
             onboardObjectInitializer(onboardParams);
@@ -76,7 +82,7 @@ function biconomyInitializer(engine, provider, options) {
     if (options.debug) {
         config.logsEnabled = true;
     }
-    _init(engine.dappId, engine.apiKey, engine);
+    _init(engine.apiKey, engine);
 
     if (provider) {
         web3 = new Web3(provider);
@@ -349,11 +355,9 @@ function onboardObjectInitializer(onboardParams) {
     }
     try {
         if (onboardParams) {
-            console.log(onboardParams);
             onboardWalletCallback = onboardParams.subscriptions.wallet;
             onboardParams.subscriptions.wallet = biconomyWalletCallback;
             onboard = Onboard(onboardParams);
-            console.log('///');
         } else {
             eventEmitter.emit(EVENTS.BICONOMY_ERROR,
                 formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"));
