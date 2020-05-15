@@ -52,91 +52,8 @@ function Biconomy(argument1, argument2) {
             onboardObjectInitializer(onboardParams);
         }
     } catch (error) {
-        throw new Error(error);
-    }
-}
-
-
-
-/**
- * This method initializes the biconomy parameters and 
- * handles function calls to send transactions.
- */
-function biconomyInitializer(engine, provider, options) {
-    if (typeof fetch == "undefined") {
-        fetch = require('node-fetch');
-    }
-    _validate(options);
-    engine.status = STATUS.INIT;
-    engine.dappId = options.dappId;
-    engine.apiKey = options.apiKey;
-    engine.isLogin = false;
-    engine.dappAPIMap = {};
-    engine.strictMode = options.strictMode || false;
-    engine.providerId = options.providerId || 0;
-    engine.readViaContract = options.readViaContract || false;
-    engine.READY = STATUS.BICONOMY_READY;
-    engine.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
-    engine.ERROR = EVENTS.BICONOMY_ERROR;
-    engine.pendingLoginTransactions = {};
-    if (options.debug) {
-        config.logsEnabled = true;
-    }
-    _init(engine.apiKey, engine);
-
-    if (provider) {
-        web3 = new Web3(provider);
-        if (options.defaultAccount) {
-            web3.eth.defaultAccount = options.defaultAccount;
-        }
-        const proto = Object.getPrototypeOf(provider)
-        const keys = Object.getOwnPropertyNames(proto)
-
-        for (var i = 0; i < keys.length; i++) {
-            engine[keys[i]] = provider[keys[i]];
-        }
-
-        for (var key in provider) {
-            if (!engine[key]) {
-                engine[key] = provider[key];
-            }
-        }
-
-        engine.providerSend = provider.send || provider.sendAsync;
-        engine.send = function(payload, cb) {
-            if (payload.method == 'eth_sendTransaction') {
-
-                handleSendTransaction(engine, payload, (error, result) => {
-                    let response = _createJsonRpcResponse(payload, error, result);
-                    if (cb) {
-                        cb(error, response);
-                    }
-                });
-
-            } else if (payload.method == 'eth_sendRawTransaction') {
-
-                sendSignedTransaction(engine, payload, (error, result) => {
-                    let response = _createJsonRpcResponse(payload, error, result);
-                    if (cb) {
-                        cb(error, response);
-                    }
-                });
-
-            } else if (payload.method == 'eth_call') {
-                let userContract = getFromStorage(USER_CONTRACT);
-                if (engine.readViaContract && engine.isLogin && userContract) {
-                    if (payload && payload.params && payload.params[0]) {
-                        payload.params[0].from = userContract;
-                    }
-                }
-                web3.currentProvider.send(payload, cb);
-            } else {
-                web3.currentProvider.send(payload, cb);
-            }
-        };
-        engine.sendAsync = engine.send;
-    } else {
-        throw new Error('Please pass a provider to Biconomy.');
+        eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+            formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
     }
 }
 
@@ -151,7 +68,7 @@ Biconomy.prototype.walletSelect = async function() {
         await onboard.walletSelect();
     } catch (error) {
         eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_SELECT, "Error while selecting Wallet"));
+            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_SELECT, "Error while selecting Wallet"), error);
     }
 }
 
@@ -170,7 +87,7 @@ Biconomy.prototype.walletCheck = async function() {
         onboardWalletCallback(onboardWalletCallbackParam);
     } catch (error) {
         eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_CHECK, "Error while checking Wallet"));
+            formatMessage(RESPONSE_CODES.ONBOARD_WALLET_CHECK, "Error while checking Wallet"), error);
     }
 }
 
@@ -343,12 +260,95 @@ Biconomy.prototype.onEvent = function(type, callback) {
     }
 }
 
+
+/**
+ * This method initializes the biconomy parameters and 
+ * handles function calls to send transactions.
+ */
+function biconomyInitializer(engine, provider, options) {
+    if (typeof fetch == "undefined") {
+        fetch = require('node-fetch');
+    }
+    _validate(options);
+    engine.status = STATUS.INIT;
+    engine.dappId = options.dappId;
+    engine.apiKey = options.apiKey;
+    engine.isLogin = false;
+    engine.dappAPIMap = {};
+    engine.strictMode = options.strictMode || false;
+    engine.providerId = options.providerId || 0;
+    engine.readViaContract = options.readViaContract || false;
+    engine.READY = STATUS.BICONOMY_READY;
+    engine.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
+    engine.ERROR = EVENTS.BICONOMY_ERROR;
+    engine.pendingLoginTransactions = {};
+    if (options.debug) {
+        config.logsEnabled = true;
+    }
+    _init(engine.apiKey, engine);
+
+    if (provider) {
+        web3 = new Web3(provider);
+        if (options.defaultAccount) {
+            web3.eth.defaultAccount = options.defaultAccount;
+        }
+        const proto = Object.getPrototypeOf(provider)
+        const keys = Object.getOwnPropertyNames(proto)
+
+        for (var i = 0; i < keys.length; i++) {
+            engine[keys[i]] = provider[keys[i]];
+        }
+
+        for (var key in provider) {
+            if (!engine[key]) {
+                engine[key] = provider[key];
+            }
+        }
+
+        engine.providerSend = provider.send || provider.sendAsync;
+        engine.send = function(payload, cb) {
+            if (payload.method == 'eth_sendTransaction') {
+
+                handleSendTransaction(engine, payload, (error, result) => {
+                    let response = _createJsonRpcResponse(payload, error, result);
+                    if (cb) {
+                        cb(error, response);
+                    }
+                });
+
+            } else if (payload.method == 'eth_sendRawTransaction') {
+
+                sendSignedTransaction(engine, payload, (error, result) => {
+                    let response = _createJsonRpcResponse(payload, error, result);
+                    if (cb) {
+                        cb(error, response);
+                    }
+                });
+
+            } else if (payload.method == 'eth_call') {
+                let userContract = getFromStorage(USER_CONTRACT);
+                if (engine.readViaContract && engine.isLogin && userContract) {
+                    if (payload && payload.params && payload.params[0]) {
+                        payload.params[0].from = userContract;
+                    }
+                }
+                web3.currentProvider.send(payload, cb);
+            } else {
+                web3.currentProvider.send(payload, cb);
+            }
+        };
+        engine.sendAsync = engine.send;
+    } else {
+        throw new Error('Please pass a provider to Biconomy.');
+    }
+}
+
+
 /**
  * This method initializes the onboard object and
  * returns the updated web3 Provider
  */
 function onboardObjectInitializer(onboardParams) {
-
     let biconomyWalletCallback = (wallet) => {
         web3Provider = wallet.provider;
         onboardWalletCallbackParam = wallet;
@@ -364,7 +364,7 @@ function onboardObjectInitializer(onboardParams) {
         }
     } catch (error) {
         eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-            formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"));
+            formatMessage(RESPONSE_CODES.ONBOARD_INITIALIZATION_ERROR, "Error while initializing Onboard"), error);
     }
 }
 
