@@ -69,7 +69,7 @@ function Biconomy(provider, options) {
 			}
 		}
 
-		this.providerSend = provider.send || provider.sendAsync;
+		this.providerSend = provider.sendAsync || provider.send;
 		this.send = function(payload, cb) {
 			if(payload.method == 'eth_sendTransaction') {
 
