@@ -25,7 +25,7 @@ npm install @biconomy/mexa
 
 ```javascript
 import Biconomy from "@biconomy/mexa";
-const biconomy = new Biconomy(<web3 provider>,{dappId: <DApp ID>, apiKey: <API Key>});
+const biconomy = new Biconomy(<web3 provider>,{apiKey: <API Key>});
 web3 = new Web3(biconomy);
 ```
 
@@ -156,7 +156,6 @@ For metamask biconomy initialization code would look like:
 
 ```javascript
 let options = {
- dappId: <DAPP ID>,
  apiKey: <API KEY>,
  strictMode: true
 };
