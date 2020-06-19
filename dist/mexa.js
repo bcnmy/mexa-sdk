@@ -58998,7 +58998,6 @@ function Biconomy(provider, options) {
 			}
 		}
 
-		this.providerSend = provider.sendAsync || provider.send;
 		this.send = function(payload, cb) {
 			if(payload.method == 'eth_sendTransaction') {
 
@@ -59279,7 +59278,7 @@ async function sendSignedTransaction(engine, payload, end) {
 							return end(error);
 						} else {
 							_logMessage("Strict mode is off so falling back to default provider for handling transaction");
-							return engine.providerSend(rawTransaction, end);
+							return web3.currentProvider.send(rawTransaction, end);
 						}
 					}
 				}
@@ -59297,7 +59296,7 @@ async function sendSignedTransaction(engine, payload, end) {
 						return end(error, null);
 					} else {
 						_logMessage(`Falling back to default provider as strict mode is false in biconomy`);
-						return engine.providerSend(rawTransaction, end);
+						return web3.currentProvider.send(rawTransaction, end);
 					}
 				}
 				_logMessage('API found');
@@ -59526,7 +59525,7 @@ async function handleSendTransaction(engine, payload, end) {
 					return end(error, null);
 				} else {
 					_logMessage(`Falling back to default provider as strict mode is false in biconomy`);
-					return engine.providerSend(payload, end);
+					return web3.currentProvider.send(payload, end);
 				}
 			}
 			_logMessage('API found');
@@ -59655,8 +59654,8 @@ async function handleSendTransaction(engine, payload, end) {
 				eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
 				end(error);
 			} else {
-				_logMessage("Smart contract not found on dashbaord. Strict mode is on, so falling back to normal transaction mode");
-				return engine.providerSend(payload, end);
+				_logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
+				return web3.currentProvider.send(payload, end);
 			}
 		}
 	} else {
@@ -59955,29 +59954,7 @@ async function _init(apiKey, engine) {
 												smartContractMap[contract.address.toLowerCase()] = contract.abi;
 											}
 										});
-
-										let userLocalAccount = getFromStorage(USER_ACCOUNT);
-										let userLocalContract = getFromStorage(USER_CONTRACT);
-										if(userLocalContract && userLocalAccount) {
-											_getUserAccount(engine, undefined, (error, response) => {
-												if(error || !response || response.error) {
-													return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
-														formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,
-															"Could not get user account"));
-												}
-												let account = response.result[0];
-												_getUserContractWallet(engine, account, (error, userContract) => {
-													if(userContract && account && account.toUpperCase() == userLocalAccount.toUpperCase()
-														&& userContract.toUpperCase() == userLocalContract.toUpperCase()) {
-														engine.isLogin = true;
-														_logMessage('Biconomy user login set to true');
-													}
-													eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
-												});
-											});
-										} else {
-											eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
-										}
+										_checkUserLogin(engine, dappId);
 									} else {
 										if(engine.strictMode) {
 											engine.status = STATUS.NO_DATA;
@@ -59985,7 +59962,7 @@ async function _init(apiKey, engine) {
 												formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
 													`No smart contract registered for dappId ${dappId} on Mexa Dashboard`));
 										} else {
-											eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
+											_checkUserLogin(engine, dappId);
 										}
 									}
 								})
@@ -60015,6 +59992,31 @@ async function _init(apiKey, engine) {
 			formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
 	}
 
+}
+
+async function _checkUserLogin(engine, dappId) {
+	let userLocalAccount = getFromStorage(USER_ACCOUNT);
+	let userLocalContract = getFromStorage(USER_CONTRACT);
+	if(userLocalContract && userLocalAccount) {
+		_getUserAccount(engine, undefined, (error, response) => {
+			if(error || !response || response.error) {
+				return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+					formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND ,
+						"Could not get user account"));
+			}
+			let account = response.result[0];
+			_getUserContractWallet(engine, account, (error, userContract) => {
+				if(userContract && account && account.toUpperCase() == userLocalAccount.toUpperCase()
+					&& userContract.toUpperCase() == userLocalContract.toUpperCase()) {
+					engine.isLogin = true;
+					_logMessage('Biconomy user login set to true');
+				}
+				eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
+			});
+		});
+	} else {
+		eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
+	}
 }
 
 /**
@@ -60279,6 +60281,9 @@ Biconomy.prototype.logout = function() {
  */
 Biconomy.prototype.getUserContract = async function(userAddress) {
 	let response;
+	if(!userAddress) {
+		throw new Error(formatMessage(RESPONSE_CODES.INVALID_DATA, "Please pass a user address"));
+	}
 	if(this.isLogin) {
 		let userAddressFromStorage = getFromStorage(USER_ACCOUNT);
 		if(userAddressFromStorage && userAddress){
