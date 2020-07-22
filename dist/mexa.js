@@ -59278,7 +59278,10 @@ async function sendSignedTransaction(engine, payload, end) {
 							return end(error);
 						} else {
 							_logMessage("Strict mode is off so falling back to default provider for handling transaction");
-							return web3.currentProvider.send(rawTransaction, end);
+							if(typeof data == "object" && data.rawTransaction) {
+								payload.params = [data.rawTransaction];
+							}
+							return web3.currentProvider.send(payload, end);
 						}
 					}
 				}
@@ -59296,7 +59299,10 @@ async function sendSignedTransaction(engine, payload, end) {
 						return end(error, null);
 					} else {
 						_logMessage(`Falling back to default provider as strict mode is false in biconomy`);
-						return web3.currentProvider.send(rawTransaction, end);
+						if(typeof data == "object" && data.rawTransaction) {
+							payload.params = [data.rawTransaction];
+						}
+						return web3.currentProvider.send(payload, end);
 					}
 				}
 				_logMessage('API found');
