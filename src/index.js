@@ -19,6 +19,8 @@ var eventEmitter = new events.EventEmitter();
 let loginInterval;
 
 let domainType, metaInfoType, relayerPaymentType, metaTransactionType;
+let selectedAddress;
+const signatureConfig = require("./signature-config");
 
 let domainData = {
     name: config.eip712DomainName,
@@ -30,6 +32,7 @@ let domainData = {
 let loginDomainType, loginMessageType, loginDomainData;
 
 function Biconomy(provider, options) {
+	selectedAddress = provider.selectedAddress;
 	if(typeof fetch == "undefined") {
 		fetch = require('node-fetch');
 	}
@@ -564,6 +567,108 @@ Biconomy.prototype.withdrawFunds = function(receiverAddress, withdrawAmount, cb)
 		}
 	});
 }
+
+/* InstaDapp helper fucntion to cast spells via Biconomy */
+Biconomy.prototype.dsaCast =  async function(dsaAddress, encodeSpells) {
+	try {
+		let engine = this;
+		// EIP-721 signature verification
+		let contract = new web3.eth.Contract(signatureConfig.contract.abi, signatureConfig.contract.address);
+		let domainData = {
+			name: "DSA",
+			version: "1",
+			chainId: "42",  // Kovan
+			verifyingContract: signatureConfig.contract.address
+		};
+		domainType = [
+			{ name: "name", type: "string" },
+			{ name: "version", type: "string" },
+			{ name: "chainId", type: "uint256" },
+			{ name: "verifyingContract", type: "address" }
+		];
+
+		metaTransactionType = [
+			{ name: "holder", type: "address" },
+			{ name: "nonce", type: "uint256" }
+		];
+
+		let nonce = await contract.methods.nonces(selectedAddress).call();
+		let message = {};
+
+
+		message.holder = selectedAddress;
+		message.nonce = parseInt(nonce);
+
+
+		const dataToSign = JSON.stringify({
+			types: {
+			  EIP712Domain: domainType,
+			  MetaTransaction: metaTransactionType
+			},
+			domain: domainData,
+			primaryType: "MetaTransaction",
+			message: message
+		  });
+
+		  web3.currentProvider.sendAsync(
+			{
+			  jsonrpc: "2.0",
+			  id: 999999999999,
+			  method: "eth_signTypedData_v4",
+			  params: [selectedAddress, dataToSign]
+			},
+			async function (err, result) {
+			  if (err) {
+				return console.error(err);
+			  }
+			  const signature = result.result.substring(2);
+			  const r = "0x" + signature.substring(0, 64);
+			  const s = "0x" + signature.substring(64, 128);
+			  const v = parseInt(signature.substring(128, 130), 16);
+			  console.log(r, "r")
+			  console.log(s, "s")
+			  console.log(v, "v")
+			  console.log(selectedAddress, "userAddress")
+			  console.log(nonce)
+
+
+			  const sig = {
+				r:r,
+				s:s,
+				v:v
+			  }
+
+
+			  const data = encodeSpells;
+			  const account = selectedAddress;
+
+			  let to = signatureConfig.contract.address.toLowerCase();
+			  let api = engine.dappAPIMap[to]?engine.dappAPIMap[to]['forward']:undefined;
+			  console.log('API: ', api);
+
+			  const paramArray = [selectedAddress, sig ,dsaAddress, "0", data];
+
+			  if(api.url == NATIVE_META_TX_URL) {
+				let txData = {};
+				txData.from = account;
+				txData.apiId = api.id;
+				txData.params = paramArray;
+				txData.gasLimit = web3.utils.toHex(2100000);
+				txData.to = to;
+				_sendTransaction(engine, account, api, txData, (error, result) => {
+					if(error)
+						console.log(error);
+					else 
+						console.log(result);
+				});
+				}
+			})
+	} catch (error) {
+		eventEmitter.emit(EVENTS.DSA_CAST_ERROR,
+			formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while casting DSA spells"), error);
+	}
+}
+
 /**
  * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v3
  * method and send the request to biconomy for processing and call the callback method 'end'
