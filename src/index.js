@@ -69,6 +69,7 @@ function Biconomy(provider, options) {
 			}
 		}
 
+		let self = this;
 		this.send = function(payload, cb) {
 			if(payload.method == 'eth_sendTransaction') {
 
@@ -88,16 +89,39 @@ function Biconomy(provider, options) {
 					}
 				});
 
-			} else if(payload.method == 'eth_call') {
-				let userContract = getFromStorage(USER_CONTRACT);
-				if(this.readViaContract && this.isLogin && userContract) {
-					if(payload && payload.params && payload.params[0]) {
-						payload.params[0].from = userContract;
-					}
-				}
-				web3.currentProvider.send(payload, cb);
 			} else {
 				web3.currentProvider.send(payload, cb);
+			}
+		};
+
+		this.request = function(args, cb) {
+			let payload = {method: args.method, params: args.params};
+			if(payload.method == 'eth_sendTransaction') {
+				return new Promise((resolve, reject)=>{
+					handleSendTransaction(self, payload, (error, result) => {
+						if(error) {
+							return reject(error);
+						}
+						resolve(result);
+						if(cb)  {
+							cb(error, result);
+						}
+					});
+				});
+			} else if(payload.method == 'eth_sendRawTransaction') {
+				return new Promise((resolve, reject)=>{
+					sendSignedTransaction(self, payload, (error, result) => {
+						if(error) {
+							return reject(error);
+						}
+						resolve(result);
+						if(cb) {
+							cb(error, result);
+						}
+					});
+				});
+			} else {
+				return web3.currentProvider.request(payload, cb);
 			}
 		};
 		this.sendAsync = this.send;
