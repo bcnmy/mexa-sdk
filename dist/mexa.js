@@ -85776,6 +85776,7 @@ const txDecoder = require('ethereum-tx-decoder');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
 const DEFAULT_PAYLOAD_ID = "99999999";
 const Web3 = require('web3');
+const {toJSONRPCPayload} = require('./util');
 const baseURL = config.baseURL;
 const userLoginPath = config.userLoginPath;
 const withdrawFundsUrl = config.withdrawFundsUrl;
@@ -85819,6 +85820,9 @@ function Biconomy(provider, options) {
 	this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
 	this.ERROR = EVENTS.BICONOMY_ERROR;
 	this.pendingLoginTransactions = {};
+	this.jsonRPC = {
+		messageId: 0
+	}
 	if(options.debug) {
 		config.logsEnabled = true;
 	}
@@ -85894,7 +85898,21 @@ function Biconomy(provider, options) {
 					});
 				});
 			} else {
-				return web3.currentProvider.request(payload, cb);
+				if(web3.currentProvider.request) {
+					return web3.currentProvider.request(args, cb);
+				} else if(web3.currentProvider.send) {
+					return new Promise((resolve, reject)=>{
+						let jsonRPCPaylod = toJSONRPCPayload(self, payload.method, payload.params);
+						web3.currentProvider.send(jsonRPCPaylod, (err, response)=>{
+							if(err) {
+								return reject(err);
+							}
+							resolve(response.result);
+						});
+					});
+				} else {
+					return Promise.reject("Invalid provider object passed to Biconomy as it doesn't support request or send method");
+				}
 			}
 		};
 		this.sendAsync = this.send;
@@ -87284,5 +87302,27 @@ var scientificToDecimal = function (num) {
 
 module.exports = Biconomy
 
-},{"./config":596,"abi-decoder":65,"ethereum-tx-decoder":211,"events":118,"node-fetch":336,"promise":357,"web3":574}]},{},[597])(597)
+},{"./config":596,"./util":598,"abi-decoder":65,"ethereum-tx-decoder":211,"events":118,"node-fetch":336,"promise":357,"web3":574}],598:[function(require,module,exports){
+function toJSONRPCPayload(engine, method, params) {
+    if (!method) {
+        throw new Error('JSONRPC method should be specified for params: "'+ JSON.stringify(params) +'"!');
+    }
+
+    if(!engine.jsonRPC || engine.jsonRPC.messageId == undefined) {
+        throw new Error("engine object should have jsonRPC key with field 'messageId'");
+    }
+
+    // advance message ID
+    engine.jsonRPC.messageId++;
+
+    return {
+        jsonrpc: '2.0',
+        id: engine.jsonRPC.messageId,
+        method: method,
+        params: params || []
+    };
+};
+
+module.exports = {toJSONRPCPayload}
+},{}]},{},[597])(597)
 });
