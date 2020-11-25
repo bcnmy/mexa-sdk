@@ -145,7 +145,7 @@ class ERC20ForwarderClient{
       data : data
     };
 
-    const cost = (req.txGas+await this.feeProxy.thGas())*req.tokenGasPrice;
+    const cost = (req.txGas+await this.feeProxy.transferHandlerGas())*req.tokenGasPrice;
 
     return {request:req,cost:cost};
 
