@@ -3,6 +3,7 @@ const txDecoder = require('ethereum-tx-decoder');
 const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
 const DEFAULT_PAYLOAD_ID = "99999999";
 const Web3 = require('web3');
+const {toJSONRPCPayload} = require('./util');
 const baseURL = config.baseURL;
 const userLoginPath = config.userLoginPath;
 const withdrawFundsUrl = config.withdrawFundsUrl;
@@ -46,6 +47,9 @@ function Biconomy(provider, options) {
 	this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
 	this.ERROR = EVENTS.BICONOMY_ERROR;
 	this.pendingLoginTransactions = {};
+	this.jsonRPC = {
+		messageId: 0
+	}
 	if(options.debug) {
 		config.logsEnabled = true;
 	}
@@ -121,7 +125,21 @@ function Biconomy(provider, options) {
 					});
 				});
 			} else {
-				return web3.currentProvider.request(payload, cb);
+				if(web3.currentProvider.request) {
+					return web3.currentProvider.request(args, cb);
+				} else if(web3.currentProvider.send) {
+					return new Promise((resolve, reject)=>{
+						let jsonRPCPaylod = toJSONRPCPayload(self, payload.method, payload.params);
+						web3.currentProvider.send(jsonRPCPaylod, (err, response)=>{
+							if(err) {
+								return reject(err);
+							}
+							resolve(response.result);
+						});
+					});
+				} else {
+					return Promise.reject("Invalid provider object passed to Biconomy as it doesn't support request or send method");
+				}
 			}
 		};
 		this.sendAsync = this.send;
