@@ -247,7 +247,7 @@ Biconomy.prototype.getUserMessageToSign = function(rawTransaction, cb) {
 				let params = methodInfo.params;
 				let paramArray = [];
 				for(let i = 0; i < params.length; i++) {
-					paramArray.push(_getParamValue(params[i]));
+					paramArray.push(_getParamValue(params[i]), web3Obj(engine));
 				}
 
 				let account = web3Obj(engine).eth.accounts.recoverTransaction(rawTransaction);
@@ -426,7 +426,7 @@ async function sendSignedTransaction(engine, payload, end) {
 				let params = methodInfo.params;
 				let paramArray = [];
 				for(let i = 0; i < params.length; i++) {
-					paramArray.push(_getParamValue(params[i]));
+					paramArray.push(_getParamValue(params[i], web3Obj(engine)));
 				}
 
 				let account = web3Obj(engine).eth.accounts.recoverTransaction(rawTransaction);
@@ -655,7 +655,7 @@ async function handleSendTransaction(engine, payload, end) {
 			let params = methodInfo.params;
 			let paramArray = [];
 			for(let i = 0; i < params.length; i++) {
-				paramArray.push(_getParamValue(params[i]));
+				paramArray.push(_getParamValue(params[i], web3Obj(engine)));
 			}
 
 			_logMessage("Getting user account");
@@ -928,14 +928,14 @@ function _validate(options) {
 /**
  * Get paramter value from param object based on its type.
  **/
-function _getParamValue(paramObj) {
+function _getParamValue(paramObj, web3Obj) {
 	let value;
 	if(paramObj) {
 		let type = paramObj.type;
 		switch (type) {
 			case (type.match(/^uint/) || type.match(/^int/) || {}).input:
 				value = scientificToDecimal(parseInt(paramObj.value));
-				value = web3Obj(this).utils.toHex(value);
+				value = web3Obj.utils.toHex(value);
 				break;
 			case 'string':
 				if(typeof paramObj.value === "object"){
