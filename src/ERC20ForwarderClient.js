@@ -154,6 +154,7 @@ class ERC20ForwarderClient{
 
   }
 
+  // provide method for building any transaction. club below send functions  
   async buildTransferTx(to,token,amount,deadline){
     //should have call to check if user approved transferHandler
     const txCall = await this.transferHandler.populateTransaction.transfer(token,to,amount);

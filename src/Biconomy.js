@@ -1,6 +1,6 @@
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
-const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
+const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, META_TRANSACTION_TYPE ,STATUS} = require('./config');
 const DEFAULT_PAYLOAD_ID = "99999999";
 const Web3 = require('web3');
 const baseURL = config.baseURL;
@@ -11,8 +11,11 @@ const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
 const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
+const PERSONAL_SIGN = config.PERSONAL_SIGN;
+const EIP712_SIGN = config.EIP712_SIGN;
+const TRUSTED_FORWARDER = META_TRANSACTION_TYPE.TRUSTED_FORWARDER;
 
-let decoderMap = {}, smartContractMap = {};
+let decoderMap = {}, smartContractMap = {}, smartContractMetaTransactionMap = {}, smartContractSignatureMap = {};
 let web3;
 const events = require('events');
 var eventEmitter = new events.EventEmitter();
@@ -609,6 +612,7 @@ async function handleSendTransaction(engine, payload, end) {
 			}
 			let methodName = methodInfo.name;
 			let api = engine.dappAPIMap[to]?engine.dappAPIMap[to][methodName]:undefined;
+			// Information we get here is contractAddress, methodName, methodType, ApiId
 			if(!api){
 				api = engine.dappAPIMap[config.SCW]?engine.dappAPIMap[config.SCW][methodName]:undefined;
 			}
@@ -632,10 +636,23 @@ async function handleSendTransaction(engine, payload, end) {
 			_logMessage('API found');
 			let params = methodInfo.params;
 			let paramArray = [];
+
+			let contractAddr = api.contractAddress.toLowerCase();
+			let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+			let forwardedData;
+			if(metaTxApproach == TRUSTED_FORWARDER)
+			{
+				forwardedData = payload.params[0].data;
+				// call "TrustedForwarderClient" helper method here to get req, domainSeperator and signature
+				// push these into paramArray
+				// no other changes required 
+			}
+			else
+			{
 			for(let i = 0; i < params.length; i++) {
 				paramArray.push(_getParamValue(params[i]));
+			   }
 			}
-
 			_logMessage("Getting user account");
 			let account= payload.params[0].from;
 			if(!account) {
@@ -1045,6 +1062,8 @@ async function _init(apiKey, engine) {
 									if(smartContractList && smartContractList.length > 0) {
 										smartContractList.forEach(contract => {
 											let abiDecoder = require('abi-decoder');
+											smartContractMetaTransactionMap[contract.address.toLowerCase()] = contract.metaTransactionType;
+											smartContractSignatureMap[contract.address.toLowerCase()] = contract.signatureType;
 											if(contract.type === config.SCW) {
 												abiDecoder.addABI(JSON.parse(contract.abi));
 												decoderMap[config.SCW] = abiDecoder;
@@ -1055,6 +1074,7 @@ async function _init(apiKey, engine) {
 												smartContractMap[contract.address.toLowerCase()] = contract.abi;
 											}
 										});
+										_logMessage(smartContractMetaTransactionMap);
 										_checkUserLogin(engine, dappId);
 									} else {
 										if(engine.strictMode) {
