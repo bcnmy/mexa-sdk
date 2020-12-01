@@ -819,7 +819,7 @@ async function _getUserContractNonce(address, engine) {
 // On getting smart contract data get the API data also
 eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine)=>{
 	// Get DApp API information from Database
-    let getAPIInfoAPI = `${baseURL}/api/${config.version}/meta-api`;
+	let getAPIInfoAPI = `${baseURL}/api/${config.version}/meta-api`;
 	fetch(getAPIInfoAPI, getFetchOptions('GET', engine.apiKey))
 	.then(response => response.json())
 	.then(function(response) {

@@ -47,27 +47,28 @@ const getGasPrice = async() => {
 
 class ERC20ForwarderClient{
 
-  constructor(signer,signerAddress,feeProxyAddress,oracleAggregatorAddress,feeManagerAddress,forwarderAddress){
+  constructor(biconomy,signer,feeProxyDomainData,oracleAggregatorAddress,feeManagerAddress,forwarderAddress,transferHandlerAddress){
+    this.biconomy = biconomy;
     this.signer = signer;
-    this.signerAddress = signerAddress;
-    this.feeProxy = new ethers.Contract(feeProxyAddress,feeProxyAbi,signer);
+    this.feeProxy = new ethers.Contract(feeProxyDomainData.verifyingContract,feeProxyAbi,signer);
+    this.feeProxyDomainData = this.feeProxyDomainData;
     this.oracleAggregator = new ethers.Contract(oracleAggregatorAddress,oracleAggregatorAbi,signer);
     this.feeManager = new ethers.Contract(feeManagerAddress,feeManagerAbi,signer);
     this.forwarder = new ethers.Contract(forwarderAddress,forwarderAbi,signer);
-    this.transferHandler = new ethers.contract(this.transferHandlerAddress,transferHandlerAbi,signer);
+    this.transferHandler = new ethers.contract(transferHandlerAddress,transferHandlerAbi,signer);
   }
 
-  static async factory(provider,feeProxyAddress,BiconomyOptions){
+  static async factory(provider,feeProxyDomainData,transferHandlerAddress,BiconomyOptions){
     const originalProvider = new ethers.providers.Web3Provider(provider);
-    const originalSigner = await originalProvider.getSigner();
-    const signerAddress = await originalSigner.getAddress();
-    const biconomyProvider = new ethers.providers.Web3Provider(new Biconomy(provider,Bicomomyoptions));
-    const signer = await biconomyProvider.getSigner();
-    const feeProxy = new ethers.Contract(feeProxyAddress,feeProxyAbi,signer);
+    const signer = originalProvider.getSigner();
+    //const signer = await biconomyProvider.getSigner();
+    const feeProxy = new ethers.Contract(feeProxyDomainData.verifyingContract,feeProxyAbi,signer);
     const oracleAggregatorAddress = await feeProxy.oracleAggregator();
     const feeManagerAddress = await feeProxy.feeManager();
     const forwarderAddress = await feeProxy.forwarder();
-    return new ERC20ForwarderHelper(signer,signerAddress,feeProxyAddress,oracleAggregatorAddress,feeManagerAddress,forwarderAddress);
+    //biconomy object will contain apiKey data
+    //find out ApiKey information here if possible
+    return new ERC20ForwarderHelper(biconomy,signer,signerAddress,feeProxyDomainData,oracleAggregatorAddress,feeManagerAddress,forwarderAddress,transferHandlerAddress);
   }
 
   async getTokenGasPrice(tokenAddress){
@@ -77,8 +78,9 @@ class ERC20ForwarderClient{
     return ((gasPrice.mul((ethers.BigNumber.from(10)).pow(tokenOracleDecimals))).div(tokenPrice)).toString();
   }
 
-  async daiPermit(tokenDomainData,userAddress,spender,expiry,allowed){
+  async daiPermit(tokenDomainData,spender,expiry,allowed){
     const dai = new ethers.contract(tokenDomainData.verifyingContract,daiAbi,this.signer);
+    const userAddress = await (this.signer).getAddress();
     const nonce = await this.token.nonces(userAddress);
     const permitDataToSign = {
       types: {
@@ -88,7 +90,7 @@ class ERC20ForwarderClient{
         domain: tokenDomainData,
         primaryType: "Permit",
         message: {
-            holder : this.signerAddress,
+            holder : userAddress,
             spender : spender,
             nonce: nonce.toString(),
             expiry: expiry,
@@ -144,8 +146,9 @@ class ERC20ForwarderClient{
       deadline : deadline,
       data : data
     };
-
-    const cost = (req.txGas+await this.feeProxy.transferHandlerGas())*req.tokenGasPrice;
+    
+    const feeMultiplier = await this.feeManager.getFeeMultiplier(this.signerAddress,token);
+    const cost = (req.txGas+await this.feeProxy.transferHandlerGas())*req.tokenGasPrice*feeMultiplier;
 
     return {request:req,cost:cost};
 
@@ -157,7 +160,7 @@ class ERC20ForwarderClient{
     return await buildTx(this.transferHandler.address,token,100000,txCall.data);
   }
 
-  async sendTxEIP712(req,feeProxyDomainData){
+  async sendTxEIP712(req){
     //should have call to check if user approved transferHandler
     const domainSeparator = ethers.utils.keccak256((ethers.utils.defaultAbiCoder).
         encode(['bytes32','bytes32','bytes32','uint256','address'],
@@ -179,15 +182,50 @@ class ERC20ForwarderClient{
       };
 
     const sig = await this.signer.send("eth_signTypedData_v4",[req.from,JSON.stringify(dataToSign)]);
-    await this.feeProxy.executeEIP712(req,domainSeparator,sig);
+    //get function signature from req.data (first 4 bytes)
+    //replace with API call via fetch
+    const apiId = this.getApiId(req);
+    const body = {to:(this.feeProxy).address,from:this.signer,apiId:apiId,
+                  params:[req,domainSeparator,sig]}
+    const biconomy = await fetch("https://api.biconomy.io/api/v2/meta-tx/native",
+                  {
+                  method:'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'x-api-key': this.biconomy.apiKey
+                  },
+                  body:JSON.stringify(metaTxBody)
+                  });
+    const responseJson = await biconomy.json();
+    return responseJson['txHash'];
+    //await this.feeProxy.executeEIP712(req,domainSeparator,sig);
   }
 
   async sendTxPersonalSign(req){
     const hashToSign = abi.soliditySHA3(['address','address','address','uint256','uint256','uint256','uint256','uint256','bytes32'],
                                                 [req.from,req.to,req.token,req.txGas,req.tokenGasPrice,req.batchId,req.batchNonce,req.deadline,
                                                     ethers.utils.keccak256(req.data)]);
-    const sig = this.signer.signMess(hashToSign);
-    await this.feeProxy.executePersonalSign(req,domainSeparator,sig);
+    const sig = this.signer.signMessage(hashToSign);
+    const apiId = this.getApiId(req);
+    const body = {to:(this.feeProxy).address,from:this.signer,apiId:apiId,
+      params:[req,sig]}
+    const biconomy = await fetch("https://api.biconomy.io/api/v2/meta-tx/native",
+      {
+      method:'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.biconomy.apiKey
+      },
+      body:JSON.stringify(metaTxBody)
+      });
+    const responseJson = await biconomy.json();
+    return responseJson['txHash'];
+    //await this.feeProxy.executePersonalSign(req,domainSeparator,sig,{});
+  }
+
+  getApiId(req){
+    //get functionSignature & contract
+    //
   }
 
 
