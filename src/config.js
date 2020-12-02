@@ -29,6 +29,12 @@ config.TOKEN_CONTRACT_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
+config.PERSONAL_SIGN = "personalSign";
+config.EIP712_SIGN = "EIP712Sign";
+config.EIP712_SIGN_CALL = "executeEIP712";
+config.PERSONAL_SIGN_CALL = "executePersonalSign";
+config.TRUSTED_FORWARDER = "TrustedForwarder";
+
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;
@@ -58,12 +64,6 @@ const RESPONSE_CODES = {
 	EVENT_NOT_SUPPORTED: 'B513',
 	INVALID_DATA: 'B514'
 };
-
-const META_TRANSACTION_TYPE = {
-	DEFAULT : 'Default', 
-	TRUSTED_FORWARDER : 'TrustedForwarder', 
-	ERC20_FORWARDER : 'ERC20FeeProxy'
-  };
 
 const BICONOMY_RESPONSE_CODES = {
 	SUCCESS : 200,

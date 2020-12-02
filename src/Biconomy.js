@@ -1,6 +1,6 @@
 const Promise = require('promise');
 const txDecoder = require('ethereum-tx-decoder');
-const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, META_TRANSACTION_TYPE ,STATUS} = require('./config');
+const {config, RESPONSE_CODES, EVENTS, BICONOMY_RESPONSE_CODES, STATUS} = require('./config');
 const DEFAULT_PAYLOAD_ID = "99999999";
 const Web3 = require('web3');
 const baseURL = config.baseURL;
@@ -13,7 +13,9 @@ const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 const PERSONAL_SIGN = config.PERSONAL_SIGN;
 const EIP712_SIGN = config.EIP712_SIGN;
-const TRUSTED_FORWARDER = META_TRANSACTION_TYPE.TRUSTED_FORWARDER;
+const PERSONAL_SIGN_CALL = config.PERSONAL_SIGN_CALL;
+const EIP712_SIGN_CALL = config.EIP712_SIGN_CALL;
+const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
 
 let decoderMap = {}, smartContractMap = {}, smartContractMetaTransactionMap = {}, smartContractSignatureMap = {};
 let web3;
@@ -639,6 +641,7 @@ async function handleSendTransaction(engine, payload, end) {
 
 			let contractAddr = api.contractAddress.toLowerCase();
 			let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+			let preferredSignatureType = smartContractSignatureMap[contractAddr];
 			let forwardedData;
 			if(metaTxApproach == TRUSTED_FORWARDER)
 			{
