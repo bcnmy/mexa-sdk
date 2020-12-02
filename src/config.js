@@ -34,6 +34,8 @@ config.EIP712_SIGN = "EIP712Sign";
 config.EIP712_SIGN_CALL = "executeEIP712";
 config.PERSONAL_SIGN_CALL = "executePersonalSign";
 config.TRUSTED_FORWARDER = "TrustedForwarder";
+config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+config.BICONOMY_FORWARDER_ADDRESS_KOVAN = "0xBFA21CD2F21a8E581E77942B2831B378d2378E69";
 
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
