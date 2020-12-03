@@ -67,6 +67,32 @@ const RESPONSE_CODES = {
 	INVALID_DATA: 'B514'
 };
 
+const biconomyForwarderDomainData = {
+    name : "TEST",
+    version : "1",
+    chainId : 42,
+    verifyingContract : "0xBFA21CD2F21a8E581E77942B2831B378d2378E69"
+  };
+
+const forwarderDomainType = [
+    { name: "name", type: "string" },
+    { name: "version", type: "string" },
+    { name: "chainId", type: "uint256" },
+    { name: "verifyingContract", type: "address" }
+  ];
+
+  const forwardRequestType = [
+    {name:'from',type:'address'},
+    {name:'to',type:'address'},
+    {name:'token',type:'address'},
+    {name:'txGas',type:'uint256'},
+    {name:'tokenGasPrice',type:'uint256'},
+    {name:'batchId',type:'uint256'},
+    {name:'batchNonce',type:'uint256'},
+    {name:'deadline',type:'uint256'},
+    {name:'dataHash',type:'bytes32'}
+];
+
 const BICONOMY_RESPONSE_CODES = {
 	SUCCESS : 200,
 	ACTION_COMPLETE: 143,

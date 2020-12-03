@@ -19,8 +19,10 @@ const PERSONAL_SIGN_CALL = config.PERSONAL_SIGN_CALL;
 const EIP712_SIGN_CALL = config.EIP712_SIGN_CALL;
 const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
-const FORWARDER_ADDRESS = config.BICONOMY_FORWARDER_ADDRESS;
-
+const FORWARDER_ADDRESS = config.BICONOMY_FORWARDER_ADDRESS_KOVAN;
+const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
+const forwarderDomainType = config.forwarderDomainType;
+const forwardRequestType = config.forwardRequestType;
 
 let decoderMap = {}, smartContractMap = {}, smartContractMetaTransactionMap = {}, smartContractSignatureMap = {};
 let biconomyForwarder;
@@ -36,32 +38,6 @@ let domainData = {
     version: config.eip712SigVersion,
     verifyingContract: config.eip712VerifyingContract
 };
-
-let biconomyForwarderDomainData = {
-    name : "TEST",
-    version : "1",
-    chainId : 42,
-    verifyingContract : "0xBFA21CD2F21a8E581E77942B2831B378d2378E69"
-  };
-
-const forwarderDomainType = [
-    { name: "name", type: "string" },
-    { name: "version", type: "string" },
-    { name: "chainId", type: "uint256" },
-    { name: "verifyingContract", type: "address" }
-  ];  
-
-const forwardRequestType = [
-    {name:'from',type:'address'},
-    {name:'to',type:'address'},
-    {name:'token',type:'address'},
-    {name:'txGas',type:'uint256'},
-    {name:'tokenGasPrice',type:'uint256'},
-    {name:'batchId',type:'uint256'},
-    {name:'batchNonce',type:'uint256'},
-    {name:'deadline',type:'uint256'},
-    {name:'dataHash',type:'bytes32'}
-];
 
 // EIP712 format data for login
 let loginDomainType, loginMessageType, loginDomainData;
@@ -94,9 +70,7 @@ function Biconomy(provider, options) {
 			web3.eth.defaultAccount = options.defaultAccount;
 		}
 
-		// todo
-		// verify
-		biconomyForwarder = new web3.eth.Contract(FORWARDER_ADDRESS,forwarderAbi);
+		biconomyForwarder = new web3.eth.Contract(forwarderAbi,FORWARDER_ADDRESS);
 
 		const proto = Object.getPrototypeOf(provider)
 		const keys = Object.getOwnPropertyNames(proto)
@@ -673,38 +647,77 @@ async function handleSendTransaction(engine, payload, end) {
 				}
 			}
 			_logMessage('API found');
-			let params = methodInfo.params;
-			let paramArray = [];
 
-			let contractAddr = api.contractAddress.toLowerCase();
-			let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-			let preferredSignatureType = smartContractSignatureMap[contractAddr];
-			let forwardedData;
-			if(metaTxApproach == TRUSTED_FORWARDER)
-			{
-				forwardedData = payload.params[0].data;
-				// call "TrustedForwarderClient" helper method here to get req, domainSeperator and signature
-				let request = await buildForwardTxRequest(account,to,token,forwardedData);
-				let {domainSeparator,sign } = await signForwardRequestEIP712(request); // If prefferedSign is EIP712?
-				// push these into paramArray
-				paramArray.push(request);
-				paramArray.push(domainSeparator);
-				paramArray.push(sign);
-				// no other changes required 
-			}
-			else
-			{
-			for(let i = 0; i < params.length; i++) {
-				paramArray.push(_getParamValue(params[i]));
-			   }
-			}
 			_logMessage("Getting user account");
 			let account= payload.params[0].from;
 			if(!account) {
 				return end(`Not able to get user account`);
 			}
 			_logMessage(`User account fetched`);
+
+			let params = methodInfo.params;
+			let paramArray = [];
+
+			let contractAddr = api.contractAddress.toLowerCase();
+			let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+			let preferredSignatureType = smartContractSignatureMap[contractAddr];
+			let forwardedData, gasLimitNum;
+
 			if(api.url == NATIVE_META_TX_URL) {
+
+                if(metaTxApproach == TRUSTED_FORWARDER)
+			   {
+				forwardedData = payload.params[0].data;
+				// call "TrustedForwarderClient" helper method here to get req, domainSeperator and signature
+				if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000} 
+				let request = (await buildForwardTxRequest(account,to,token,gasLimitNum,forwardedData)).request;
+
+				const domainSeparator = ethers.utils.keccak256((ethers.utils.defaultAbiCoder).
+				encode(['bytes32','bytes32','bytes32','uint256','address'],
+				[ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+		        ethers.utils.id(biconomyForwarderDomainData.name),ethers.utils.id(biconomyForwarderDomainData.version),
+				biconomyForwarderDomainData.chainId,biconomyForwarderDomainData.verifyingContract]));
+
+				paramArray.push(request);
+				paramArray.push(domainSeparator);
+
+				const erc20fr = Object.assign({}, req);
+                erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
+                delete erc20fr.data;
+                const dataToSign = JSON.stringify({
+                  types: {
+	              EIP712Domain: forwarderDomainType,
+	              ERC20ForwardRequest: forwardRequestType
+	              },
+	              domain: biconomyForwarderDomainData,
+	              primaryType: "ERC20ForwardRequest",
+	              message: erc20fr
+                });
+				
+				web3.currentProvider.send(
+					{
+					  jsonrpc: "2.0",
+					  id: 999999999999,
+					  method: "eth_signTypedData_v4",
+					  params: [account, dataToSign]
+					},
+					function(error, response) {
+					  console.info(`User signature is ${response.result}`);
+					  if (error || (response && response.error)) {
+						throw new Error(`Error occured in signing message for meta transaction`);
+					  } else if (response && response.result) {
+						paramArray.push(response.result);    	
+					  }
+					}
+				  );
+			  }
+			   else
+			  {
+			    for(let i = 0; i < params.length; i++) {
+				  paramArray.push(_getParamValue(params[i]));
+			     }
+			  }
+
 				let data = {};
 				data.from = account;
 				data.apiId = api.id;
@@ -858,61 +871,25 @@ async function _getUserNonce(address, engine) {
  * build forward request on behalf of a client
  * for trusted forwarder approach
  * currently biconomy puts deadline and txPrice for the transaction
- * //todo review, fix issues and test
+ * //todo testing
  * // just a placeholder helper now
 */
-async function buildForwardTxRequest(account, to, token, data, newBatch=false){
-    const batchId = newBatch ? await forwarder.getBatch(userAddress):0;
+async function buildForwardTxRequest(account, to, token, gasLimitNum, data, newBatch=false){
+	const batchId = newBatch ? await biconomyForwarder.methods.getBatch(userAddress).call():0;
+	const batchNonce = await biconomyForwarder.methods.getNonce(account,batchId).call().toNumber();
     const req = {
-      from : userAddress,
+      from : account,
       to : to,
       token : ZERO_ADDRESS,
-      txGas : await estimateTransferGas(to,amount).toNumber(),
+      txGas : gasLimitNum,
       tokenGasPrice : "0",
       batchId : batchId,
-      batchNonce : (await biconomyForwarder.getNonce(userAddress,batchId)).toNumber(),
+      batchNonce : batchNonce,
       deadline : Math.floor((Date.now()/1000)+3600),
       data : data
     };
     return {request:req};
   }
-
-/**
- * to get the remaining parameters to be passed on to biconomy server 
- * domain seperator related stuff should be moved to common config
- *  //todo review, fix issues and test
- *  // just a placeholder helper now
- */
-
- async function signForwardRequestEIP712(req) {
-	const domainSeparator = ethers.utils.keccak256((ethers.utils.defaultAbiCoder).
-	encode(['bytes32','bytes32','bytes32','uint256','address'],
-		   [ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-		   ethers.utils.id(biconomyForwarderDomainData.name),ethers.utils.id(biconomyForwarderDomainData.version),
-		   biconomyForwarderDomainData.chainId,biconomyForwarderDomainData.verifyingContract]));
-
-    const erc20fr = Object.assign({}, req);
-    erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
-    delete erc20fr.data;
-    const dataToSign = {
-     types: {
-	  EIP712Domain: forwarderDomainType,
-	  ERC20ForwardRequest: forwardRequestType
-	},
-	domain: biconomyForwarderDomainData,
-	primaryType: "ERC20ForwardRequest",
-	message: erc20fr
-  };
-
-	const sig = await this.signer.send("eth_signTypedData_v4",[req.from,JSON.stringify(dataToSign)]);
-	return { domainSeparator:domainSeparator , sign:sig };
- }
-
- // helper of a helper 
- async function estimateTransferGas(to,amount){
-	return (ethers.BigNumber.from(75000));
-}
-
 
 /**
  * It query biconomy server for user contract nonce.
