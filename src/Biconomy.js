@@ -665,18 +665,21 @@ async function handleSendTransaction(engine, payload, end) {
 
 			if(api.url == NATIVE_META_TX_URL) {
 
-                if(metaTxApproach == TRUSTED_FORWARDER)
+              if(metaTxApproach == TRUSTED_FORWARDER)
 			   {
 				forwardedData = payload.params[0].data;
 				// call "TrustedForwarderClient" helper method here to get req, domainSeperator and signature
-				if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000} 
-				let request = (await buildForwardTxRequest(account,to,token,gasLimitNum,forwardedData)).request;
-
+				if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000} // temp until solved hexToNumber for web3
+				const request = (await buildForwardTxRequest(account,to,token,gasLimitNum,forwardedData)).request;
+				_logMessage(request);
+				
 				const domainSeparator = ethers.utils.keccak256((ethers.utils.defaultAbiCoder).
 				encode(['bytes32','bytes32','bytes32','uint256','address'],
 				[ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
 		        ethers.utils.id(biconomyForwarderDomainData.name),ethers.utils.id(biconomyForwarderDomainData.version),
 				biconomyForwarderDomainData.chainId,biconomyForwarderDomainData.verifyingContract]));
+
+				_logMessage(domainSeparator);
 
 				paramArray.push(request);
 				paramArray.push(domainSeparator);
@@ -692,39 +695,52 @@ async function handleSendTransaction(engine, payload, end) {
 	              domain: biconomyForwarderDomainData,
 	              primaryType: "ERC20ForwardRequest",
 	              message: erc20fr
-                });
+				});
 				
-				web3.currentProvider.send(
-					{
-					  jsonrpc: "2.0",
-					  id: 999999999999,
-					  method: "eth_signTypedData_v4",
-					  params: [account, dataToSign]
-					},
-					function(error, response) {
-					  console.info(`User signature is ${response.result}`);
-					  if (error || (response && response.error)) {
-						throw new Error(`Error occured in signing message for meta transaction`);
-					  } else if (response && response.result) {
-						paramArray.push(response.result);    	
+				const promi = new Promise(async function(resolve, reject) {
+					await web3.currentProvider.send(
+					  {
+						jsonrpc: "2.0",
+						id: 999999999999,
+						method: "eth_signTypedData_v4",
+						params: [account, dataToSign]
+					  }, function(error, res){
+					  if(error) {
+						reject(error);
+					  } else {
+						resolve(res.result);
 					  }
-					}
-				  );
+					});
+				  });
+				  
+				  promi.then(function(sig){
+					console.log('signature ' + sig);
+					paramArray.push(sig);
+					let data = {};
+					data.from = account;
+					data.apiId = api.id;
+					data.params = paramArray;
+					data.gasLimit = gasLimit;
+					data.to = to;
+					_sendTransaction(engine, account, api, data, end);
+				  }).catch(function(error) {
+					console.log('could not get signature error ' + error);
+					showErrorMessage("Could not get user signature");
+				  }); 
 			  }
 			   else
 			  {
 			    for(let i = 0; i < params.length; i++) {
 				  paramArray.push(_getParamValue(params[i]));
 			     }
+				   let data = {};
+				   data.from = account;
+				   data.apiId = api.id;
+				   data.params = paramArray;
+				   data.gasLimit = gasLimit;
+				   data.to = to;
+				   _sendTransaction(engine, account, api, data, end);
 			  }
-
-				let data = {};
-				data.from = account;
-				data.apiId = api.id;
-				data.params = paramArray;
-				data.gasLimit = gasLimit;
-				data.to = to;
-				_sendTransaction(engine, account, api, data, end);
 			}
 			else{
 				if(engine.isLogin) {
