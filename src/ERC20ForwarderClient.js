@@ -1,5 +1,6 @@
 import {ethers} from 'ethers';
-import Biconomy from './Biconomy';
+const {config} = require('./config');
+const abiDecoder = require('abi-decoder');
 import {feeProxyAbi,oracleAggregatorAbi,feeManagerAbi,forwarderAbi,daiAbi,erc20Eip2612Abi,transferHandlerAbi} from './abis';
 
 const domainType = [
@@ -37,6 +38,15 @@ const erc20ForwardRequestType = [
     {name:'dataHash',type:'bytes32'}
 ];
 
+function getFetchOptions(method, apiKey) {
+	return {
+		method: method,
+		headers: {
+			"x-api-key" : apiKey,
+			'Content-Type': 'application/json;charset=utf-8'
+		}
+	}
+}
 
 const getGasPrice = async() => {
     const response = await fetch("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=P7JFS2YI6MNZFVY95FDMV45EGIX6F1BPAV");
@@ -67,8 +77,48 @@ class ERC20ForwarderClient{
     const feeManagerAddress = await feeProxy.feeManager();
     const forwarderAddress = await feeProxy.forwarder();
     //biconomy object will contain apiKey data
+    const dappAPIMap = {};
+    const getAPIInfoAPI = `${config.baseURL}/api/${config.version}/meta-api`;
+    fetch(getAPIInfoAPI, getFetchOptions('GET', BiconomyOptions.apiKey))
+    .then(response => response.json())
+    .then(function(response) {
+      if(response && response.listApis) {
+			  let apiList = response.listApis;
+			  for(let i=0;i<apiList.length;i++) {
+				  let contractAddress = apiList[i].contractAddress;
+					if(!dappAPIMap[contractAddress]) {
+            dappAPIMap[contractAddress] = {};
+					}
+					dappAPIMap[contractAddress][apiList[i].method] = apiList[i];
+			  }
+		}
+	}).catch(function(error) {
+      _logMessage(error);
+    });
+    const decoderMap = {};
+    let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
+    fetch(getDAppInfoAPI, getFetchOptions('GET', apiKey)).then(response=>response.json())
+    .then(function(result) {
+      if(!result && result.flag != 143) {
+        return eventEmitter.emit(EVENTS.BICONOMY_ERROR,
+          formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND ,
+            `Error getting smart contract for dappId ${dappId}`));
+      }
+      let smartContractList = result.smartContracts;
+      if(smartContractList && smartContractList.length > 0) {
+        smartContractList.forEach(contract => {
+            abiDecoder.addABI(JSON.parse(contract.abi));
+            decoderMap[contract.address.toLowerCase()] = abiDecoder;
+            smartContractMap[contract.address.toLowerCase()] = contract.abi;
+        })}});
+    const biconomy = {apiKey:BiconomyOptions.apiKey,dappAPIMap:dappAPIMap, decoderMap:decoderMap};
     //find out ApiKey information here if possible
     return new ERC20ForwarderHelper(biconomy,signer,signerAddress,feeProxyDomainData,oracleAggregatorAddress,feeManagerAddress,forwarderAddress,transferHandlerAddress);
+  }
+
+  async getApiId(req){
+    const method = this.biconomy.decoderMap[req.to].decodeMethod(req.data);
+    return this.biconomy.dappAPIMap[req.to][method]
   }
 
   async getTokenGasPrice(tokenAddress){
@@ -154,7 +204,6 @@ class ERC20ForwarderClient{
 
   }
 
-  // provide method for building any transaction. club below send functions  
   async buildTransferTx(to,token,amount,deadline){
     //should have call to check if user approved transferHandler
     const txCall = await this.transferHandler.populateTransaction.transfer(token,to,amount);
@@ -183,8 +232,6 @@ class ERC20ForwarderClient{
       };
 
     const sig = await this.signer.send("eth_signTypedData_v4",[req.from,JSON.stringify(dataToSign)]);
-    //get function signature from req.data (first 4 bytes)
-    //replace with API call via fetch
     const apiId = this.getApiId(req);
     const body = {to:(this.feeProxy).address,from:this.signer,apiId:apiId,
                   params:[req,domainSeparator,sig]}
@@ -199,7 +246,6 @@ class ERC20ForwarderClient{
                   });
     const responseJson = await biconomy.json();
     return responseJson['txHash'];
-    //await this.feeProxy.executeEIP712(req,domainSeparator,sig);
   }
 
   async sendTxPersonalSign(req){
@@ -221,7 +267,6 @@ class ERC20ForwarderClient{
       });
     const responseJson = await biconomy.json();
     return responseJson['txHash'];
-    //await this.feeProxy.executePersonalSign(req,domainSeparator,sig,{});
   }
 
   getApiId(req){

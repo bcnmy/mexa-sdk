@@ -1,6 +1,6 @@
 import Biconomy from './Biconomy';
 import ERC20ForwarderClient from './ERC20ForwarderClient';
 
-export default {
+module.exports = {
     Biconomy, ERC20ForwarderClient
 }
