@@ -269,11 +269,6 @@ class ERC20ForwarderClient{
     return responseJson['txHash'];
   }
 
-  getApiId(req){
-    //get functionSignature & contract
-    //
-  }
-
 
 
 }
