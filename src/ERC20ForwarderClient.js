@@ -109,16 +109,15 @@ class ERC20ForwarderClient{
         smartContractList.forEach(contract => {
             abiDecoder.addABI(JSON.parse(contract.abi));
             decoderMap[contract.address.toLowerCase()] = abiDecoder;
-            smartContractMap[contract.address.toLowerCase()] = contract.abi;
         })}});
     const biconomy = {apiKey:BiconomyOptions.apiKey,dappAPIMap:dappAPIMap, decoderMap:decoderMap};
     //find out ApiKey information here if possible
-    return new ERC20ForwarderHelper(biconomy,signer,signerAddress,feeProxyDomainData,oracleAggregatorAddress,feeManagerAddress,forwarderAddress,transferHandlerAddress);
+    return new ERC20ForwarderClient(biconomy,signer,signerAddress,feeProxyDomainData,oracleAggregatorAddress,feeManagerAddress,forwarderAddress,transferHandlerAddress);
   }
 
   async getApiId(req){
     const method = this.biconomy.decoderMap[req.to].decodeMethod(req.data);
-    return this.biconomy.dappAPIMap[req.to][method]
+    return this.biconomy.dappAPIMap[req.to][method];
   }
 
   async getTokenGasPrice(tokenAddress){
