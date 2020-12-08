@@ -67,21 +67,21 @@ const RESPONSE_CODES = {
 	INVALID_DATA: 'B514'
 };
 
-const biconomyForwarderDomainData = {
+config.biconomyForwarderDomainData = {
     name : "TEST",
     version : "1",
     chainId : 42,
     verifyingContract : "0xBFA21CD2F21a8E581E77942B2831B378d2378E69"
   };
 
-const forwarderDomainType = [
+config.forwarderDomainType = [
     { name: "name", type: "string" },
     { name: "version", type: "string" },
     { name: "chainId", type: "uint256" },
     { name: "verifyingContract", type: "address" }
   ];
 
-  const forwardRequestType = [
+config.forwardRequestType = [
     {name:'from',type:'address'},
     {name:'to',type:'address'},
     {name:'token',type:'address'},

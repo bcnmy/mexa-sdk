@@ -1,5 +1,5 @@
 const Promise = require("promise");
-import { ethers } from "ethers";
+const ethers = require('ethers');
 const txDecoder = require("ethereum-tx-decoder");
 import { forwarderAbi } from "./abis";
 const {
@@ -19,12 +19,15 @@ const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
 const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
+const ZERO_ADDRESS = config.ZERO_ADDRESS;
+
+// todo
+// to be added from sys info
 const PERSONAL_SIGN = config.PERSONAL_SIGN;
 const EIP712_SIGN = config.EIP712_SIGN;
 const PERSONAL_SIGN_CALL = config.PERSONAL_SIGN_CALL;
 const EIP712_SIGN_CALL = config.EIP712_SIGN_CALL;
 const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
-const ZERO_ADDRESS = config.ZERO_ADDRESS;
 const FORWARDER_ADDRESS = config.BICONOMY_FORWARDER_ADDRESS_KOVAN;
 const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
 const forwarderDomainType = config.forwarderDomainType;
@@ -32,8 +35,7 @@ const forwardRequestType = config.forwardRequestType;
 
 let decoderMap = {},
   smartContractMap = {},
-  smartContractMetaTransactionMap = {},
-  smartContractSignatureMap = {};
+  smartContractMetaTransactionMap = {}; // make it object map possibly
 let biconomyForwarder;
 let web3;
 const events = require("events");
@@ -79,6 +81,7 @@ function Biconomy(provider, options) {
       web3.eth.defaultAccount = options.defaultAccount;
     }
 
+    // or use ethers
     biconomyForwarder = new web3.eth.Contract(forwarderAbi, FORWARDER_ADDRESS);
 
     const proto = Object.getPrototypeOf(provider);
@@ -745,87 +748,27 @@ async function handleSendTransaction(engine, payload, end) {
 
       let contractAddr = api.contractAddress.toLowerCase();
       let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-      let preferredSignatureType = smartContractSignatureMap[contractAddr];
       let forwardedData, gasLimitNum;
 
       if (api.url == NATIVE_META_TX_URL) {
         if (metaTxApproach == TRUSTED_FORWARDER) {
           forwardedData = payload.params[0].data;
           // call "TrustedForwarderClient" helper method here to get req, domainSeperator and signature
-          //if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000} // temp until solved hexToNumber for web3
+          //if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000} 
           gasLimitNum = 75000;
           const request = (
             await buildForwardTxRequest(account, to, gasLimitNum, forwardedData)
           ).request;
           _logMessage(request);
 
-          const domainSeparator = ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(
-              ["bytes32", "bytes32", "bytes32", "uint256", "address"],
-              [
-                ethers.utils.id(
-                  "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
-                ethers.utils.id(biconomyForwarderDomainData.name),
-                ethers.utils.id(biconomyForwarderDomainData.version),
-                biconomyForwarderDomainData.chainId,
-                biconomyForwarderDomainData.verifyingContract,
-              ]
-            )
-          );
-
+          const domainSeparator = getDomainSeperator();
           _logMessage(domainSeparator);
 
           paramArray.push(request);
           paramArray.push(domainSeparator);
-
-          const erc20fr = Object.assign({}, request);
-          erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
-          delete erc20fr.data;
-          const dataToSign = JSON.stringify({
-            types: {
-              EIP712Domain: forwarderDomainType,
-              ERC20ForwardRequest: forwardRequestType,
-            },
-            domain: biconomyForwarderDomainData,
-            primaryType: "ERC20ForwardRequest",
-            message: erc20fr,
-          });
-
-          const promi = new Promise(async function (resolve, reject) {
-            await web3.currentProvider.send(
-              {
-                jsonrpc: "2.0",
-                id: 999999999999,
-                method: "eth_signTypedData_v4",
-                params: [account, dataToSign],
-              },
-              function (error, res) {
-                if (error) {
-                  reject(error);
-                } else {
-                  resolve(res.result);
-                }
-              }
-            );
-          });
-
-          promi
-            .then(function (sig) {
-              console.log("signature " + sig);
-              paramArray.push(sig);
-              let data = {};
-              data.from = account;
-              data.apiId = api.id;
-              data.params = paramArray;
-              data.gasLimit = gasLimit;
-              data.to = to;
-              _sendTransaction(engine, account, api, data, end);
-            })
-            .catch(function (error) {
-              console.log("could not get signature error " + error);
-              showErrorMessage("Could not get user signature");
-            });
+          // tested - pending code review
+          // move to helper methods   
+          await getSignatureAndRelay(engine, end, account, to, request, paramArray, api, gasLimit);
         } else {
           for (let i = 0; i < params.length; i++) {
             paramArray.push(_getParamValue(params[i]));
@@ -1038,6 +981,84 @@ async function buildForwardTxRequest(
     data: data,
   };
   return { request: req };
+}
+
+function getDomainSeperator() {
+  const domainSeparator = ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "bytes32", "bytes32", "uint256", "address"],
+      [
+        ethers.utils.id(
+          "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        ),
+        ethers.utils.id(biconomyForwarderDomainData.name),
+        ethers.utils.id(biconomyForwarderDomainData.version),
+        biconomyForwarderDomainData.chainId,
+        biconomyForwarderDomainData.verifyingContract,
+      ]
+    )
+  );
+  return domainSeparator;
+}
+
+async function getSignatureAndRelay(
+  engine,
+  end,
+  account,
+  to,
+  request,
+  paramArray,
+  api,
+  gasLimit
+) {
+  const erc20fr = Object.assign({}, request);
+  erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
+  delete erc20fr.data;
+  const dataToSign = JSON.stringify({
+    types: {
+      EIP712Domain: forwarderDomainType,
+      ERC20ForwardRequest: forwardRequestType,
+    },
+    domain: biconomyForwarderDomainData,
+    primaryType: "ERC20ForwardRequest",
+    message: erc20fr,
+  });
+
+  const promi = new Promise(async function (resolve, reject) {
+    await web3.currentProvider.send(
+      {
+        jsonrpc: "2.0",
+        id: 999999999999,
+        method: "eth_signTypedData_v4",
+        params: [account, dataToSign],
+      },
+      function (error, res) {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(res.result);
+        }
+      }
+    );
+  });
+
+  promi
+    .then(function (sig) {
+      console.log("signature " + sig);
+      paramArray.push(sig);
+      let data = {};
+      data.from = account;
+      data.apiId = api.id;
+      data.params = paramArray;
+      data.gasLimit = gasLimit;
+      data.to = to;
+      data.signatureType = EIP712_SIGN;
+      _sendTransaction(engine, account, api, data, end);
+    })
+    .catch(function (error) {
+      console.log("could not get signature error " + error);
+      showErrorMessage("Could not get user signature");
+    });
 }
 
 /**
@@ -1367,9 +1388,6 @@ async function _init(apiKey, engine) {
                               smartContractMetaTransactionMap[
                                 contract.address.toLowerCase()
                               ] = contract.metaTransactionType;
-                              smartContractSignatureMap[
-                                contract.address.toLowerCase()
-                              ] = contract.signatureType;
                               if (contract.type === config.SCW) {
                                 abiDecoder.addABI(JSON.parse(contract.abi));
                                 decoderMap[config.SCW] = abiDecoder;
