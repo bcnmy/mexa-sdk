@@ -1,7 +1,7 @@
 import {ethers} from 'ethers';
 const {config} = require('./config');
 const abiDecoder = require('abi-decoder');
-import {feeProxyAbi,oracleAggregatorAbi,feeManagerAbi,forwarderAbi,daiAbi,erc20Eip2612Abi,transferHandlerAbi} from './abis';
+import {feeProxyAbi,oracleAggregatorAbi,feeManagerAbi,forwarderAbi,transferHandlerAbi} from './abis';
 
 const domainType = [
     { name: "name", type: "string" },
@@ -125,61 +125,6 @@ class ERC20ForwarderClient{
     const tokenPrice = await this.oracleAggregator.getTokenPrice(tokenAddress);
     const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(tokenAddress);
     return ((gasPrice.mul((ethers.BigNumber.from(10)).pow(tokenOracleDecimals))).div(tokenPrice)).toString();
-  }
-
-  async daiPermit(tokenDomainData,spender,expiry,allowed){
-    const dai = new ethers.contract(tokenDomainData.verifyingContract,daiAbi,this.signer);
-    const userAddress = await (this.signer).getAddress();
-    const nonce = await this.token.nonces(userAddress);
-    const permitDataToSign = {
-      types: {
-            EIP712Domain: domainType,
-            Permit: permitType
-        },
-        domain: tokenDomainData,
-        primaryType: "Permit",
-        message: {
-            holder : userAddress,
-            spender : spender,
-            nonce: nonce.toString(),
-            expiry: expiry,
-            allowed: allowed
-        }
-      };
-    const result = await this.signer.send("eth_signTypedData_v4",[userAddress,JSON.stringify(permitDataToSign)]);
-    console.log("success",result);
-    const signature = result.substring(2);
-    const r = "0x" + signature.substring(0, 64);
-    const s = "0x" + signature.substring(64, 128);
-    const v = parseInt(signature.substring(128, 130), 16);
-    await dai.permit(this.signerAddress,spender,nonce,expiry,allowed,v,r,s);
-  }
-
-  async eip2612Permit(tokenDomainData,spender,value,deadline){
-    const token = new ethers.contract(tokenDomainData.verifyingContract,erc20Eip2612Abi,this.signer);
-    const nonce = await this.token.nonces(userAddress);
-    const permitDataToSign = {
-        types: {
-            EIP712Domain: domainType,
-            Permit: permitType
-        },
-        domain: tokenDomainData,
-        primaryType: "Permit",
-        message: {
-            holder : this.signerAddress,
-            spender : spender,
-            nonce: nonce.toString(),
-            value: value,
-            deadline: deadline
-        }
-      };
-    const result = await this.signer.send("eth_signTypedData_v4",[userAddress,JSON.stringify(permitDataToSign)]);
-    console.log("success",result);
-    const signature = result.substring(2);
-    const r = "0x" + signature.substring(0, 64);
-    const s = "0x" + signature.substring(64, 128);
-    const v = parseInt(signature.substring(128, 130), 16);
-    await token.permit(this.signerAddress,spender,value,deadline,v,r,s);
   }
 
   async buildTx(to, token, txGas, deadline, data, newBatch=false){
