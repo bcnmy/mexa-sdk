@@ -20,6 +20,7 @@ const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
+const {buildForwardTxRequest, getDomainSeperator} = require("./biconomyforwarder");
 
 // todo
 // to be added from sys info
@@ -28,10 +29,8 @@ const EIP712_SIGN = config.EIP712_SIGN;
 const PERSONAL_SIGN_CALL = config.PERSONAL_SIGN_CALL;
 const EIP712_SIGN_CALL = config.EIP712_SIGN_CALL;
 const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
-const FORWARDER_ADDRESS = config.BICONOMY_FORWARDER_ADDRESS_KOVAN;
+
 const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
-const forwarderDomainType = config.forwarderDomainType;
-const forwardRequestType = config.forwardRequestType;
 
 let decoderMap = {},
   smartContractMap = {},
@@ -42,7 +41,7 @@ const events = require("events");
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
 
-let domainType, metaInfoType, relayerPaymentType, metaTransactionType;
+let domainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType, forwarderAddress;
 
 let domainData = {
   name: config.eip712DomainName,
@@ -82,7 +81,7 @@ function Biconomy(provider, options) {
     }
 
     // or use ethers
-    biconomyForwarder = new web3.eth.Contract(forwarderAbi, FORWARDER_ADDRESS);
+    biconomyForwarder = new web3.eth.Contract(forwarderAbi, forwarderAddress);
 
     const proto = Object.getPrototypeOf(provider);
     const keys = Object.getOwnPropertyNames(proto);
@@ -949,57 +948,7 @@ async function _getUserNonce(address, engine) {
   }
 }
 
-/**
- * build forward request on behalf of a client
- * for trusted forwarder approach
- * currently biconomy puts deadline and txPrice for the transaction
- * //todo testing
- * // just a placeholder helper now
- */
-async function buildForwardTxRequest(
-  account,
-  to,
-  gasLimitNum,
-  data,
-  newBatch = false
-) {
-  const batchId = newBatch
-    ? await biconomyForwarder.methods.getBatch(userAddress).call()
-    : 0;
-  const batchNonce = await biconomyForwarder.methods
-    .getNonce(account, batchId)
-    .call();
-  const req = {
-    from: account,
-    to: to,
-    token: ZERO_ADDRESS,
-    txGas: gasLimitNum,
-    tokenGasPrice: "0",
-    batchId: batchId,
-    batchNonce: parseInt(batchNonce),
-    deadline: Math.floor(Date.now() / 1000 + 3600),
-    data: data,
-  };
-  return { request: req };
-}
 
-function getDomainSeperator() {
-  const domainSeparator = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "bytes32", "bytes32", "uint256", "address"],
-      [
-        ethers.utils.id(
-          "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        ),
-        ethers.utils.id(biconomyForwarderDomainData.name),
-        ethers.utils.id(biconomyForwarderDomainData.version),
-        biconomyForwarderDomainData.chainId,
-        biconomyForwarderDomainData.verifyingContract,
-      ]
-    )
-  );
-  return domainSeparator;
-}
 
 async function getSignatureAndRelay(
   engine,
@@ -1016,7 +965,7 @@ async function getSignatureAndRelay(
   delete erc20fr.data;
   const dataToSign = JSON.stringify({
     types: {
-      EIP712Domain: forwarderDomainType,
+      EIP712Domain: domainType,
       ERC20ForwardRequest: forwardRequestType,
     },
     domain: biconomyForwarderDomainData,
@@ -1350,6 +1299,8 @@ async function _init(apiKey, engine) {
                         loginDomainType = systemInfo.loginDomainType;
                         loginMessageType = systemInfo.loginMessageType;
                         loginDomainData = systemInfo.loginDomainData;
+                        forwardRequestType = systemInfo.forwardRequestType;
+                        forwarderAddress = systemInfo.biconomyForwarderAddress;
 
                         if (systemInfo.relayHubAddress) {
                           domainData.verifyingContract =

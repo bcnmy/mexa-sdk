@@ -29,13 +29,13 @@ config.TOKEN_CONTRACT_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
+config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 config.PERSONAL_SIGN = "personalSign";
 config.EIP712_SIGN = "EIP712Sign";
 config.EIP712_SIGN_CALL = "executeEIP712";
 config.PERSONAL_SIGN_CALL = "executePersonalSign";
 config.TRUSTED_FORWARDER = "TrustedForwarder";
-config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-config.BICONOMY_FORWARDER_ADDRESS_KOVAN = "0xBFA21CD2F21a8E581E77942B2831B378d2378E69";
 
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
@@ -73,13 +73,6 @@ config.biconomyForwarderDomainData = {
     chainId : 42,
     verifyingContract : "0xBFA21CD2F21a8E581E77942B2831B378d2378E69"
   };
-
-config.forwarderDomainType = [
-    { name: "name", type: "string" },
-    { name: "version", type: "string" },
-    { name: "chainId", type: "uint256" },
-    { name: "verifyingContract", type: "address" }
-  ];
 
 config.forwardRequestType = [
     {name:'from',type:'address'},
