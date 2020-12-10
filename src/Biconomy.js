@@ -1,6 +1,7 @@
 const Promise = require("promise");
-const ethers = require('ethers');
+const ethers = require("ethers");
 const txDecoder = require("ethereum-tx-decoder");
+const abi = require("ethereumjs-abi");
 import { forwarderAbi } from "./abis";
 const {
   config,
@@ -20,14 +21,13 @@ const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
-const {buildForwardTxRequest, getDomainSeperator} = require("./biconomyforwarder");
+import { buildForwardTxRequest, getDomainSeperator } from "./biconomyforwarder";
 
 // todo
 // to be added from sys info
-const PERSONAL_SIGN = config.PERSONAL_SIGN;
+
 const EIP712_SIGN = config.EIP712_SIGN;
-const PERSONAL_SIGN_CALL = config.PERSONAL_SIGN_CALL;
-const EIP712_SIGN_CALL = config.EIP712_SIGN_CALL;
+
 const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
 
 const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
@@ -41,7 +41,12 @@ const events = require("events");
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
 
-let domainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType, forwarderAddress;
+let domainType,
+  metaInfoType,
+  relayerPaymentType,
+  metaTransactionType,
+  forwardRequestType,
+  forwarderAddress;
 
 let domainData = {
   name: config.eip712DomainName,
@@ -79,9 +84,6 @@ function Biconomy(provider, options) {
     if (options.defaultAccount) {
       web3.eth.defaultAccount = options.defaultAccount;
     }
-
-    // or use ethers
-    biconomyForwarder = new web3.eth.Contract(forwarderAbi, forwarderAddress);
 
     const proto = Object.getPrototypeOf(provider);
     const keys = Object.getOwnPropertyNames(proto);
@@ -398,7 +400,7 @@ function decodeMethod(to, data) {
 async function sendSignedTransaction(engine, payload, end) {
   if (payload && payload.params[0]) {
     let data = payload.params[0];
-    let rawTransaction, signature;
+    let rawTransaction, signature, signatureType;
 
     if (typeof data == "string") {
       // Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
@@ -407,6 +409,7 @@ async function sendSignedTransaction(engine, payload, end) {
       // Here user wrapped raw Transaction in json object along with signature
       signature = data.signature;
       rawTransaction = data.rawTransaction;
+      signatureType = data.signatureType;
     }
 
     if (rawTransaction) {
@@ -470,6 +473,8 @@ async function sendSignedTransaction(engine, payload, end) {
           paramArray.push(_getParamValue(params[i]));
         }
 
+        //todo
+        //check this recover method for EIP712 sign type
         let account = web3.eth.accounts.recoverTransaction(rawTransaction);
         _logMessage(`signer is ${account}`);
         if (!account) {
@@ -479,6 +484,15 @@ async function sendSignedTransaction(engine, payload, end) {
           );
           return end(error);
         }
+
+        /**
+         * based on the api check contract meta transaction type
+         * change paramArray accordingly
+         * build request
+         * create domain seperator based on signature type
+         * use already available signature
+         * send API call with appropriate parameters based on signature type
+         */
         if (api.url == NATIVE_META_TX_URL) {
           let data = {};
           data.from = account;
@@ -716,6 +730,7 @@ async function handleSendTransaction(engine, payload, end) {
       }
       let gasPrice = payload.params[0].gasPrice;
       let gasLimit = payload.params[0].gas;
+      let signatureType = payload.params[0].signatureType;
       _logMessage(api);
 
       if (!api) {
@@ -753,21 +768,49 @@ async function handleSendTransaction(engine, payload, end) {
         if (metaTxApproach == TRUSTED_FORWARDER) {
           forwardedData = payload.params[0].data;
           // call "TrustedForwarderClient" helper method here to get req, domainSeperator and signature
-          //if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000} 
+          //todo
+          //fix below issue to estimate gas
+          //if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000}
           gasLimitNum = 75000;
           const request = (
-            await buildForwardTxRequest(account, to, gasLimitNum, forwardedData)
+            await buildForwardTxRequest(
+              account,
+              to,
+              gasLimitNum,
+              forwardedData,
+              biconomyForwarder
+            )
           ).request;
           _logMessage(request);
 
-          const domainSeparator = getDomainSeperator();
-          _logMessage(domainSeparator);
-
           paramArray.push(request);
-          paramArray.push(domainSeparator);
-          // tested - pending code review
-          // move to helper methods   
-          await getSignatureAndRelay(engine, end, account, to, request, paramArray, api, gasLimit);
+          if (signatureType && signatureType == EIP712_SIGN) {
+            const domainSeparator = getDomainSeperator();
+            _logMessage(domainSeparator);
+            paramArray.push(domainSeparator);
+            const signatureEIP712 = await getSignatureEIP712(account, request);
+            console.log(signatureEIP712);
+            paramArray.push(signatureEIP712);
+          } else {
+            const signaturePersonal = await getSignaturePersonal(
+              account,
+              request
+            );
+            console.log(signaturePersonal);
+            paramArray.push(signaturePersonal);
+          }
+
+          let data = {};
+          data.from = account;
+          data.apiId = api.id;
+          data.params = paramArray;
+          data.gasLimit = gasLimit;
+          data.to = to;
+          /* if below is not explicitly passed biconomy core will assume it for personal signature and would expect two parameters*/
+          if (data.signatureType) {
+            data.signatureType = EIP712_SIGN;
+          }
+          await _sendTransaction(engine, account, api, data, end);
         } else {
           for (let i = 0; i < params.length; i++) {
             paramArray.push(_getParamValue(params[i]));
@@ -948,18 +991,7 @@ async function _getUserNonce(address, engine) {
   }
 }
 
-
-
-async function getSignatureAndRelay(
-  engine,
-  end,
-  account,
-  to,
-  request,
-  paramArray,
-  api,
-  gasLimit
-) {
+async function getSignatureEIP712(account, request) {
   const erc20fr = Object.assign({}, request);
   erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
   delete erc20fr.data;
@@ -991,23 +1023,41 @@ async function getSignatureAndRelay(
     );
   });
 
-  promi
-    .then(function (sig) {
-      console.log("signature " + sig);
-      paramArray.push(sig);
-      let data = {};
-      data.from = account;
-      data.apiId = api.id;
-      data.params = paramArray;
-      data.gasLimit = gasLimit;
-      data.to = to;
-      data.signatureType = EIP712_SIGN;
-      _sendTransaction(engine, account, api, data, end);
-    })
-    .catch(function (error) {
-      console.log("could not get signature error " + error);
-      showErrorMessage("Could not get user signature");
-    });
+  return promi;
+}
+
+async function getSignaturePersonal(account, req) {
+  const hashToSign = abi.soliditySHA3(
+    [
+      "address",
+      "address",
+      "address",
+      "uint256",
+      "uint256",
+      "uint256",
+      "uint256",
+      "uint256",
+      "bytes32",
+    ],
+    [
+      req.from,
+      req.to,
+      req.token,
+      req.txGas,
+      req.tokenGasPrice,
+      req.batchId,
+      req.batchNonce,
+      req.deadline,
+      ethers.utils.keccak256(req.data),
+    ]
+  );
+
+  const signature = await web3.eth.personal.sign(
+    "0x" + hashToSign.toString("hex"),
+    account
+  );
+
+  return signature;
 }
 
 /**
@@ -1189,7 +1239,7 @@ function _getParamValue(paramObj) {
  * @param data Data to be sent to biconomy server having transaction data
  * @param cb Callback method to be called to pass result or send error
  **/
-function _sendTransaction(engine, account, api, data, cb) {
+async function _sendTransaction(engine, account, api, data, cb) {
   if (engine && account && api && data) {
     let url = api.url;
     let fetchOption = getFetchOptions("POST", engine.apiKey);
@@ -1315,6 +1365,10 @@ async function _init(apiKey, engine) {
                           )
                         );
                       }
+                      biconomyForwarder = new web3.eth.Contract(
+                        forwarderAbi,
+                        forwarderAddress
+                      );
                       // Get dapps smart contract data from biconomy servers
                       let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
                       fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey))

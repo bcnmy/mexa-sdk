@@ -7,7 +7,7 @@ class PermitClient{
 
 constructor(provider,biconomyOptions){
     const biconomy = new Biconomy(provider, biconomyOptions);
-    const ethersProvider = new ethers.providers.Web3Provider(provider);
+    const ethersProvider = new ethers.providers.Web3Provider(biconomy);
     this.signer = ethersProvider.getSigner();
 }
 

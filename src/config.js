@@ -30,13 +30,9 @@ config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-
-config.PERSONAL_SIGN = "personalSign";
 config.EIP712_SIGN = "EIP712Sign";
-config.EIP712_SIGN_CALL = "executeEIP712";
-config.PERSONAL_SIGN_CALL = "executePersonalSign";
-config.TRUSTED_FORWARDER = "TrustedForwarder";
-
+config.TRUSTED_FORWARDER = "TrustedForwarder"; // final enum to add 
+//config.FEE_PROXY_ADDRESS_KOVAN = "0x1E13cbCb6B695D10B68b2f83D71F0D201504C598";
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;

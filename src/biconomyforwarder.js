@@ -1,15 +1,16 @@
 import {ethers} from 'ethers';
-import { forwarderAbi } from "./abis";
 const {
     config
   } = require("./config");
-  
+const ZERO_ADDRESS = config.ZERO_ADDRESS;  
+const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
 
 const buildForwardTxRequest = async (
   account,
   to,
   gasLimitNum,
   data,
+  biconomyForwarder,
   newBatch = false
 ) => {
   const batchId = newBatch
@@ -52,4 +53,4 @@ const getDomainSeperator = () => {
 
 
 
-module.exports = { buildForwardTxRequest, getDomainSeperator };
+export { buildForwardTxRequest, getDomainSeperator };
