@@ -36,7 +36,6 @@ let decoderMap = {},
   smartContractMap = {},
   smartContractMetaTransactionMap = {}; // make it object map possibly
 let biconomyForwarder;
-let web3;
 const events = require("events");
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
@@ -56,6 +55,14 @@ let domainData = {
 
 // EIP712 format data for login
 let loginDomainType, loginMessageType, loginDomainData;
+
+function getWeb3(context) {
+	let web3;
+	if(context) {
+		web3 = context.web3;
+	}
+	return web3;
+}
 
 function Biconomy(provider, options) {
   if (typeof fetch == "undefined") {
@@ -80,9 +87,9 @@ function Biconomy(provider, options) {
   _init(this.apiKey, this);
 
   if (provider) {
-    web3 = new Web3(provider);
+    this.web3 = new Web3(provider);
     if (options.defaultAccount) {
-      web3.eth.defaultAccount = options.defaultAccount;
+      getWeb3(this).eth.defaultAccount = options.defaultAccount;
     }
 
     const proto = Object.getPrototypeOf(provider);
@@ -115,7 +122,7 @@ function Biconomy(provider, options) {
           }
         });
       } else {
-        web3.currentProvider.send(payload, cb);
+        getWeb3(self).currentProvider.send(payload, cb);
       }
     };
 
@@ -124,10 +131,23 @@ function Biconomy(provider, options) {
       if (payload.method == "eth_sendTransaction") {
         return new Promise((resolve, reject) => {
           handleSendTransaction(self, payload, (error, result) => {
+            
             if (error) {
               return reject(error);
             }
-            resolve(result);
+
+            if(result.result)
+            {
+              resolve(result.result);
+              _logMessage(result.result);
+            }
+            else
+            {
+              resolve(result);
+              _logMessage(result);
+            }
+            
+            
             if (cb) {
               cb(error, result);
             }
@@ -136,17 +156,52 @@ function Biconomy(provider, options) {
       } else if (payload.method == "eth_sendRawTransaction") {
         return new Promise((resolve, reject) => {
           sendSignedTransaction(self, payload, (error, result) => {
+            
             if (error) {
               return reject(error);
             }
+
+            if(result.result)
+            {
+              resolve(result.result);
+              _logMessage(result.result);
+            }
+            else
+            {
             resolve(result);
+            _logMessage(result);
+            }
             if (cb) {
               cb(error, result);
             }
           });
         });
       } else {
-        return web3.currentProvider.request(payload, cb);
+        if(getWeb3(self).currentProvider.request) {
+					return getWeb3(self).currentProvider.request(args, cb);
+				} else if(getWeb3(self).currentProvider.send) {
+					return new Promise((resolve, reject)=>{
+						let jsonRPCPaylod = toJSONRPCPayload(self, payload.method, payload.params);
+						getWeb3(self).currentProvider.send(jsonRPCPaylod, (err, response)=>{
+							if(err) {
+								return reject(err);
+              }
+              if(response.result)
+              {
+                resolve(response.result);
+              _logMessage(response.result);
+              }
+              else
+              {
+              resolve(response);
+              _logMessage(response);
+              }
+						});
+					});
+				} else {
+					return Promise.reject("Invalid provider object passed to Biconomy as it doesn't support request or send method");
+				}
+        //return getWeb3(self).currentProvider.request(payload, cb);
       }
     };
     this.sendAsync = this.send;
@@ -264,7 +319,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
           paramArray.push(_getParamValue(params[i]));
         }
 
-        let account = web3.eth.accounts.recoverTransaction(rawTransaction);
+        let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
         _logMessage(`signer is ${account}`);
         if (!account) {
           let error = formatMessage(
@@ -300,7 +355,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
         message.batchId = config.NONCE_BATCH_ID;
         let nonce = await _getUserContractNonce(account, engine);
         message.nonce = parseInt(nonce);
-        message.value = web3.utils.toHex(decodedTx.value);
+        message.value = getWeb3(engine).utils.toHex(decodedTx.value);
         message.txGas = decodedTx.gasLimit.toString()
           ? decodedTx.gasLimit.toString()
           : 0;
@@ -370,7 +425,7 @@ function _createJsonRpcResponse(payload, error, result) {
     response.error = error;
   } else if (result && result.error) {
     response.error = result.error;
-  } else if (web3.utils.isHex(result)) {
+  } else if (getWeb3(this).utils.isHex(result)) {
     response.result = result;
   } else {
     response = result;
@@ -434,7 +489,7 @@ async function sendSignedTransaction(engine, payload, end) {
               if (typeof data == "object" && data.rawTransaction) {
                 payload.params = [data.rawTransaction];
               }
-              return web3.currentProvider.send(payload, end);
+              return getWeb3(engine).currentProvider.send(payload, end);
             }
           }
         }
@@ -463,7 +518,7 @@ async function sendSignedTransaction(engine, payload, end) {
             if (typeof data == "object" && data.rawTransaction) {
               payload.params = [data.rawTransaction];
             }
-            return web3.currentProvider.send(payload, end);
+            return getWeb3().currentProvider.send(payload, end);
           }
         }
         _logMessage("API found");
@@ -475,7 +530,7 @@ async function sendSignedTransaction(engine, payload, end) {
 
         //todo
         //check this recover method for EIP712 sign type
-        let account = web3.eth.accounts.recoverTransaction(rawTransaction);
+        let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
         _logMessage(`signer is ${account}`);
         if (!account) {
           let error = formatMessage(
@@ -521,7 +576,7 @@ async function sendSignedTransaction(engine, payload, end) {
               data.from = account;
               data.apiId = api.id;
               data.data = decodedTx.data;
-              data.value = web3.utils.toHex(decodedTx.value);
+              data.value = getWeb3(engine).utils.toHex(decodedTx.value);
               data.gasLimit = decodedTx.gasLimit.toString();
               data.nonceBatchId = config.NONCE_BATCH_ID;
               data.expiry = config.EXPIRY;
@@ -613,7 +668,7 @@ Biconomy.prototype.withdrawFunds = function (
     message.data = "0x0";
     message.batchId = config.NONCE_BATCH_ID;
     message.nonce = parseInt(nonce);
-    message.value = web3.utils.toHex(withdrawAmount || 0);
+    message.value = getWeb3(engine).utils.toHex(withdrawAmount || 0);
     message.txGas = 0;
     message.expiry = config.EXPIRY;
     message.baseGas = config.BASE_GAS;
@@ -632,7 +687,7 @@ Biconomy.prototype.withdrawFunds = function (
     });
 
     try {
-      web3.currentProvider.send(
+      getWeb3(engine).currentProvider.send(
         {
           jsonrpc: JSON_RPC_VERSION,
           id: DEFAULT_PAYLOAD_ID,
@@ -655,7 +710,7 @@ Biconomy.prototype.withdrawFunds = function (
             let data = {};
             data.signature = response.result;
             data.to = receiverAddress;
-            data.value = web3.utils.toHex(withdrawAmount) || 0;
+            data.value = getWeb3(engine).utils.toHex(withdrawAmount) || 0;
             data.from = account;
             data.data = "0x0";
             data.expiry = config.EXPIRY;
@@ -745,7 +800,7 @@ async function handleSendTransaction(engine, payload, end) {
           _logMessage(
             `Falling back to default provider as strict mode is false in biconomy`
           );
-          return web3.currentProvider.send(payload, end);
+          return getWeb3(engine).currentProvider.send(payload, end);
         }
       }
       _logMessage("API found");
@@ -852,7 +907,7 @@ async function handleSendTransaction(engine, payload, end) {
           if (!gasLimit || parseInt(gasLimit) == 0) {
             let contractABI = smartContractMap[to];
             if (contractABI) {
-              let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+              let contract = new getWeb3(engine).eth.Contract(JSON.parse(contractABI), to);
               gasLimit = await contract.methods[methodName]
                 .apply(null, paramArray)
                 .estimateGas({ from: userContractWallet });
@@ -871,7 +926,7 @@ async function handleSendTransaction(engine, payload, end) {
           message.data = payload.params[0].data;
           message.batchId = config.NONCE_BATCH_ID;
           message.nonce = parseInt(nonce);
-          message.value = web3.utils.toHex(payload.params[0].value || 0);
+          message.value = getWeb3(engine).utils.toHex(payload.params[0].value || 0);
           message.txGas = gasLimit ? gasLimit : 0;
           message.expiry = config.EXPIRY;
           message.baseGas = config.BASE_GAS;
@@ -917,7 +972,7 @@ async function handleSendTransaction(engine, payload, end) {
                 data.expiry = config.EXPIRY;
                 data.baseGas = config.BASE_GAS;
                 data.userContract = userContractWallet;
-                data.value = web3.utils.toHex(payload.params[0].value || 0);
+                data.value = getWeb3(engine).utils.toHex(payload.params[0].value || 0);
                 data.gasLimit = gasLimit ? gasLimit : 0;
                 data.relayerPayment = {
                   token: relayerPayment.token,
@@ -948,7 +1003,7 @@ async function handleSendTransaction(engine, payload, end) {
         _logMessage(
           "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
         );
-        return web3.currentProvider.send(payload, end);
+        return getWeb3(engine).currentProvider.send(payload, end);
       }
     }
   } else {
@@ -1006,7 +1061,7 @@ async function getSignatureEIP712(account, request) {
   });
 
   const promi = new Promise(async function (resolve, reject) {
-    await web3.currentProvider.send(
+    await getWeb3(this).currentProvider.send(
       {
         jsonrpc: "2.0",
         id: 999999999999,
@@ -1052,7 +1107,7 @@ async function getSignaturePersonal(account, req) {
     ]
   );
 
-  const signature = await web3.eth.personal.sign(
+  const signature = await this.web3.eth.personal.sign(
     "0x" + hashToSign.toString("hex"),
     account
   );
@@ -1133,7 +1188,7 @@ function _getUserAccount(engine, payload, cb) {
       id = payload.id;
     }
     if (cb) {
-      web3.currentProvider.send(
+      getWeb3(engine).currentProvider.send(
         {
           jsonrpc: JSON_RPC_VERSION,
           id: id,
@@ -1145,10 +1200,10 @@ function _getUserAccount(engine, payload, cb) {
             response &&
             response.result &&
             response.result.length == 0 &&
-            web3.eth.defaultAccount &&
-            web3.eth.defaultAccount != ""
+            getWeb3(engine).eth.defaultAccount &&
+            getWeb3(engine).eth.defaultAccount != ""
           ) {
-            response.result.push(web3.eth.defaultAccount);
+            response.result.push(getWeb3(engine).eth.defaultAccount);
             cb(error, response);
           } else {
             cb(error, response);
@@ -1157,7 +1212,7 @@ function _getUserAccount(engine, payload, cb) {
       );
     } else {
       return new Promise(function (resolve, reject) {
-        web3.currentProvider.send(
+        getWeb3(engine).currentProvider.send(
           {
             jsonrpc: JSON_RPC_VERSION,
             id: id,
@@ -1172,10 +1227,10 @@ function _getUserAccount(engine, payload, cb) {
             } else if (
               res.result &&
               res.result.length == 0 &&
-              web3.eth.defaultAccount &&
-              web3.eth.defaultAccount != ""
+              getWeb3(engine).eth.defaultAccount &&
+              getWeb3(engine).eth.defaultAccount != ""
             ) {
-              resolve(web3.eth.defaultAccount);
+              resolve(getWeb3(engine).eth.defaultAccount);
             } else {
               resolve(res.result[0]);
             }
@@ -1212,7 +1267,7 @@ function _getParamValue(paramObj) {
     switch (type) {
       case (type.match(/^uint/) || type.match(/^int/) || {}).input:
         value = scientificToDecimal(parseInt(paramObj.value));
-        value = web3.utils.toHex(value);
+        value = getWeb3(this).utils.toHex(value);
         break;
       case "string":
         if (typeof paramObj.value === "object") {
@@ -1304,7 +1359,7 @@ async function _init(apiKey, engine) {
           _logMessage(
             `Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`
           );
-          web3.currentProvider.send(
+          getWeb3(engine).currentProvider.send(
             {
               jsonrpc: JSON_RPC_VERSION,
               id: "102",
@@ -1365,6 +1420,8 @@ async function _init(apiKey, engine) {
                           )
                         );
                       }
+                      //review
+                      let web3 = getWeb3(engine);
                       biconomyForwarder = new web3.eth.Contract(
                         forwarderAbi,
                         forwarderAddress
@@ -1658,7 +1715,7 @@ Biconomy.prototype.accountLogin = async function (signer, signature, cb) {
 };
 
 const getLoginTransactionReceipt = async (engine, txHash, userAddress) => {
-  var receipt = await web3.eth.getTransactionReceipt(txHash);
+  var receipt = await getWeb3(engine).eth.getTransactionReceipt(txHash);
   if (receipt) {
     if (receipt.status) {
       await _getUserContractWallet(
@@ -1743,7 +1800,7 @@ Biconomy.prototype.login = async function (signer, cb) {
       if (cb) cb(response);
       return reject(response);
     }
-    web3.currentProvider.sendAsync(
+    getWeb3(engine).currentProvider.sendAsync(
       {
         jsonrpc: JSON_RPC_VERSION,
         id: "101",
