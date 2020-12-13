@@ -31,7 +31,9 @@ config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 config.EIP712_SIGN = "EIP712Sign";
-config.TRUSTED_FORWARDER = "TrustedForwarder"; // final enum to add 
+config.TRUSTED_FORWARDER = "TrustedForwarder";
+config.DEFAULT = "Default"; 
+// finalize enum to add 
 //config.FEE_PROXY_ADDRESS_KOVAN = "0x1E13cbCb6B695D10B68b2f83D71F0D201504C598";
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
@@ -81,6 +83,37 @@ config.forwardRequestType = [
     {name:'deadline',type:'uint256'},
     {name:'dataHash',type:'bytes32'}
 ];
+
+config.daiDomainData = {
+	name : "Dai Stablecoin",
+	version : "1",
+	chainId : 42,
+	verifyingContract : "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
+  };
+
+
+config.daiPermitType = [
+	{ name: "holder", type: "address" },
+	{ name: "spender", type: "address" },
+	{ name: "nonce", type: "uint256" },
+	{ name: "expiry", type: "uint256" },
+	{ name: "allowed", type: "bool" },
+  ];
+
+config.eip2612PermitType = [
+	{ name: "owner", type: "address" },
+	{ name: "spender", type: "address" },
+	{ name: "value", type: "uint256" },
+	{ name: "nonce", type: "uint256" },
+	{ name: "deadline", type: "uint256" },
+  ];
+
+config.domainType = [
+	{ name: "name", type: "string" },
+	{ name: "version", type: "string" },
+	{ name: "chainId", type: "uint256" },
+	{ name: "verifyingContract", type: "address" },
+  ];
 
 const BICONOMY_RESPONSE_CODES = {
 	SUCCESS : 200,

@@ -9,29 +9,6 @@ import {
   transferHandlerAbi,
 } from "./abis";
 
-const domainType = [
-  { name: "name", type: "string" },
-  { name: "version", type: "string" },
-  { name: "chainId", type: "uint256" },
-  { name: "verifyingContract", type: "address" },
-];
-
-const daiPermitType = [
-  { name: "holder", type: "address" },
-  { name: "spender", type: "address" },
-  { name: "nonce", type: "uint256" },
-  { name: "expiry", type: "uint256" },
-  { name: "allowed", type: "bool" },
-];
-
-const eip2612PermitType = [
-  { name: "owner", type: "address" },
-  { name: "spender", type: "address" },
-  { name: "value", type: "uint256" },
-  { name: "nonce", type: "uint256" },
-  { name: "deadline", type: "uint256" },
-];
-
 const erc20ForwardRequestType = [
   { name: "from", type: "address" },
   { name: "to", type: "address" },
@@ -43,6 +20,15 @@ const erc20ForwardRequestType = [
   { name: "deadline", type: "uint256" },
   { name: "dataHash", type: "bytes32" },
 ];
+
+let feeProxyDomainData = {
+  name: "TEST",
+  version: "1",
+};
+
+let dappNetworkId, providerNetworkId, domainType;
+
+let feeProxyAddress, transferHandlerAddress;
 
 function getFetchOptions(method, apiKey) {
   return {
@@ -58,7 +44,7 @@ function getFetchOptions(method, apiKey) {
 // there should be a way to get networkId from the provider
 // pass the networkId to get gas price
 const getGasPrice = async () => {
-  const apiInfo = `${config.baseURL}/api/v1/gas-price?networkId=42`;
+  const apiInfo = `${config.baseURL}/api/v1/gas-price?networkId=${providerNetworkId}`;
   const response = await fetch(apiInfo);
   const responseJson = await response.json();
   console.log("Response JSON " + JSON.stringify(responseJson));
@@ -66,6 +52,17 @@ const getGasPrice = async () => {
     .parseUnits(responseJson.gasPrice.value.toString(), "gwei")
     .toString();
 };
+
+/**
+ * Single method to be used for logging purpose.
+ *
+ * @param {string} message Message to be logged
+ */
+function _logMessage(message) {
+  if (config && config.logsEnabled && console.log) {
+    console.log(message);
+  }
+}
 
 class ERC20ForwarderClient {
   //todo
@@ -116,48 +113,119 @@ class ERC20ForwarderClient {
    * any additional information should go through biconomy options
    * consider adding feeProxyAddress, transferHandlerAddress, feeProxyDomainData etc as options
    */
-  static async factory(
-    provider,
-    BiconomyOptions
-  ) {
-    const feeProxyDomainData = BiconomyOptions.feeProxyDomainData;
-    const feeProxyAddress = BiconomyOptions.feeProxyAddress;
-    const transferHandlerAddress = BiconomyOptions.transferHandlerAddress;
+  static async factory(provider, biconomyOptions) {
     const originalProvider = new ethers.providers.Web3Provider(provider);
     const signer = originalProvider.getSigner();
     const address = await signer.getAddress();
-    //const signer = await biconomyProvider.getSigner();
-    const feeProxy = new ethers.Contract(feeProxyAddress, feeProxyAbi, signer);
-    const oracleAggregatorAddress = await feeProxy.oracleAggregator();
-    const feeManagerAddress = await feeProxy.feeManager();
-    const forwarderAddress = await feeProxy.forwarder();
-    //biconomy object will contain apiKey data
-    const dappAPIMap = {};
-    const getAPIInfoAPI = `${config.baseURL}/api/${config.version}/meta-api`;
 
-    fetch(getAPIInfoAPI, getFetchOptions("GET", BiconomyOptions.apiKey))
-      .then((response) => response.json())
+    //get network Id
+    let getDappAPI = `${config.baseURL}/api/${config.version}/dapp`;
+
+    dappNetworkId = await fetch(
+      getDappAPI,
+      getFetchOptions("GET", biconomyOptions.apiKey)
+    )
       .then(function (response) {
-        if (response && response.listApis) {
-          let apiList = response.listApis;
-          for (let i = 0; i < apiList.length; i++) {
-            let contractAddress = apiList[i].contractAddress;
-            if (!dappAPIMap[contractAddress]) {
-              dappAPIMap[contractAddress.toLowerCase()] = {};
-            }
-            dappAPIMap[contractAddress.toLowerCase()][apiList[i].method] =
-              apiList[i];
-          }
-          console.log(dappAPIMap);
+        return response.json();
+      })
+      .then(function (dappResponse) {
+        _logMessage(dappResponse);
+        if (dappResponse && dappResponse.dapp) {
+          let networkId = dappResponse.dapp.networkId;
+          let dappId = dappResponse.dapp._id;
+          _logMessage(
+            `Network id corresponding to dapp id ${dappId} is ${networkId}`
+          );
+          return networkId;
         }
       })
       .catch(function (error) {
         _logMessage(error);
       });
 
-    const decoderMap = {};
+    providerNetworkId = await originalProvider.send(
+      "net_version",
+      [],
+      function (error, networkResponse) {
+        if (error || (networkResponse && networkResponse.error)) {
+          _logMessage("Could not get network version");
+        } else {
+          let res = networkResponse.result;
+          _logMessage(`Current provider network id: ${res}`);
+          return res;
+        }
+      }
+    );
+
+    //get contract addresses
+
+    let systemInfoData = await fetch(
+      `${config.baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`
+    )
+      .then((response) => response.json())
+      .then((systemInfo) => {
+        if (systemInfo) {
+          return systemInfo;
+        } else {
+          _logMessage(
+            "Could not get system info from the server. Contact Biconomy Team"
+          );
+        }
+      })
+      .catch(function (error) {
+        _logMessage(error);
+      });
+
+    feeProxyAddress =
+      typeof biconomyOptions.feeProxyAddress !== "undefined"
+        ? biconomyOptions.feeProxyAddress
+        : systemInfoData.ercFeeProxyAddress;
+    transferHandlerAddress =
+      typeof biconomyOptions.transferHandlerAddress !== "undefined"
+        ? biconomyOptions.transferHandlerAddress
+        : systemInfoData.transferHandlerAddress;
+    domainType = systemInfoData.domainType;
+
+    //const signer = await biconomyProvider.getSigner();
+    const feeProxy = new ethers.Contract(feeProxyAddress, feeProxyAbi, signer);
+    const oracleAggregatorAddress = await feeProxy.oracleAggregator();
+    const feeManagerAddress = await feeProxy.feeManager();
+    const forwarderAddress = await feeProxy.forwarder();
+    //biconomy object will contain apiKey data
+    let dappAPIMap = {};
+    const getAPIInfoAPI = `${config.baseURL}/api/${config.version}/meta-api`;
+
+    dappAPIMap = await fetch(
+      getAPIInfoAPI,
+      getFetchOptions("GET", biconomyOptions.apiKey)
+    )
+      .then((response) => response.json())
+      .then(function (response) {
+        if (response && response.listApis) {
+          let apiList = response.listApis;
+          let apiMap = {};
+          for (let i = 0; i < apiList.length; i++) {
+            let contractAddress = apiList[i].contractAddress;
+            if (!apiMap[contractAddress]) {
+              apiMap[contractAddress.toLowerCase()] = {};
+            }
+            apiMap[contractAddress.toLowerCase()][apiList[i].method] =
+              apiList[i];
+          }
+          console.log(apiMap);
+          return apiMap;
+        }
+      })
+      .catch(function (error) {
+        _logMessage(error);
+      });
+
+    let decoderMap = {};
     let getDAppInfoAPI = `${config.baseURL}/api/${config.version}/smart-contract`;
-    fetch(getDAppInfoAPI, getFetchOptions("GET", BiconomyOptions.apiKey))
+    decoderMap = await fetch(
+      getDAppInfoAPI,
+      getFetchOptions("GET", biconomyOptions.apiKey)
+    )
       .then((response) => response.json())
       .then(function (result) {
         if (!result && result.flag != 143) {
@@ -169,24 +237,30 @@ class ERC20ForwarderClient {
             )
           );
         }
+        let abiDecoderMap = {};
         let smartContractList = result.smartContracts;
         if (smartContractList && smartContractList.length > 0) {
           smartContractList.forEach((contract) => {
             abiDecoder.addABI(JSON.parse(contract.abi));
-            decoderMap[contract.address.toLowerCase()] = abiDecoder;
+            abiDecoderMap[contract.address.toLowerCase()] = abiDecoder;
           });
+          return abiDecoderMap;
         }
       })
       .catch(function (error) {
         _logMessage(error);
       });
 
+    feeProxyDomainData.chainId = providerNetworkId;
+    feeProxyDomainData.verifyingContract = forwarderAddress;
+    console.log(feeProxyDomainData);
+
     const biconomy = {
-      apiKey: BiconomyOptions.apiKey,
+      apiKey: biconomyOptions.apiKey,
       dappAPIMap: dappAPIMap,
       decoderMap: decoderMap,
     };
-    //find out ApiKey information here if possible
+
     return new ERC20ForwarderClient(
       biconomy,
       signer,
@@ -371,6 +445,76 @@ class ERC20ForwarderClient {
     const responseJson = await biconomy.json();
     return responseJson["txHash"];
   }
+ 
+  async getSignatureEIP712(account, request) {
+    const erc20fr = Object.assign({}, request);
+    erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
+    delete erc20fr.data;
+    const dataToSign = JSON.stringify({
+      types: {
+        EIP712Domain: domainType,
+        ERC20ForwardRequest: forwardRequestType,
+      },
+      domain: biconomyForwarderDomainData,
+      primaryType: "ERC20ForwardRequest",
+      message: erc20fr,
+    });
+  
+    const promi = new Promise(async function (resolve, reject) {
+      await getWeb3(engine).currentProvider.send(
+        {
+          jsonrpc: "2.0",
+          id: 999999999999,
+          method: "eth_signTypedData_v4",
+          params: [account, dataToSign],
+        },
+        function (error, res) {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(res.result);
+          }
+        }
+      );
+    });
+  
+    return promi;
+  }
+  
+  async getSignaturePersonal(account, req) {
+    const hashToSign = abi.soliditySHA3(
+      [
+        "address",
+        "address",
+        "address",
+        "uint256",
+        "uint256",
+        "uint256",
+        "uint256",
+        "uint256",
+        "bytes32",
+      ],
+      [
+        req.from,
+        req.to,
+        req.token,
+        req.txGas,
+        req.tokenGasPrice,
+        req.batchId,
+        req.batchNonce,
+        req.deadline,
+        ethers.utils.keccak256(req.data),
+      ]
+    );
+    
+    const signature = await getWeb3(engine).eth.personal.sign(
+      "0x" + hashToSign.toString("hex"),
+      account
+    );
+  
+    return signature;
+  }
+
 }
 
 export default ERC20ForwarderClient;
