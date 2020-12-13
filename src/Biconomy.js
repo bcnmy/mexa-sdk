@@ -31,7 +31,7 @@ const EIP712_SIGN = config.EIP712_SIGN;
 const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
 const DEFAULT = config.DEFAULT;
 
-const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
+let biconomyForwarderDomainData = config.biconomyForwarderDomainData;
 
 let decoderMap = {},
   smartContractMap = {},
@@ -48,7 +48,8 @@ let domainType,
   forwardRequestType,
   forwarderAddress,
   transferHandlerAddress,
-  ercFeeProxyAddress;
+  ercFeeProxyAddress,
+  daiTokenAddress;
 
 let domainData = {
   name: config.eip712DomainName,
@@ -1466,6 +1467,7 @@ async function _init(apiKey, engine) {
                   );
                 } else {
                   domainData.chainId = providerNetworkId;
+                  biconomyForwarderDomainData.chainId = providerNetworkId;
                   fetch(
                     `${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`
                   )
@@ -1483,6 +1485,9 @@ async function _init(apiKey, engine) {
                         forwarderAddress = systemInfo.biconomyForwarderAddress;
                         ercFeeProxyAddress = systemInfo.ercFeeProxyAddress;
                         transferHandlerAddress = systemInfo.transferHandlerAddress;
+                        daiTokenAddress = systemInfo.daiTokenAddress;
+
+                        biconomyForwarderDomainData.verifyingContract = forwarderAddress;
 
 
                         if (systemInfo.relayHubAddress) {

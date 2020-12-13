@@ -67,9 +67,7 @@ const RESPONSE_CODES = {
 
 config.biconomyForwarderDomainData = {
     name : "TEST",
-    version : "1",
-    chainId : 42,
-    verifyingContract : "0xBFA21CD2F21a8E581E77942B2831B378d2378E69"
+    version : "1"
   };
 
 config.forwardRequestType = [
@@ -83,14 +81,6 @@ config.forwardRequestType = [
     {name:'deadline',type:'uint256'},
     {name:'dataHash',type:'bytes32'}
 ];
-
-config.daiDomainData = {
-	name : "Dai Stablecoin",
-	version : "1",
-	chainId : 42,
-	verifyingContract : "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
-  };
-
 
 config.daiPermitType = [
 	{ name: "holder", type: "address" },
