@@ -97,6 +97,7 @@ function Biconomy(provider, options) {
   _validate(options);
   this.isBiconomy = true;
   this.status = STATUS.INIT;
+  this.options = options;
   this.apiKey = options.apiKey;
   this.isLogin = false;
   this.dappAPIMap = {};
@@ -1284,7 +1285,11 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
     const signer = ethersProvider.getSigner();
     const address = await signer.getAddress();
     _logMessage(address);
-    const feeProxy = new ethers.Contract(engine.feeProxyAddress, feeProxyAbi, signer);
+
+    const feeProxyAddress = engine.options.feeProxyAddress || engine.feeProxyAddress;
+    const transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress;
+
+    const feeProxy = new ethers.Contract(feeProxyAddress, feeProxyAbi, signer);
     const oracleAggregatorAddress = await feeProxy.oracleAggregator();
     const feeManagerAddress = await feeProxy.feeManager();
     const forwarderAddress = await feeProxy.forwarder();
