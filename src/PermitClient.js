@@ -1,30 +1,21 @@
 import { daiAbi, erc20Eip2612Abi } from "./abis";
 import { ethers } from "ethers";
 const { config } = require("./config");
-import Biconomy from "./Biconomy";
-
-let daiDomainData = {
-	name : "Dai Stablecoin",
-	version : "1",
-	chainId : 42,
-	verifyingContract : "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
-  };
 
 // work on this later to use smart contract address nad provider id from biconomy 
 
 class PermitClient {
-  constructor(provider, biconomyOptions) {
-    const biconomy = new Biconomy(provider, biconomyOptions);
-    const ethersProvider = new ethers.providers.Web3Provider(biconomy);
+  constructor(provider,daiDomainData) {
+    const ethersProvider = new ethers.providers.Web3Provider(provider);
     this.provider = ethersProvider;
     this.signer = ethersProvider.getSigner();
+    this.daiDomainData = daiDomainData;
   }
 
-  // pending final reviews
   //rather pass single param json object
   async daiPermit(spender, expiry, allowed) {
     const dai = new ethers.Contract(
-      daiDomainData.verifyingContract,
+      this.daiDomainData.verifyingContract,
       daiAbi,
       this.signer
     );
@@ -35,7 +26,7 @@ class PermitClient {
         EIP712Domain: config.domainType,
         Permit: config.daiPermitType,
       },
-      domain: daiDomainData,
+      domain: this.daiDomainData,
       primaryType: "Permit",
       message: {
         holder: userAddress,

@@ -3,7 +3,6 @@ const {
     config
   } = require("./config");
 const ZERO_ADDRESS = config.ZERO_ADDRESS;  
-const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
 
 const buildForwardTxRequest = async (
   account,
@@ -33,7 +32,7 @@ const buildForwardTxRequest = async (
   return { request: req };
 };
 
-const getDomainSeperator = () => {
+const getDomainSeperator = (biconomyForwarderDomainData) => {
   const domainSeparator = ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
       ["bytes32", "bytes32", "bytes32", "uint256", "address"],

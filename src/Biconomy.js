@@ -2,7 +2,6 @@ const Promise = require("promise");
 const ethers = require("ethers");
 const txDecoder = require("ethereum-tx-decoder");
 const abi = require("ethereumjs-abi");
-import { forwarderAbi } from "./abis";
 const {
   config,
   RESPONSE_CODES,
@@ -21,7 +20,16 @@ const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
+import PermitClient from "./PermitClient";
+import ERC20ForwarderClient from "./ERC20ForwarderClient";
 import { buildForwardTxRequest, getDomainSeperator } from "./biconomyforwarder";
+import {
+  feeProxyAbi,
+  oracleAggregatorAbi,
+  feeManagerAbi,
+  forwarderAbi,
+  transferHandlerAbi,
+} from "./abis";
 
 // todo
 // to be added from sys info
@@ -31,10 +39,13 @@ const EIP712_SIGN = config.EIP712_SIGN;
 const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
 const DEFAULT = config.DEFAULT;
 
-let biconomyForwarderDomainData = config.biconomyForwarderDomainData;
-
+// address map optional to keep mapping of addresses per network id as global variables 
 let decoderMap = {},
   smartContractMap = {},
+//  forwarderAddressMap = {},
+//  ercFeeProxyAddressMap = {},
+//  daiTokenAddressMap = {},
+//  transferHandlerAddressMap = {},
   smartContractMetaTransactionMap = {}; // make it object map possibly
 let biconomyForwarder;
 const events = require("events");
@@ -45,16 +56,27 @@ let domainType,
   metaInfoType,
   relayerPaymentType,
   metaTransactionType,
-  forwardRequestType,
-  forwarderAddress,
-  transferHandlerAddress,
-  ercFeeProxyAddress,
-  daiTokenAddress;
+  forwardRequestType;
 
 let domainData = {
   name: config.eip712DomainName,
   version: config.eip712SigVersion,
   verifyingContract: config.eip712VerifyingContract,
+};
+
+let daiDomainData = {
+	name : config.daiDomainName,
+	version : config.daiVersion,
+  };
+
+let biconomyForwarderDomainData = {
+  name: config.forwarderDomainName,
+  version: config.forwarderVersion,
+}
+
+let feeProxyDomainData = {
+  name: config.feeProxyDomainName,
+  version: config.feeProxyVersion,
 };
 
 // EIP712 format data for login
@@ -85,6 +107,7 @@ function Biconomy(provider, options) {
   this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
   this.ERROR = EVENTS.BICONOMY_ERROR;
   this.pendingLoginTransactions = {};
+  this.originalProvider = provider;
   if (options.debug) {
     config.logsEnabled = true;
   }
@@ -575,7 +598,7 @@ async function sendSignedTransaction(engine, payload, end) {
             paramArray.push(request);
 
             if (signatureType && signatureType == EIP712_SIGN) {
-              const domainSeparator = getDomainSeperator();
+              const domainSeparator = getDomainSeperator(biconomyForwarderDomainData);
               _logMessage(domainSeparator);
               paramArray.push(domainSeparator);
             } 
@@ -892,9 +915,10 @@ async function handleSendTransaction(engine, payload, end) {
               gasLimit = await contract.methods[methodName]
                 .apply(null, paramArrayForGasCalculation)
                 .estimateGas({ from: account });
-              //todo
-              //identify gas overhead for execute call in biconomy forwarder  
-              gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(50000)).toNumber();  
+
+              //identify gas overhead for execute call in biconomy forwarder
+              //do not send this value in API call. only meant for txGas  
+              gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();  
               _logMessage('gas limit number' + gasLimitNum );
             }
           }
@@ -916,7 +940,7 @@ async function handleSendTransaction(engine, payload, end) {
 
           paramArray.push(request);
           if (signatureType && signatureType == EIP712_SIGN) {
-            const domainSeparator = getDomainSeperator();
+            const domainSeparator = getDomainSeperator(biconomyForwarderDomainData);
             _logMessage(domainSeparator);
             paramArray.push(domainSeparator);
             const signatureEIP712 = await getSignatureEIP712(engine, account, request);
@@ -936,7 +960,6 @@ async function handleSendTransaction(engine, payload, end) {
           data.from = account;
           data.apiId = api.id;
           data.params = paramArray;
-          data.gasLimit = gasLimitNum; //verify
           data.to = to;
           if(signatureType && signatureType == EIP712_SIGN) {data.signatureType = EIP712_SIGN}
           await _sendTransaction(engine, account, api, data, end);
@@ -1249,9 +1272,71 @@ eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine) => {
     });
 });
 
-eventEmitter.on(EVENTS.DAPP_API_DATA_READY, (engine) => {
+eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
+  try
+  {
+    const biconomyAttributes = {
+      apiKey: engine.apiKey,
+      dappAPIMap: engine.dappAPIMap,
+      decoderMap: decoderMap,
+    };
+    const ethersProvider = new ethers.providers.Web3Provider(engine.originalProvider);
+    const signer = ethersProvider.getSigner();
+    const address = await signer.getAddress();
+    _logMessage(address);
+    const feeProxy = new ethers.Contract(engine.feeProxyAddress, feeProxyAbi, signer);
+    const oracleAggregatorAddress = await feeProxy.oracleAggregator();
+    const feeManagerAddress = await feeProxy.feeManager();
+    const forwarderAddress = await feeProxy.forwarder();
+    const oracleAggregator = new ethers.Contract(
+      oracleAggregatorAddress,
+      oracleAggregatorAbi,
+      signer
+    );
+    const feeManager = new ethers.Contract(
+      feeManagerAddress,
+      feeManagerAbi,
+      signer
+    );
+    const forwarder = new ethers.Contract(
+      forwarderAddress,
+      forwarderAbi,
+      signer
+    );
+    const transferHandler = new ethers.Contract(
+      transferHandlerAddress,
+      transferHandlerAbi,
+      signer
+    );
+
+    engine.permitClient = new PermitClient(engine,daiDomainData);
+    engine.erc20ForwarderClient = new ERC20ForwarderClient(
+      biconomyAttributes,
+      signer,
+      engine.networkId,
+      ethersProvider,
+      feeProxyDomainData,
+      biconomyForwarderDomainData,
+      feeProxy,
+      transferHandler,
+      forwarder,
+      oracleAggregator,
+      feeManager
+    );
+  
+  _logMessage(engine.permitClient);
+  _logMessage(engine.erc20ForwarderClient);  
   engine.status = STATUS.BICONOMY_READY;
   eventEmitter.emit(STATUS.BICONOMY_READY);
+  }
+  catch(error)
+  {
+    _logMessage(error);
+  }
+});
+
+eventEmitter.on(EVENTS.DAPP_API_DATA_READY, (engine) => {
+  eventEmitter.emit(EVENTS.HELPER_CLENTS_READY, engine);
 });
 
 /**
@@ -1454,6 +1539,7 @@ async function _init(apiKey, engine) {
                 );
               } else {
                 let providerNetworkId = networkResponse.result;
+                engine.networkId = providerNetworkId;
                 _logMessage(
                   `Current provider network id: ${providerNetworkId}`
                 );
@@ -1468,6 +1554,8 @@ async function _init(apiKey, engine) {
                 } else {
                   domainData.chainId = providerNetworkId;
                   biconomyForwarderDomainData.chainId = providerNetworkId;
+                  daiDomainData.chainId = providerNetworkId;
+                  feeProxyDomainData.chainId = providerNetworkId;
                   fetch(
                     `${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`
                   )
@@ -1482,12 +1570,14 @@ async function _init(apiKey, engine) {
                         loginMessageType = systemInfo.loginMessageType;
                         loginDomainData = systemInfo.loginDomainData;
                         forwardRequestType = systemInfo.forwardRequestType;
-                        forwarderAddress = systemInfo.biconomyForwarderAddress;
-                        ercFeeProxyAddress = systemInfo.ercFeeProxyAddress;
-                        transferHandlerAddress = systemInfo.transferHandlerAddress;
-                        daiTokenAddress = systemInfo.daiTokenAddress;
+                        engine.forwarderAddress = systemInfo.biconomyForwarderAddress;
+                        engine.feeProxyAddress = systemInfo.ercFeeProxyAddress;
+                        engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
+                        engine.daiTokenAddress = systemInfo.daiTokenAddress;
 
-                        biconomyForwarderDomainData.verifyingContract = forwarderAddress;
+                        biconomyForwarderDomainData.verifyingContract = engine.forwarderAddress;
+                        feeProxyDomainData.verifyingContract = engine.forwarderAddress;
+                        daiDomainData.verifyingContract = engine.daiTokenAddress;
 
 
                         if (systemInfo.relayHubAddress) {
@@ -1506,7 +1596,7 @@ async function _init(apiKey, engine) {
                       let web3 = getWeb3(engine);
                       biconomyForwarder = new web3.eth.Contract(
                         forwarderAbi,
-                        forwarderAddress
+                        engine.forwarderAddress
                       );
                       // Get dapps smart contract data from biconomy servers
                       let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;

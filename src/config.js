@@ -7,6 +7,12 @@ config.loginVersion = "1";
 config.eip712SigVersion = "1";
 config.eip712DomainName = "Biconomy Meta Transaction";
 config.eip712VerifyingContract = "0x3457dC2A8Ff1d3FcC45eAd532CA1740f5c477160";
+config.daiDomainName = "Dai Stablecoin";
+config.daiVersion = "1";
+config.feeProxyDomainName = "TEST";
+config.feeProxyVersion = "1";
+config.forwarderDomainName = "TEST";
+config.forwarderVersion = "1";
 config.baseURL = "https://api.biconomy.io";
 config.nativeMetaTxUrl = `/api/${config.version2}/meta-tx/native`;
 config.userLoginPath = `/api/${config.version2}/dapp-user/login`;
@@ -33,8 +39,6 @@ config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 config.EIP712_SIGN = "EIP712Sign";
 config.TRUSTED_FORWARDER = "TrustedForwarder";
 config.DEFAULT = "Default"; 
-// finalize enum to add 
-//config.FEE_PROXY_ADDRESS_KOVAN = "0x1E13cbCb6B695D10B68b2f83D71F0D201504C598";
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;
@@ -43,7 +47,8 @@ const EVENTS = {
 	SMART_CONTRACT_DATA_READY: 'smart_contract_data_ready',
 	DAPP_API_DATA_READY: 'dapp_api_data_ready',
 	LOGIN_CONFIRMATION: 'login_confirmation',
-	BICONOMY_ERROR: 'biconomy_error'
+	BICONOMY_ERROR: 'biconomy_error',
+	HELPER_CLENTS_READY: 'permit_and_ercforwarder_clients_ready'
 };
 
 const RESPONSE_CODES = {
@@ -65,11 +70,8 @@ const RESPONSE_CODES = {
 	INVALID_DATA: 'B514'
 };
 
-config.biconomyForwarderDomainData = {
-    name : "TEST",
-    version : "1"
-  };
 
+// could get these from sys info call
 config.forwardRequestType = [
     {name:'from',type:'address'},
     {name:'to',type:'address'},
