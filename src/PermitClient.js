@@ -1,105 +1,77 @@
-import { daiAbi, erc20Eip2612Abi } from "./abis";
-import { ethers } from "ethers";
-const { config } = require("./config");
+import {daiAbi, erc20Eip2612Abi} from "./abis";
+import {ethers} from "ethers";
+const {config} = require("./config");
 
-// work on this later to use smart contract address nad provider id from biconomy 
+// work on this later to use smart contract address nad provider id from biconomy
 
 class PermitClient {
-  constructor(provider,daiDomainData) {
-    const ethersProvider = new ethers.providers.Web3Provider(provider);
-    this.provider = ethersProvider;
-    this.signer = ethersProvider.getSigner();
-    this.daiDomainData = daiDomainData;
-  }
+    constructor(provider, daiDomainData, feeProxyAddress) {
+        const ethersProvider = new ethers.providers.Web3Provider(provider);
+        this.provider = ethersProvider;
+        this.signer = ethersProvider.getSigner();
+        this.daiDomainData = daiDomainData;
+        this.feeProxyAddress = feeProxyAddress;
+    }
 
-  //rather pass single param json object
-  //todo
-  async daiPermit(spender, expiry, allowed) {
-    const dai = new ethers.Contract(
-      this.daiDomainData.verifyingContract,
-      daiAbi,
-      this.signer
-    );
-    const userAddress = await this.signer.getAddress();
-    const nonce = await dai.nonces(userAddress);
-    const permitDataToSign = {
-      types: {
-        EIP712Domain: config.domainType,
-        Permit: config.daiPermitType,
-      },
-      domain: this.daiDomainData,
-      primaryType: "Permit",
-      message: {
-        holder: userAddress,
-        spender: spender,
-        nonce: parseInt(nonce),
-        expiry: parseInt(expiry),
-        allowed: true,
-      },
-    };
-    const result = await this.provider.send("eth_signTypedData_v4", [
-      userAddress,
-      JSON.stringify(permitDataToSign),
-    ]);
-    console.log("success", result);
-    const signature = result.substring(2);
-    const r = "0x" + signature.substring(0, 64);
-    const s = "0x" + signature.substring(64, 128);
-    const v = parseInt(signature.substring(128, 130), 16);
-    await dai.permit(
-      userAddress,
-      spender,
-      parseInt(nonce),
-      parseInt(expiry.toString()),
-      allowed,
-      v,
-      r,
-      s
-    );
-  }
+    async daiPermit(daiPermitOptions) {
+        const spender = daiPermitOptions.spender || this.feeProxyAddress;
+        const expiry = daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
+        const allowed = daiPermitOptions.allowed || true;
+        const dai = new ethers.Contract(this.daiDomainData.verifyingContract, daiAbi, this.signer);
+        const userAddress = await this.signer.getAddress();
+        const nonce = await dai.nonces(userAddress);
+        const permitDataToSign = {
+            types: {
+                EIP712Domain: config.domainType,
+                Permit: config.daiPermitType
+            },
+            domain: this.daiDomainData,
+            primaryType: "Permit",
+            message: {
+                holder: userAddress,
+                spender: spender,
+                nonce: parseInt(nonce),
+                expiry: parseInt(expiry),
+                allowed: true
+            }
+        };
+        const result = await this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign),]);
+        console.log("success", result);
+        const signature = result.substring(2);
+        const r = "0x" + signature.substring(0, 64);
+        const s = "0x" + signature.substring(64, 128);
+        const v = parseInt(signature.substring(128, 130), 16);
+        await dai.permit(userAddress, spender, parseInt(nonce), parseInt(expiry.toString()), allowed, v, r, s);
+    }
 
-  async eip2612Permit(tokenDomainData, spender, value, deadline) {
-    const userAddress = await this.signer.getAddress();
-    const token = new ethers.Contract(
-      tokenDomainData.verifyingContract,
-      erc20Eip2612Abi,
-      this.signer
-    );
-    const nonce = await this.token.nonces(userAddress);
-    const permitDataToSign = {
-      types: {
-        EIP712Domain: config.domainType,
-        Permit: config.eip2612PermitType,
-      },
-      domain: tokenDomainData,
-      primaryType: "Permit",
-      message: {
-        holder: userAddress,
-        spender: spender,
-        nonce: parseInt(nonce),
-        value: value,
-        deadline: deadline,
-      },
-    };
-    const result = await this.provider.send("eth_signTypedData_v4", [
-      userAddress,
-      JSON.stringify(permitDataToSign),
-    ]);
-    console.log("success", result);
-    const signature = result.substring(2);
-    const r = "0x" + signature.substring(0, 64);
-    const s = "0x" + signature.substring(64, 128);
-    const v = parseInt(signature.substring(128, 130), 16);
-    await token.permit(
-      this.signerAddress,
-      spender,
-      value,
-      parseInt(deadline.toString()),
-      v,
-      r,
-      s
-    );
-  }
+    async eip2612Permit(tokenDomainData, spender, value, deadline) {
+        const userAddress = await this.signer.getAddress();
+        const token = new ethers.Contract(tokenDomainData.verifyingContract, erc20Eip2612Abi, this.signer);
+        const nonce = await this.token.nonces(userAddress);
+        const permitDataToSign = {
+            types: {
+                EIP712Domain: config.domainType,
+                Permit: config.eip2612PermitType
+            },
+            domain: tokenDomainData,
+            primaryType: "Permit",
+            message: {
+                holder: userAddress,
+                spender: spender,
+                nonce: parseInt(nonce),
+                value: value,
+                deadline: deadline
+            }
+        };
+        const result = await this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign),]);
+        console.log("success", result);
+        const signature = result.substring(2);
+        const r = "0x" + signature.substring(0, 64);
+        const s = "0x" + signature.substring(64, 128);
+        const v = parseInt(signature.substring(128, 130), 16);
+        await token.permit(this.signerAddress, spender, value, parseInt(deadline.toString()), v, r, s);
+    }
 }
 
 export default PermitClient;
+
