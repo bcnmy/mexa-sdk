@@ -556,9 +556,6 @@ async function sendSignedTransaction(engine, payload, end) {
 
         let contractAddr = api.contractAddress.toLowerCase();
         let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-
-        //todo
-        //test with different signature type
         let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
         _logMessage(`signer is ${account}`);
         if (!account) {
@@ -577,14 +574,14 @@ async function sendSignedTransaction(engine, payload, end) {
          * use already available signature
          * send API call with appropriate parameters based on signature type
          * //todo
-         * //test more in trusted-forwarder-demo branch
+         * //test more in trusted-forwarder-demo branch - progress
          */
         let forwardedData,gasLimitNum;
 
         if (api.url == NATIVE_META_TX_URL) {
           if (metaTxApproach != DEFAULT) {
             forwardedData = payload.params[0].data;
-            gasLimitNum = 75000;
+            gasLimitNum = 75000; // estimate with actual params
             const request = (
               await buildForwardTxRequest(
                 account,

@@ -13,6 +13,7 @@ class PermitClient {
   }
 
   //rather pass single param json object
+  //todo
   async daiPermit(spender, expiry, allowed) {
     const dai = new ethers.Contract(
       this.daiDomainData.verifyingContract,
