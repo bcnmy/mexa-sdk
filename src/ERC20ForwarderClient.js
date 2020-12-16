@@ -82,7 +82,7 @@ class ERC20ForwarderClient {
         const transferHandlerGas = await this.feeProxy.transferHandlerGas();
         // todo
         // verify cost calculation
-        let cost = ethers.BigNumber.from(req.txGas.toString()).add(transferHandlerAddress).mul(ethers.BigNumber.from(req.tokenGasPrice)).mul(ethers.BigNumber.from(feeMultiplier.toString)).div(ethers.BigNumber.from(10000)).div(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(tokenOracleDecimals)));
+        let cost = ethers.BigNumber.from(req.txGas.toString()).add(transferHandlerGas).mul(ethers.BigNumber.from(req.tokenGasPrice)).mul(ethers.BigNumber.from(feeMultiplier.toString)).div(ethers.BigNumber.from(10000)).div(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(tokenOracleDecimals)));
         let fee = parseFloat(cost.toString()); // exact amount in tokens
 
         return {request: req, cost: fee};
