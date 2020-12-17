@@ -30,9 +30,11 @@ import {
     forwarderAbi,
     transferHandlerAbi
 } from "./abis";
+import {decode} from "punycode";
 
 const EIP712_SIGN = config.EIP712_SIGN;
 const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
+const ERC20_FORWARDER = config.ERC20_FORWARDER;
 const DEFAULT = config.DEFAULT;
 
 
@@ -309,6 +311,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                         cb(error);
                     
 
+
                     return reject(error);
                 }
                 let methodName = methodInfo.name;
@@ -322,6 +325,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                     if (cb) 
                         cb(error);
                     
+
 
                     return reject(error);
                 }
@@ -347,6 +351,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                     if (cb) 
                         cb(error);
                     
+
 
                     return reject(error);
                 }
@@ -387,6 +392,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                     cb(null, dataToSign);
                 
 
+
                 return resolve(dataToSign);
             } else {
                 let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
@@ -394,6 +400,155 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                     cb(error);
                 
 
+
+                return reject(error);
+            }
+        }
+    });
+};
+
+Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransaction, cb) {
+    let engine = this;
+    return new Promise(async (resolve, reject) => {
+        if (rawTransaction) {
+            let decodedTx = txDecoder.decodeTx(rawTransaction);
+            if (decodedTx.to && decodedTx.data && decodedTx.value) {
+                let to = decodedTx.to.toLowerCase();
+                let methodInfo = decodeMethod(to, decodedTx.data);
+                if (! methodInfo) {
+                    let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH, `Smart Contract address registered on dashboard is different than what is sent(${
+                        decodedTx.to
+                    }) in current transaction`);
+                    if (cb) 
+                        cb(error);
+                    
+                    return reject(error);
+                }
+                let methodName = methodInfo.name;
+                let api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
+                if (! api) {
+                    api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
+                }
+                if (! api) {
+                    _logMessage(`API not found for method ${methodName}`);
+                    let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, `No API found on dashboard for called method ${methodName}`);
+                    if (cb) 
+                        cb(error);
+                    
+
+
+                    return reject(error);
+                }
+                _logMessage("API found");
+                let params = methodInfo.params;
+                let paramArray = [];
+                for (let i = 0; i < params.length; i++) {
+                    paramArray.push(_getParamValue(params[i]));
+                }
+
+                let contractAddr = api.contractAddress.toLowerCase();
+                let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+
+                let gasLimitNum;
+
+                if (!gasLimit || parseInt(gasLimit) == 0) {
+                    let contractABI = smartContractMap[to];
+                    if (contractABI) {
+                        let web3 = getWeb3(engine);
+                        let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+                        gasLimit = await contract.methods[methodName].apply(null, paramArray).estimateGas({from: account});
+
+
+                        // do not send this value in API call. only meant for txGas
+                        gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
+                        _logMessage('gas limit number' + gasLimitNum);
+                    }
+                } else {
+                    gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
+                }
+
+
+                let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
+                _logMessage(`signer is ${account}`);
+                if (! account) {
+                    let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Not able to get user account from signed transaction`);
+                    return end(error);
+                }
+
+                /*let userContractWallet = await _getUserContractWallet(engine, account);
+                _logMessage(`User contract wallet ${userContractWallet}`);
+
+                if (! userContractWallet) {
+                    let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
+                    if (cb) 
+                        cb(error);
+                    
+
+                    return reject(error);
+                }*/
+                let request;
+                if (metaTxApproach == TRUSTED_FORWARDER) {
+                    request = (await buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
+                } else if (metaTxApproach == ERC20_FORWARDER) {
+                    request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data);
+                } else {
+                    let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
+                    if (cb) 
+                        cb(error);
+                    
+                    return reject(error);
+                } _logMessage(request);
+
+                const erc20fr = Object.assign({}, request);
+                erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
+                delete erc20fr.data;
+                const eip712DataToSign = JSON.stringify({
+                    types: {
+                        EIP712Domain: domainType,
+                        ERC20ForwardRequest: forwardRequestType
+                    },
+                    domain: biconomyForwarderDomainData,
+                    primaryType: "ERC20ForwardRequest",
+                    message: erc20fr
+                });
+
+                const hashToSign = abi.soliditySHA3([
+                    "address",
+                    "address",
+                    "address",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "bytes32",
+                ], [
+                    request.from,
+                    request.to,
+                    request.token,
+                    request.txGas,
+                    request.tokenGasPrice,
+                    request.batchId,
+                    request.batchNonce,
+                    request.deadline,
+                    ethers.utils.keccak256(req.data),
+                ]);
+
+                dataToSign = {
+                    eip712Format: eip712DataToSign,
+                    personalSignatureFormat: hashToSign
+                };
+
+                if (cb) 
+                    cb(null, dataToSign);
+                
+
+                return resolve(dataToSign);
+            } else {
+                let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+                if (cb) 
+                    cb(error);
+                
                 return reject(error);
             }
         }
@@ -537,16 +692,41 @@ async function sendSignedTransaction(engine, payload, end) {
          * use already available signature
          * send API call with appropriate parameters based on signature type
          * //todo
-         * //test more in trusted-forwarder-demo branch - progress
+         * //test more in trusted-forwarder-demo branch - in progress
          */
                 let forwardedData,
                     gasLimitNum;
 
                 if (api.url == NATIVE_META_TX_URL) {
-                    if (metaTxApproach != DEFAULT) {
-                        forwardedData = payload.params[0].data;
-                        gasLimitNum = 75000; // estimate with actual params
-                        const request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
+                    if (metaTxApproach != DEFAULT) { // forwardedData = payload.params[0].data;
+                        forwardedData = decodedTx.data;
+
+                        let paramArrayForGasCalculation = [];
+                        for (let i = 0; i < params.length; i++) {
+                            paramArrayForGasCalculation.push(_getParamValue(params[i]));
+                        }
+
+                        if (!gasLimit || parseInt(gasLimit) == 0) {
+                            let contractABI = smartContractMap[to];
+                            if (contractABI) {
+                                let web3 = getWeb3(engine);
+                                let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+                                gasLimit = await contract.methods[methodName].apply(null, paramArrayForGasCalculation).estimateGas({from: account});
+
+
+                                // do not send this value in API call. only meant for txGas
+                                gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
+                                _logMessage('gas limit number' + gasLimitNum);
+                            }
+                        } else {
+                            gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
+                        }
+                        let request;
+                        if (metaTxApproach == TRUSTED_FORWARDER) {
+                            request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
+                        } else if (metaTxApproach == ERC20_FORWARDER) {
+                            request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData);
+                        }
                         _logMessage(request);
 
                         paramArray.push(request);
@@ -563,7 +743,6 @@ async function sendSignedTransaction(engine, payload, end) {
                         data.from = account;
                         data.apiId = api.id;
                         data.params = paramArray;
-                        data.gasLimit = gasLimit;
                         data.to = to;
                         if (signatureType && signatureType == EIP712_SIGN) {
                             data.signatureType = EIP712_SIGN;
@@ -579,7 +758,7 @@ async function sendSignedTransaction(engine, payload, end) {
                         data.from = account;
                         data.apiId = api.id;
                         data.params = paramArray;
-                        data.gasLimit = decodedTx.gasLimit.toString();
+                        data.gasLimit = decodedTx.gasLimit.toString(); //verify
                         data.to = decodedTx.to.toLowerCase();
                         await _sendTransaction(engine, account, api, data, end);
                     }
@@ -663,6 +842,7 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                 cb(error);
             
 
+
             return reject(error);
         }
         let metaInfo = {};
@@ -716,6 +896,7 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                         cb(response.error);
                     
 
+
                     reject(response.error);
                 } else if (response && response.result) {
                     let data = {};
@@ -738,6 +919,7 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                                 cb(null, response);
                             
 
+
                             let result = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE, response.log);
                             result.txHash = response.txHash;
                             resolve(result);
@@ -747,12 +929,14 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                                 cb(error);
                             
 
+
                             reject(error);
                         }
                     }).catch(function (error) {
                         if (cb) 
                             cb(formatMessage(error.flag, error.log));
                         
+
 
                         reject(formatMessage(error.flag, error.log));
                     });
@@ -762,6 +946,7 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
             if (cb) 
                 cb(error);
             
+
 
             reject(error);
         }
@@ -1313,10 +1498,12 @@ async function _sendTransaction(engine, account, api, data, cb) {
                     cb(error);
                 
 
+
             } else {
                 if (cb) 
                     cb(null, result.txHash);
                 
+
 
             }
         }).catch(function (error) {
@@ -1325,12 +1512,14 @@ async function _sendTransaction(engine, account, api, data, cb) {
                 cb(error);
             
 
+
         });
     } else {
         _logMessage(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`);
         if (cb) 
             cb(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`, null);
         
+
 
     }
 }
@@ -1522,6 +1711,7 @@ async function _getUserContractWallet(engine, address, cb) {
                             cb(response);
                         
 
+
                         reject(response);
                     });
                 }
@@ -1531,6 +1721,7 @@ async function _getUserContractWallet(engine, address, cb) {
             if (cb) 
                 cb(response);
             
+
 
             reject(response);
         }
@@ -1584,6 +1775,7 @@ Biconomy.prototype.accountLogin = async function (signer, signature, cb) {
                         cb(null, result);
                     
 
+
                     resolve(result);
                 } else {
                     result.code = RESPONSE_CODES.ERROR_RESPONSE;
@@ -1592,6 +1784,7 @@ Biconomy.prototype.accountLogin = async function (signer, signature, cb) {
                         cb(result, null);
                     
 
+
                     reject(result);
                 }
             } else {
@@ -1599,6 +1792,7 @@ Biconomy.prototype.accountLogin = async function (signer, signature, cb) {
                 if (cb) 
                     cb(error);
                 
+
 
                 reject(error);
             }
@@ -1650,6 +1844,7 @@ Biconomy.prototype.login = async function (signer, cb) {
                 cb(response);
             
 
+
             reject(response);
             return;
         }
@@ -1682,6 +1877,7 @@ Biconomy.prototype.login = async function (signer, cb) {
                 cb(response);
             
 
+
             return reject(response);
         }
         getWeb3(engine).currentProvider.sendAsync({
@@ -1695,6 +1891,7 @@ Biconomy.prototype.login = async function (signer, cb) {
                 if (cb) 
                     cb(response);
                 
+
 
                 reject(response);
             } else {
@@ -1726,6 +1923,7 @@ Biconomy.prototype.login = async function (signer, cb) {
                             cb(null, result);
                         
 
+
                         resolve(result);
                     } else {
                         result.code = RESPONSE_CODES.ERROR_RESPONSE;
@@ -1733,6 +1931,7 @@ Biconomy.prototype.login = async function (signer, cb) {
                         if (cb) 
                             cb(result, null);
                         
+
 
                         reject(result);
                     }
@@ -1742,6 +1941,7 @@ Biconomy.prototype.login = async function (signer, cb) {
                     if (cb) 
                         cb(response);
                     
+
 
                     reject(response);
                 });
@@ -1878,6 +2078,7 @@ var scientificToDecimal = function (num) {
             if (dec) 
                 l = l - dec.length;
             
+
 
             if (l < 0) {
                 num = coeff_array[0] + dec.slice(0, l) + "." + dec.slice(l);

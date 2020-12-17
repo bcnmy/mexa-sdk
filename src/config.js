@@ -37,7 +37,8 @@ config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 config.EIP712_SIGN = "EIP712Sign";
-config.TRUSTED_FORWARDER = "TrustedForwarder";
+config.TRUSTED_FORWARDER = "Trusted Forwarder";
+config.ERC20_FORWARDER = "ERC20 Forwarder";
 config.DEFAULT = "Default"; 
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
@@ -67,7 +68,8 @@ const RESPONSE_CODES = {
 	SUCCESS_RESPONSE: 'B200',
 	USER_CONTRACT_CREATION_FAILED:'B512',
 	EVENT_NOT_SUPPORTED: 'B513',
-	INVALID_DATA: 'B514'
+	INVALID_DATA: 'B514',
+	INVALID_OPERATION: 'B515'
 };
 
 
