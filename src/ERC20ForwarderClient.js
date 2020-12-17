@@ -58,6 +58,26 @@ class ERC20ForwarderClient {
         return gasPrice.mul(ethers.BigNumber.from(10).pow(tokenOracleDecimals)).div(tokenPrice).toString();
     }
 
+    async buildERC20TxRequest(account, to, txGas, data, newBatch = false) {
+      const userAddress = account;
+      const batchId = newBatch ? await this.forwarder.getBatch(userAddress) : 0;
+      let nonce = await this.forwarder.getNonce(userAddress, batchId);
+      const batchNonce = Number(nonce);
+      const tokenGasPrice = await this.getTokenGasPrice(token);
+      const req = {
+        from: userAddress,
+        to: to,
+        token: token,
+        txGas: txGas,
+        tokenGasPrice: tokenGasPrice,
+        batchId: batchId,
+        batchNonce: batchNonce,
+        deadline: Math.floor(Date.now() / 1000 + 3600),
+        data: data
+      };
+      return req;
+    }
+
     async buildTx(to, token, txGas, data, newBatch = false) {
         const userAddress = await this.signer.getAddress();
         const batchId = newBatch ? await this.forwarder.getBatch(userAddress) : 0;
@@ -185,7 +205,7 @@ class ERC20ForwarderClient {
             ethers.utils.keccak256(req.data),
         ]);
         const userAddress = await this.signer.getAddress();
-        const sig = this.provider.signMessage(hashToSign); // verify
+        const sig = this.provider.signMessage(hashToSign); 
         const api = this.getApiId(req);
         const apiId = api.id;
         const metaTxBody = {
