@@ -37,9 +37,9 @@ config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 config.EIP712_SIGN = "EIP712Sign";
-config.TRUSTED_FORWARDER = "Trusted Forwarder";
-config.ERC20_FORWARDER = "ERC20 Forwarder";
-config.DEFAULT = "Default"; 
+config.TRUSTED_FORWARDER = "TRUSTED_FORWARDER";
+config.ERC20_FORWARDER = "ERC20_FORWARDER";
+config.DEFAULT = "DEFAULT";
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;

@@ -32,7 +32,7 @@ function _logMessage(message) {
 }
 
 class ERC20ForwarderClient {
-    constructor(forwarderClientOptions, signer, networkId, provider, feeProxyDomainData, feeProxy, transferHandler, forwarder, oracleAggregator, feeManager) {
+    constructor(forwarderClientOptions, signer, networkId, provider, feeProxyDomainData, biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator, feeManager) {
         this.biconomyAttributes = forwarderClientOptions;
         this.signer = signer;
         this.networkId = networkId;
@@ -148,9 +148,9 @@ class ERC20ForwarderClient {
         const api = this.getApiId(req);
         const apiId = api.id;
         /**
-     * check if api is present 
-     * if not present send normal transaction based on method,to,req.data 
-     * instead of meta transaction call to the server api 
+     * check if api is present
+     * if not present send normal transaction based on method,to,req.data
+     * instead of meta transaction call to the server api
      * possibly include biconomy's event emitter to throw error
      */
         const metaTxBody = {
@@ -205,7 +205,7 @@ class ERC20ForwarderClient {
             ethers.utils.keccak256(req.data),
         ]);
         const userAddress = await this.signer.getAddress();
-        const sig = this.provider.signMessage(hashToSign); 
+        const sig = this.provider.signMessage(hashToSign);
         const api = this.getApiId(req);
         const apiId = api.id;
         const metaTxBody = {

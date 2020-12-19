@@ -307,9 +307,9 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                     let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH, `Smart Contract address registered on dashboard is different than what is sent(${
                         decodedTx.to
                     }) in current transaction`);
-                    if (cb) 
+                    if (cb)
                         cb(error);
-                    
+
 
 
                     return reject(error);
@@ -322,9 +322,9 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                 if (! api) {
                     _logMessage(`API not found for method ${methodName}`);
                     let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, `No API found on dashboard for called method ${methodName}`);
-                    if (cb) 
+                    if (cb)
                         cb(error);
-                    
+
 
 
                     return reject(error);
@@ -348,9 +348,9 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
 
                 if (! userContractWallet) {
                     let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
-                    if (cb) 
+                    if (cb)
                         cb(error);
-                    
+
 
 
                     return reject(error);
@@ -388,17 +388,17 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                     primaryType: "MetaTransaction",
                     message: message
                 };
-                if (cb) 
+                if (cb)
                     cb(null, dataToSign);
-                
+
 
 
                 return resolve(dataToSign);
             } else {
                 let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
-                if (cb) 
+                if (cb)
                     cb(error);
-                
+
 
 
                 return reject(error);
@@ -419,9 +419,9 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                     let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH, `Smart Contract address registered on dashboard is different than what is sent(${
                         decodedTx.to
                     }) in current transaction`);
-                    if (cb) 
+                    if (cb)
                         cb(error);
-                    
+
                     return reject(error);
                 }
                 let methodName = methodInfo.name;
@@ -432,9 +432,9 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                 if (! api) {
                     _logMessage(`API not found for method ${methodName}`);
                     let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, `No API found on dashboard for called method ${methodName}`);
-                    if (cb) 
+                    if (cb)
                         cb(error);
-                    
+
 
 
                     return reject(error);
@@ -448,7 +448,7 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
 
                 let contractAddr = api.contractAddress.toLowerCase();
                 let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-
+                let gasLimit = decodedTx.gasLimit;
                 let gasLimitNum;
 
                 if (!gasLimit || parseInt(gasLimit) == 0) {
@@ -475,17 +475,6 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                     return end(error);
                 }
 
-                /*let userContractWallet = await _getUserContractWallet(engine, account);
-                _logMessage(`User contract wallet ${userContractWallet}`);
-
-                if (! userContractWallet) {
-                    let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
-                    if (cb) 
-                        cb(error);
-                    
-
-                    return reject(error);
-                }*/
                 let request;
                 if (metaTxApproach == TRUSTED_FORWARDER) {
                     request = (await buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
@@ -493,16 +482,16 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                     request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data);
                 } else {
                     let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
-                    if (cb) 
+                    if (cb)
                         cb(error);
-                    
+
                     return reject(error);
                 } _logMessage(request);
 
                 const erc20fr = Object.assign({}, request);
                 erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
                 delete erc20fr.data;
-                const eip712DataToSign = JSON.stringify({
+                const eip712DataToSign = {
                     types: {
                         EIP712Domain: domainType,
                         ERC20ForwardRequest: forwardRequestType
@@ -510,7 +499,7 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                     domain: biconomyForwarderDomainData,
                     primaryType: "ERC20ForwardRequest",
                     message: erc20fr
-                });
+                };
 
                 const hashToSign = abi.soliditySHA3([
                     "address",
@@ -531,24 +520,24 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                     request.batchId,
                     request.batchNonce,
                     request.deadline,
-                    ethers.utils.keccak256(req.data),
+                    ethers.utils.keccak256(request.data),
                 ]);
 
-                dataToSign = {
+                const dataToSign = {
                     eip712Format: eip712DataToSign,
                     personalSignatureFormat: hashToSign
                 };
 
-                if (cb) 
+                if (cb)
                     cb(null, dataToSign);
-                
+
 
                 return resolve(dataToSign);
             } else {
                 let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
-                if (cb) 
+                if (cb)
                     cb(error);
-                
+
                 return reject(error);
             }
         }
@@ -696,7 +685,7 @@ async function sendSignedTransaction(engine, payload, end) {
          */
                 let forwardedData,
                     gasLimitNum;
-
+                let gasLimit = decodedTx.gasLimit;
                 if (api.url == NATIVE_META_TX_URL) {
                     if (metaTxApproach != DEFAULT) { // forwardedData = payload.params[0].data;
                         forwardedData = decodedTx.data;
@@ -838,9 +827,9 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
         if (! userContractWallet) {
             let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-            if (cb) 
+            if (cb)
                 cb(error);
-            
+
 
 
             return reject(error);
@@ -892,9 +881,9 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                     }
                     reject(error);
                 } else if (response && response.error) {
-                    if (cb) 
+                    if (cb)
                         cb(response.error);
-                    
+
 
 
                     reject(response.error);
@@ -915,9 +904,9 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                     fetchOptions.body = JSON.stringify(data);
                     fetch(`${baseURL}${withdrawFundsUrl}`, fetchOptions).then((response) => response.json()).then(function (response) {
                         if (response) {
-                            if (cb) 
+                            if (cb)
                                 cb(null, response);
-                            
+
 
 
                             let result = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE, response.log);
@@ -925,17 +914,17 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                             resolve(result);
                         } else {
                             let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Unable to get response for api ${withdrawFundsUrl}`);
-                            if (cb) 
+                            if (cb)
                                 cb(error);
-                            
+
 
 
                             reject(error);
                         }
                     }).catch(function (error) {
-                        if (cb) 
+                        if (cb)
                             cb(formatMessage(error.flag, error.log));
-                        
+
 
 
                         reject(formatMessage(error.flag, error.log));
@@ -943,9 +932,9 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
                 }
             });
         } catch (error) {
-            if (cb) 
+            if (cb)
                 cb(error);
-            
+
 
 
             reject(error);
@@ -1494,31 +1483,31 @@ async function _sendTransaction(engine, account, api, data, cb) {
                     error.code = RESPONSE_CODES.USER_CONTRACT_NOT_FOUND;
                 }
                 error.message = result.log || result.message;
-                if (cb) 
+                if (cb)
                     cb(error);
-                
+
 
 
             } else {
-                if (cb) 
+                if (cb)
                     cb(null, result.txHash);
-                
+
 
 
             }
         }).catch(function (error) {
             _logMessage(error);
-            if (cb) 
+            if (cb)
                 cb(error);
-            
+
 
 
         });
     } else {
         _logMessage(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`);
-        if (cb) 
+        if (cb)
             cb(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`, null);
-        
+
 
 
     }
@@ -1707,9 +1696,9 @@ async function _getUserContractWallet(engine, address, cb) {
                         let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Error while fetching user contract ${
                             JSON.stringify(error)
                         }`);
-                        if (cb) 
+                        if (cb)
                             cb(response);
-                        
+
 
 
                         reject(response);
@@ -1718,9 +1707,9 @@ async function _getUserContractWallet(engine, address, cb) {
             });
         } else {
             let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "Input address is not valid");
-            if (cb) 
+            if (cb)
                 cb(response);
-            
+
 
 
             reject(response);
@@ -1771,27 +1760,27 @@ Biconomy.prototype.accountLogin = async function (signer, signature, cb) {
                             getLoginTransactionReceipt(engine, data.transactionHash, signer);
                         }, 2000);
                     }
-                    if (cb) 
+                    if (cb)
                         cb(null, result);
-                    
+
 
 
                     resolve(result);
                 } else {
                     result.code = RESPONSE_CODES.ERROR_RESPONSE;
                     result.message = data.log;
-                    if (cb) 
+                    if (cb)
                         cb(result, null);
-                    
+
 
 
                     reject(result);
                 }
             } else {
                 let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Invalid response from api ${url}`);
-                if (cb) 
+                if (cb)
                     cb(error);
-                
+
 
 
                 reject(error);
@@ -1840,9 +1829,9 @@ Biconomy.prototype.login = async function (signer, cb) {
     return new Promise(async (resolve, reject) => {
         if (! signer || typeof signer != "string") {
             let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "signer parameter is mandatory and should be of type 'string'");
-            if (cb) 
+            if (cb)
                 cb(response);
-            
+
 
 
             reject(response);
@@ -1873,9 +1862,9 @@ Biconomy.prototype.login = async function (signer, cb) {
         }`);
         if (engine.status != STATUS.BICONOMY_READY) {
             let response = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Biconomy SDK is not initialized properly");
-            if (cb) 
+            if (cb)
                 cb(response);
-            
+
 
 
             return reject(response);
@@ -1888,9 +1877,9 @@ Biconomy.prototype.login = async function (signer, cb) {
         }, function (error, signature) {
             if (error) {
                 let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
-                if (cb) 
+                if (cb)
                     cb(response);
-                
+
 
 
                 reject(response);
@@ -1919,18 +1908,18 @@ Biconomy.prototype.login = async function (signer, cb) {
                                 getLoginTransactionReceipt(engine, data.transactionHash, signer);
                             }, 2000);
                         }
-                        if (cb) 
+                        if (cb)
                             cb(null, result);
-                        
+
 
 
                         resolve(result);
                     } else {
                         result.code = RESPONSE_CODES.ERROR_RESPONSE;
                         result.message = data.log;
-                        if (cb) 
+                        if (cb)
                             cb(result, null);
-                        
+
 
 
                         reject(result);
@@ -1938,9 +1927,9 @@ Biconomy.prototype.login = async function (signer, cb) {
                 }).catch(function (error) {
                     _logMessage(error);
                     let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
-                    if (cb) 
+                    if (cb)
                         cb(response);
-                    
+
 
 
                     reject(response);
@@ -2075,9 +2064,9 @@ var scientificToDecimal = function (num) {
             }
         } else {
             var dec = coeff_array[1];
-            if (dec) 
+            if (dec)
                 l = l - dec.length;
-            
+
 
 
             if (l < 0) {
