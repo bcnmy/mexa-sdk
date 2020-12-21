@@ -3,7 +3,7 @@ const {config, RESPONSE_CODES} = require("./config");
 const abiDecoder = require("abi-decoder");
 
 // should be present in system info as well
-const erc20ForwardRequestType = config.erc20ForwardRequestType;
+const erc20ForwardRequestType = config.forwardRequestType;
 const domainType = config.domainType;
 
 function formatMessage(code, message) {
@@ -48,8 +48,8 @@ class ERC20ForwarderClient {
     }
 
     getApiId(req) {
-        const method = this.biconomy.decoderMap[req.to.toLowerCase()].decodeMethod(req.data);
-        return this.biconomy.dappAPIMap[req.to.toLowerCase()][method.name.toString()];
+        const method = this.biconomyAttributes.decoderMap[req.to.toLowerCase()].decodeMethod(req.data);
+        return this.biconomyAttributes.dappAPIMap[req.to.toLowerCase()][method.name.toString()];
     }
 
     async getTokenGasPrice(tokenAddress) {
@@ -117,118 +117,130 @@ class ERC20ForwarderClient {
 
     // todo
     // test after error handler changes
-    async sendTxEIP712(req) { // should have call to check if user approved transferHandler
-        const domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([
-            "bytes32",
-            "bytes32",
-            "bytes32",
-            "uint256",
-            "address"
-        ], [
-            ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-            ethers.utils.id(this.feeProxyDomainData.name),
-            ethers.utils.id(this.feeProxyDomainData.version),
-            this.feeProxyDomainData.chainId,
-            this.feeProxyDomainData.verifyingContract,
-        ]));
-        const userAddress = await this.signer.getAddress();
-        const dataToSign = {
-            types: {
-                EIP712Domain: domainType,
-                ERC20ForwardRequest: erc20ForwardRequestType
-            },
-            domain: this.feeProxyDomainData,
-            primaryType: "ERC20ForwardRequest",
-            message: req
-        };
+    sendTxEIP712(req) { // should have call to check if user approved transferHandler
+        return new Promise(async (resolve, reject)=>{
+            try {
+                const domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([
+                    "bytes32",
+                    "bytes32",
+                    "bytes32",
+                    "uint256",
+                    "address"
+                ], [
+                    ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                    ethers.utils.id(this.feeProxyDomainData.name),
+                    ethers.utils.id(this.feeProxyDomainData.version),
+                    this.feeProxyDomainData.chainId,
+                    this.feeProxyDomainData.verifyingContract,
+                ]));
+                const userAddress = await this.signer.getAddress();
+                const dataToSign = {
+                    types: {
+                        EIP712Domain: domainType,
+                        ERC20ForwardRequest: erc20ForwardRequestType
+                    },
+                    domain: this.feeProxyDomainData,
+                    primaryType: "ERC20ForwardRequest",
+                    message: req
+                };
 
-        const sig = await this.provider.send("eth_signTypedData_v4", [req.from, JSON.stringify(dataToSign),]);
-        const api = this.getApiId(req);
-        const apiId = api.id;
-        /**
-     * check if api is present
-     * if not present send normal transaction based on method,to,req.data
-     * instead of meta transaction call to the server api
-     * possibly include biconomy's event emitter to throw error
-     */
-        const metaTxBody = {
-            to: req.to,
-            from: userAddress,
-            apiId: apiId,
-            params: [
-                req, domainSeparator, sig
-            ],
-            signatureType: "EIP712Sign"
-        };
-        fetch(`${
-            config.baseURL
-        }/api/v2/meta-tx/native`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-api-key": this.biconomy.apiKey
-            },
-            body: JSON.stringify(metaTxBody)
-        }).then(function (txResponse) {
-            const responseJson = txResponse.json();
-            return responseJson["txHash"];
-        }).catch(function (error) { // could use event emitter from biconomy
-            _logMessage(error.toString());
-            return formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server");
+                const sig = await this.provider.send("eth_signTypedData_v4", [req.from, JSON.stringify(dataToSign),]);
+                const api = this.getApiId(req);
+                const apiId = api.id;
+                /**
+             * check if api is present
+             * if not present send normal transaction based on method,to,req.data
+             * instead of meta transaction call to the server api
+             * possibly include biconomy's event emitter to throw error
+             */
+                const metaTxBody = {
+                    to: req.to,
+                    from: userAddress,
+                    apiId: apiId,
+                    params: [
+                        req, domainSeparator, sig
+                    ],
+                    signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
+                    gasLimit: 1000000
+                };
+                fetch(`${
+                    config.baseURL
+                }/api/v2/meta-tx/native`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-api-key": this.biconomyAttributes.apiKey
+                    },
+                    body: JSON.stringify(metaTxBody)
+                }).then(function (txResponse) {
+                    const responseJson = txResponse.json();
+                    resolve(responseJson["txHash"]);
+                }).catch(function (error) { // could use event emitter from biconomy
+                    _logMessage(error.toString());
+                    reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server"));
+                });
+            } catch(error) {
+                reject(error);
+            }
         });
-        const responseJson = await biconomy.json();
-        return responseJson["txHash"];
     }
 
-    async sendTxPersonalSign(req) {
-        const hashToSign = abi.soliditySHA3([
-            "address",
-            "address",
-            "address",
-            "uint256",
-            "uint256",
-            "uint256",
-            "uint256",
-            "uint256",
-            "bytes32",
-        ], [
-            req.from,
-            req.to,
-            req.token,
-            req.txGas,
-            req.tokenGasPrice,
-            req.batchId,
-            req.batchNonce,
-            req.deadline,
-            ethers.utils.keccak256(req.data),
-        ]);
-        const userAddress = await this.signer.getAddress();
-        const sig = this.provider.signMessage(hashToSign);
-        const api = this.getApiId(req);
-        const apiId = api.id;
-        const metaTxBody = {
-            to: req.to,
-            from: userAddress,
-            apiId: apiId,
-            params: [req, sig]
-        };
-        fetch(`${
-            config.baseURL
-        }/api/v2/meta-tx/native`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-api-key": this.biconomy.apiKey
-            },
-            body: JSON.stringify(metaTxBody)
-        }).then(function (txResponse) {
-            const responseJson = txResponse.json();
-            return responseJson["txHash"];
-        }).catch(function (error) {
-            // todo
-            // use event emitter from biconomy
-            _logMessage(error.toString());
-            return formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server");
+    sendTxPersonalSign(req) {
+        return new Promise(async (resolve, reject)=>{
+            try {
+                const hashToSign = abi.soliditySHA3([
+                    "address",
+                    "address",
+                    "address",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "uint256",
+                    "bytes32",
+                ], [
+                    req.from,
+                    req.to,
+                    req.token,
+                    req.txGas,
+                    req.tokenGasPrice,
+                    req.batchId,
+                    req.batchNonce,
+                    req.deadline,
+                    ethers.utils.keccak256(req.data),
+                ]);
+                const userAddress = await this.signer.getAddress();
+                const sig = this.provider.signMessage(hashToSign);
+                const api = this.getApiId(req);
+                const apiId = api.id;
+                const metaTxBody = {
+                    to: req.to,
+                    from: userAddress,
+                    apiId: apiId,
+                    params: [req, sig],
+                    signatureType: this.biconomyAttributes.signType.PERSONAL_SIGN
+                };
+                fetch(`${
+                    config.baseURL
+                }/api/v2/meta-tx/native`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-api-key": this.biconomyAttributes.apiKey
+                    },
+                    body: JSON.stringify(metaTxBody)
+                }).then(function (txResponse) {
+                    const responseJson = txResponse.json();
+                    resolve(responseJson["txHash"]);
+                }).catch(function (error) {
+                    // todo
+                    // use event emitter from biconomy
+                    _logMessage(error.toString());
+                    reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server"));
+                });
+            } catch(error) {
+                reject(error);
+            }
         });
     }
 

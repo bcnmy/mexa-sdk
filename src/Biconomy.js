@@ -30,7 +30,6 @@ import {
     forwarderAbi,
     transferHandlerAbi
 } from "./abis";
-import {decode} from "punycode";
 
 let decoderMap = {},
     smartContractMap = {},
@@ -328,7 +327,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
                 let params = methodInfo.params;
                 let paramArray = [];
                 for (let i = 0; i < params.length; i++) {
-                    paramArray.push(_getParamValue(params[i]));
+                    paramArray.push(_getParamValue(params[i], engine));
                 }
 
                 let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
@@ -438,7 +437,7 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                 let params = methodInfo.params;
                 let paramArray = [];
                 for (let i = 0; i < params.length; i++) {
-                    paramArray.push(_getParamValue(params[i]));
+                    paramArray.push(_getParamValue(params[i], engine));
                 }
 
                 let contractAddr = api.contractAddress.toLowerCase();
@@ -684,7 +683,7 @@ async function sendSignedTransaction(engine, payload, end) {
 
                         let paramArrayForGasCalculation = [];
                         for (let i = 0; i < params.length; i++) {
-                            paramArrayForGasCalculation.push(_getParamValue(params[i]));
+                            paramArrayForGasCalculation.push(_getParamValue(params[i], engine));
                         }
 
                         if (!gasLimit || parseInt(gasLimit) == 0) {
@@ -732,7 +731,7 @@ async function sendSignedTransaction(engine, payload, end) {
 
                     } else {
                         for (let i = 0; i < params.length; i++) {
-                            paramArray.push(_getParamValue(params[i]));
+                            paramArray.push(_getParamValue(params[i], engine));
                         }
 
                         let data = {};
@@ -1007,7 +1006,7 @@ async function handleSendTransaction(engine, payload, end) {
 
                     let paramArrayForGasCalculation = [];
                     for (let i = 0; i < params.length; i++) {
-                        paramArrayForGasCalculation.push(_getParamValue(params[i]));
+                        paramArrayForGasCalculation.push(_getParamValue(params[i], engine));
                     }
 
                     if (! gasLimit || parseInt(gasLimit) == 0) {
@@ -1054,7 +1053,7 @@ async function handleSendTransaction(engine, payload, end) {
                     await _sendTransaction(engine, account, api, data, end);
                 } else {
                     for (let i = 0; i < params.length; i++) {
-                        paramArray.push(_getParamValue(params[i]));
+                        paramArray.push(_getParamValue(params[i], engine));
                     }
                     let data = {};
                     data.from = account;
@@ -1330,7 +1329,11 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         const biconomyAttributes = {
             apiKey: engine.apiKey,
             dappAPIMap: engine.dappAPIMap,
-            decoderMap: decoderMap
+            decoderMap: decoderMap,
+            signType : {
+              EIP712_SIGN : engine.EIP712_SIGN,
+              PERSONAL_SIGN : engine.PERSONAL_SIGN
+            }
         };
         const ethersProvider = new ethers.providers.Web3Provider(engine.originalProvider);
         const signer = ethersProvider.getSigner();
@@ -1426,13 +1429,13 @@ function _validate(options) {
 /**
  * Get paramter value from param object based on its type.
  **/
-function _getParamValue(paramObj) {
+function _getParamValue(paramObj, engine) {
     let value;
     if (paramObj) {
         let type = paramObj.type;
         switch (type) {
             case(type.match(/^uint/) || type.match(/^int/) || {}).input: value = scientificToDecimal(parseInt(paramObj.value));
-                value = getWeb3(this).utils.toHex(value);
+                value = getWeb3(engine).utils.toHex(value);
                 break;
             case "string":
                 if (typeof paramObj.value === "object") {
