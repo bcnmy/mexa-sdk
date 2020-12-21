@@ -1,6 +1,6 @@
 import {ethers} from "ethers";
 const {config, RESPONSE_CODES} = require("./config");
-const abiDecoder = require("abi-decoder");
+const abi = require("ethereumjs-abi");
 
 // should be present in system info as well
 const erc20ForwardRequestType = config.forwardRequestType;
@@ -99,17 +99,21 @@ class ERC20ForwarderClient {
         };
 
         const feeMultiplier = await this.feeManager.getFeeMultiplier(userAddress, token);
-        const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(tokenAddress);
+        const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(token);
         const transferHandlerGas = await this.feeProxy.transferHandlerGas();
         // todo
         // verify cost calculation
-        let cost = ethers.BigNumber.from(req.txGas.toString()).add(transferHandlerGas).mul(ethers.BigNumber.from(req.tokenGasPrice)).mul(ethers.BigNumber.from(feeMultiplier.toString)).div(ethers.BigNumber.from(10000)).div(ethers.BigNumber.from(10).pow(ethers.BigNumber.from(tokenOracleDecimals)));
-        let fee = parseFloat(cost.toString()); // exact amount in tokens
-
+        let cost = ethers.BigNumber.from(req.txGas.toString())
+        .add(transferHandlerGas)
+        .mul(ethers.BigNumber.from(req.tokenGasPrice))
+        .mul(ethers.BigNumber.from(feeMultiplier.toString()))
+        .div(ethers.BigNumber.from(10000));
+        cost = (parseFloat(cost)/parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))).toFixed(2);
+        let fee = parseFloat(cost.toString()); // Exact amount in tokens
         return {request: req, cost: fee};
     }
 
-    async buildTransferTx(token, to, amount) { // should have call to check if user approved transferHandler
+    async buildTransferTx(token, to, amount) { // Should have call to check if user approved transferHandler
 
         const txCall = await this.transferHandler.populateTransaction.transfer(token, to, amount);
         return await this.buildTx(this.transferHandler.address, token, 100000, txCall.data);
@@ -210,7 +214,7 @@ class ERC20ForwarderClient {
                     ethers.utils.keccak256(req.data),
                 ]);
                 const userAddress = await this.signer.getAddress();
-                const sig = this.provider.signMessage(hashToSign);
+                const sig = await this.signer.signMessage(hashToSign);
                 const api = this.getApiId(req);
                 const apiId = api.id;
                 const metaTxBody = {
