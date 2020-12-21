@@ -32,12 +32,6 @@ import {
 } from "./abis";
 import {decode} from "punycode";
 
-const EIP712_SIGN = config.EIP712_SIGN;
-const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
-const ERC20_FORWARDER = config.ERC20_FORWARDER;
-const DEFAULT = config.DEFAULT;
-
-
 let decoderMap = {},
     smartContractMap = {},
     // contract addresss -> contract attributes(metaTransactionType)
@@ -107,6 +101,7 @@ function Biconomy(provider, options) {
     this.ERROR = EVENTS.BICONOMY_ERROR;
     this.pendingLoginTransactions = {};
     this.originalProvider = provider;
+
     if (options.debug) {
         config.logsEnabled = true;
     }
@@ -476,9 +471,9 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                 }
 
                 let request;
-                if (metaTxApproach == TRUSTED_FORWARDER) {
+                if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                     request = (await buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
-                } else if (metaTxApproach == ERC20_FORWARDER) {
+                } else if (metaTxApproach == engine.ERC20_FORWARDER) {
                     request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data);
                 } else {
                     let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
@@ -687,7 +682,7 @@ async function sendSignedTransaction(engine, payload, end) {
                     gasLimitNum;
                 let gasLimit = decodedTx.gasLimit;
                 if (api.url == NATIVE_META_TX_URL) {
-                    if (metaTxApproach != DEFAULT) { // forwardedData = payload.params[0].data;
+                    if (metaTxApproach != engine.DEFAULT) { // forwardedData = payload.params[0].data;
                         forwardedData = decodedTx.data;
 
                         let paramArrayForGasCalculation = [];
@@ -711,16 +706,16 @@ async function sendSignedTransaction(engine, payload, end) {
                             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
                         }
                         let request;
-                        if (metaTxApproach == TRUSTED_FORWARDER) {
+                        if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                             request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
-                        } else if (metaTxApproach == ERC20_FORWARDER) {
+                        } else if (metaTxApproach == engine.ERC20_FORWARDER) {
                             request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData);
                         }
                         _logMessage(request);
 
                         paramArray.push(request);
 
-                        if (signatureType && signatureType == EIP712_SIGN) {
+                        if (signatureType && signatureType == engine.EIP712_SIGN) {
                             const domainSeparator = getDomainSeperator(biconomyForwarderDomainData);
                             _logMessage(domainSeparator);
                             paramArray.push(domainSeparator);
@@ -733,8 +728,8 @@ async function sendSignedTransaction(engine, payload, end) {
                         data.apiId = api.id;
                         data.params = paramArray;
                         data.to = to;
-                        if (signatureType && signatureType == EIP712_SIGN) {
-                            data.signatureType = EIP712_SIGN;
+                        if (signatureType && signatureType == engine.EIP712_SIGN) {
+                            data.signatureType = engine.EIP712_SIGN;
                         }
                         await _sendTransaction(engine, account, api, data, end);
 
@@ -1007,7 +1002,7 @@ async function handleSendTransaction(engine, payload, end) {
             // use forwarded data, biconomy forwarder : from, recipient address :to
 
             if (api.url == NATIVE_META_TX_URL) {
-                if (metaTxApproach == TRUSTED_FORWARDER) {
+                if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                     forwardedData = payload.params[0].data;
 
                     // test with biconomy forwarder and add to erc20ForwarderClient buildTx as well
@@ -1038,7 +1033,7 @@ async function handleSendTransaction(engine, payload, end) {
                     _logMessage(request);
 
                     paramArray.push(request);
-                    if (signatureType && signatureType == EIP712_SIGN) {
+                    if (signatureType && signatureType == engine.EIP712_SIGN) {
                         const domainSeparator = getDomainSeperator(biconomyForwarderDomainData);
                         _logMessage(domainSeparator);
                         paramArray.push(domainSeparator);
@@ -1056,8 +1051,8 @@ async function handleSendTransaction(engine, payload, end) {
                     data.apiId = api.id;
                     data.params = paramArray;
                     data.to = to;
-                    if (signatureType && signatureType == EIP712_SIGN) {
-                        data.signatureType = EIP712_SIGN
+                    if (signatureType && signatureType == engine.EIP712_SIGN) {
+                        data.signatureType = engine.EIP712_SIGN
                     }
                     await _sendTransaction(engine, account, api, data, end);
                 } else {
@@ -1569,6 +1564,11 @@ async function _init(apiKey, engine) {
                                     engine.feeProxyAddress = systemInfo.ercFeeProxyAddress;
                                     engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
                                     engine.daiTokenAddress = systemInfo.daiTokenAddress;
+                                    engine.TRUSTED_FORWARDER = systemInfo.trustedForwarderMetaTransaction;
+                                    engine.ERC20_FORWARDER = systemInfo.erc20ForwarderMetaTransaction;
+                                    engine.DEFAULT = systemInfo.defaultMetaTransaction;
+                                    engine.EIP712_SIGN =  systemInfo.eip712Sign;
+                                    engine.PERSONAL_SIGN = systemInfo.personalSign;
 
                                     biconomyForwarderDomainData.verifyingContract = engine.forwarderAddress;
                                     feeProxyDomainData.verifyingContract = engine.forwarderAddress;
