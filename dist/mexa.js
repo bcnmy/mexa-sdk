@@ -48026,8 +48026,8 @@ module.exports={
     "/@biconomy/mexa/browserify-sign",
     "/@biconomy/mexa/create-ecdh",
     "/@biconomy/mexa/eth-lib",
+    "/@biconomy/mexa/ethereum-tx-decoder/ethers",
     "/@biconomy/mexa/ethereumjs-util",
-    "/@biconomy/mexa/ethers",
     "/@biconomy/mexa/secp256k1",
     "/@biconomy/mexa/swarm-js/eth-lib"
   ],
@@ -98418,9 +98418,17 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
-var _abis = require("./abis");
+var _PermitClient = _interopRequireDefault(require("./PermitClient"));
+
+var _ERC20ForwarderClient = _interopRequireDefault(require("./ERC20ForwarderClient"));
 
 var _biconomyforwarder = require("./biconomyforwarder");
+
+var _abis = require("./abis");
+
+var _punycode = require("punycode");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 const Promise = require("promise");
 
@@ -98451,30 +98459,47 @@ const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
-// todo
-// to be added from sys info
-const EIP712_SIGN = config.EIP712_SIGN;
-const TRUSTED_FORWARDER = config.TRUSTED_FORWARDER;
-const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
 let decoderMap = {},
     smartContractMap = {},
-    smartContractMetaTransactionMap = {}; // make it object map possibly
-
+    // contract addresss -> contract attributes(metaTransactionType)
+// could be contract address -> contract object
+smartContractMetaTransactionMap = {};
 let biconomyForwarder;
-let web3;
 
 const events = require("events");
 
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
-let domainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType, forwarderAddress;
+let domainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType;
 let domainData = {
   name: config.eip712DomainName,
   version: config.eip712SigVersion,
   verifyingContract: config.eip712VerifyingContract
+};
+let daiDomainData = {
+  name: config.daiDomainName,
+  version: config.daiVersion
+};
+let biconomyForwarderDomainData = {
+  name: config.forwarderDomainName,
+  version: config.forwarderVersion
+};
+let feeProxyDomainData = {
+  name: config.feeProxyDomainName,
+  version: config.feeProxyVersion
 }; // EIP712 format data for login
 
 let loginDomainType, loginMessageType, loginDomainData;
+
+function getWeb3(context) {
+  let web3;
+
+  if (context) {
+    web3 = context.web3;
+  }
+
+  return web3;
+}
 
 function Biconomy(provider, options) {
   if (typeof fetch == "undefined") {
@@ -98485,6 +98510,7 @@ function Biconomy(provider, options) {
 
   this.isBiconomy = true;
   this.status = STATUS.INIT;
+  this.options = options;
   this.apiKey = options.apiKey;
   this.isLogin = false;
   this.dappAPIMap = {};
@@ -98495,6 +98521,7 @@ function Biconomy(provider, options) {
   this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
   this.ERROR = EVENTS.BICONOMY_ERROR;
   this.pendingLoginTransactions = {};
+  this.originalProvider = provider;
 
   if (options.debug) {
     config.logsEnabled = true;
@@ -98503,10 +98530,10 @@ function Biconomy(provider, options) {
   _init(this.apiKey, this);
 
   if (provider) {
-    web3 = new Web3(provider);
+    this.web3 = new Web3(provider);
 
     if (options.defaultAccount) {
-      web3.eth.defaultAccount = options.defaultAccount;
+      getWeb3(this).eth.defaultAccount = options.defaultAccount;
     }
 
     const proto = Object.getPrototypeOf(provider);
@@ -98542,7 +98569,7 @@ function Biconomy(provider, options) {
           }
         });
       } else {
-        web3.currentProvider.send(payload, cb);
+        getWeb3(self).currentProvider.send(payload, cb);
       }
     };
 
@@ -98559,7 +98586,15 @@ function Biconomy(provider, options) {
               return reject(error);
             }
 
-            resolve(result);
+            if (result.result) {
+              resolve(result.result);
+
+              _logMessage(result.result);
+            } else {
+              resolve(result);
+
+              _logMessage(result);
+            }
 
             if (cb) {
               cb(error, result);
@@ -98573,7 +98608,15 @@ function Biconomy(provider, options) {
               return reject(error);
             }
 
-            resolve(result);
+            if (result.result) {
+              resolve(result.result);
+
+              _logMessage(result.result);
+            } else {
+              resolve(result);
+
+              _logMessage(result);
+            }
 
             if (cb) {
               cb(error, result);
@@ -98581,7 +98624,31 @@ function Biconomy(provider, options) {
           });
         });
       } else {
-        return web3.currentProvider.request(payload, cb);
+        if (getWeb3(self).currentProvider.request) {
+          return getWeb3(self).currentProvider.request(args, cb);
+        } else if (getWeb3(self).currentProvider.send) {
+          return new Promise((resolve, reject) => {
+            let jsonRPCPaylod = toJSONRPCPayload(self, payload.method, payload.params);
+            getWeb3(self).currentProvider.send(jsonRPCPaylod, (err, response) => {
+              if (err) {
+                return reject(err);
+              }
+
+              if (response.result) {
+                resolve(response.result);
+
+                _logMessage(response.result);
+              } else {
+                resolve(response);
+
+                _logMessage(response);
+              }
+            });
+          });
+        } else {
+          return Promise.reject("Invalid provider object passed to Biconomy as it doesn't support request or send method");
+        } // return getWeb3(self).currentProvider.request(payload, cb);
+
       }
     };
 
@@ -98700,7 +98767,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
           paramArray.push(_getParamValue(params[i]));
         }
 
-        let account = web3.eth.accounts.recoverTransaction(rawTransaction);
+        let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
 
         _logMessage(`signer is ${account}`);
 
@@ -98731,7 +98798,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
         message.batchId = config.NONCE_BATCH_ID;
         let nonce = await _getUserContractNonce(account, engine);
         message.nonce = parseInt(nonce);
-        message.value = web3.utils.toHex(decodedTx.value);
+        message.value = getWeb3(engine).utils.toHex(decodedTx.value);
         message.txGas = decodedTx.gasLimit.toString() ? decodedTx.gasLimit.toString() : 0;
         message.expiry = config.EXPIRY;
         message.baseGas = config.BASE_GAS;
@@ -98747,6 +98814,117 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
           domain: domainData,
           primaryType: "MetaTransaction",
           message: message
+        };
+        if (cb) cb(null, dataToSign);
+        return resolve(dataToSign);
+      } else {
+        let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
+        if (cb) cb(error);
+        return reject(error);
+      }
+    }
+  });
+};
+
+Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransaction, cb) {
+  let engine = this;
+  return new Promise(async (resolve, reject) => {
+    if (rawTransaction) {
+      let decodedTx = txDecoder.decodeTx(rawTransaction);
+
+      if (decodedTx.to && decodedTx.data && decodedTx.value) {
+        let to = decodedTx.to.toLowerCase();
+        let methodInfo = decodeMethod(to, decodedTx.data);
+
+        if (!methodInfo) {
+          let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH, `Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`);
+          if (cb) cb(error);
+          return reject(error);
+        }
+
+        let methodName = methodInfo.name;
+        let api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
+
+        if (!api) {
+          api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
+        }
+
+        if (!api) {
+          _logMessage(`API not found for method ${methodName}`);
+
+          let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, `No API found on dashboard for called method ${methodName}`);
+          if (cb) cb(error);
+          return reject(error);
+        }
+
+        _logMessage("API found");
+
+        let params = methodInfo.params;
+        let paramArray = [];
+
+        for (let i = 0; i < params.length; i++) {
+          paramArray.push(_getParamValue(params[i]));
+        }
+
+        let contractAddr = api.contractAddress.toLowerCase();
+        let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+        let gasLimit = decodedTx.gasLimit;
+        let gasLimitNum;
+
+        if (!gasLimit || parseInt(gasLimit) == 0) {
+          let contractABI = smartContractMap[to];
+
+          if (contractABI) {
+            let web3 = getWeb3(engine);
+            let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+            gasLimit = await contract.methods[methodName].apply(null, paramArray).estimateGas({
+              from: account
+            }); // do not send this value in API call. only meant for txGas
+
+            gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
+
+            _logMessage('gas limit number' + gasLimitNum);
+          }
+        } else {
+          gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
+        }
+
+        let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
+
+        _logMessage(`signer is ${account}`);
+
+        if (!account) {
+          let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Not able to get user account from signed transaction`);
+          return end(error);
+        }
+
+        let request;
+
+        if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+          request = (await (0, _biconomyforwarder.buildForwardTxRequest)(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
+        } else if (metaTxApproach == engine.ERC20_FORWARDER) {
+          request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data);
+        } else {
+          let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
+          if (cb) cb(error);
+          return reject(error);
+        }
+
+        _logMessage(request);
+
+        const eip712DataToSign = {
+          types: {
+            EIP712Domain: domainType,
+            ERC20ForwardRequest: forwardRequestType
+          },
+          domain: biconomyForwarderDomainData,
+          primaryType: "ERC20ForwardRequest",
+          message: request
+        };
+        const hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
+        const dataToSign = {
+          eip712Format: eip712DataToSign,
+          personalSignatureFormat: hashToSign
         };
         if (cb) cb(null, dataToSign);
         return resolve(dataToSign);
@@ -98790,7 +98968,7 @@ function _createJsonRpcResponse(payload, error, result) {
     response.error = error;
   } else if (result && result.error) {
     response.error = result.error;
-  } else if (web3.utils.isHex(result)) {
+  } else if (getWeb3(this).utils.isHex(result)) {
     response.result = result;
   } else {
     response = result;
@@ -98827,6 +99005,7 @@ async function sendSignedTransaction(engine, payload, end) {
 
     if (typeof data == "string") {
       // Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
+      // Handle this scenario differently?
       rawTransaction = data;
     } else if (typeof data == "object") {
       // Here user wrapped raw Transaction in json object along with signature
@@ -98856,7 +99035,7 @@ async function sendSignedTransaction(engine, payload, end) {
                 payload.params = [data.rawTransaction];
               }
 
-              return web3.currentProvider.send(payload, end);
+              return getWeb3(engine).currentProvider.send(payload, end);
             }
           }
         }
@@ -98883,7 +99062,7 @@ async function sendSignedTransaction(engine, payload, end) {
               payload.params = [data.rawTransaction];
             }
 
-            return web3.currentProvider.send(payload, end);
+            return getWeb3().currentProvider.send(payload, end);
           }
         }
 
@@ -98891,14 +99070,9 @@ async function sendSignedTransaction(engine, payload, end) {
 
         let params = methodInfo.params;
         let paramArray = [];
-
-        for (let i = 0; i < params.length; i++) {
-          paramArray.push(_getParamValue(params[i]));
-        } //todo
-        //check this recover method for EIP712 sign type
-
-
-        let account = web3.eth.accounts.recoverTransaction(rawTransaction);
+        let contractAddr = api.contractAddress.toLowerCase();
+        let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+        let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
 
         _logMessage(`signer is ${account}`);
 
@@ -98907,24 +99081,94 @@ async function sendSignedTransaction(engine, payload, end) {
           return end(error);
         }
         /**
-         * based on the api check contract meta transaction type
-         * change paramArray accordingly
-         * build request
-         * create domain seperator based on signature type
-         * use already available signature
-         * send API call with appropriate parameters based on signature type
-         */
+        * based on the api check contract meta transaction type
+        * change paramArray accordingly
+        * build request
+        * create domain seperator based on signature type
+        * use already available signature
+        * send API call with appropriate parameters based on signature type
+        * //todo
+        * //test more in trusted-forwarder-demo branch - in progress
+        */
 
+
+        let forwardedData, gasLimitNum;
+        let gasLimit = decodedTx.gasLimit;
 
         if (api.url == NATIVE_META_TX_URL) {
-          let data = {};
-          data.from = account;
-          data.apiId = api.id;
-          data.params = paramArray;
-          data.gasLimit = decodedTx.gasLimit.toString();
-          data.to = decodedTx.to.toLowerCase();
+          if (metaTxApproach != engine.DEFAULT) {
+            // forwardedData = payload.params[0].data;
+            forwardedData = decodedTx.data;
+            let paramArrayForGasCalculation = [];
 
-          _sendTransaction(engine, account, api, data, end);
+            for (let i = 0; i < params.length; i++) {
+              paramArrayForGasCalculation.push(_getParamValue(params[i]));
+            }
+
+            if (!gasLimit || parseInt(gasLimit) == 0) {
+              let contractABI = smartContractMap[to];
+
+              if (contractABI) {
+                let web3 = getWeb3(engine);
+                let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+                gasLimit = await contract.methods[methodName].apply(null, paramArrayForGasCalculation).estimateGas({
+                  from: account
+                }); // do not send this value in API call. only meant for txGas
+
+                gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
+
+                _logMessage('gas limit number' + gasLimitNum);
+              }
+            } else {
+              gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
+            }
+
+            let request;
+
+            if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+              request = (await (0, _biconomyforwarder.buildForwardTxRequest)(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
+            } else if (metaTxApproach == engine.ERC20_FORWARDER) {
+              request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData);
+            }
+
+            _logMessage(request);
+
+            paramArray.push(request);
+
+            if (signatureType && signatureType == engine.EIP712_SIGN) {
+              const domainSeparator = (0, _biconomyforwarder.getDomainSeperator)(biconomyForwarderDomainData);
+
+              _logMessage(domainSeparator);
+
+              paramArray.push(domainSeparator);
+            }
+
+            paramArray.push(signature);
+            let data = {};
+            data.from = account;
+            data.apiId = api.id;
+            data.params = paramArray;
+            data.to = to;
+
+            if (signatureType && signatureType == engine.EIP712_SIGN) {
+              data.signatureType = engine.EIP712_SIGN;
+            }
+
+            await _sendTransaction(engine, account, api, data, end);
+          } else {
+            for (let i = 0; i < params.length; i++) {
+              paramArray.push(_getParamValue(params[i]));
+            }
+
+            let data = {};
+            data.from = account;
+            data.apiId = api.id;
+            data.params = paramArray;
+            data.gasLimit = decodedTx.gasLimit.toString(); //verify
+
+            data.to = decodedTx.to.toLowerCase();
+            await _sendTransaction(engine, account, api, data, end);
+          }
         } else {
           if (!engine.isLogin) {
             let error = {};
@@ -98943,7 +99187,7 @@ async function sendSignedTransaction(engine, payload, end) {
               data.from = account;
               data.apiId = api.id;
               data.data = decodedTx.data;
-              data.value = web3.utils.toHex(decodedTx.value);
+              data.value = getWeb3(engine).utils.toHex(decodedTx.value);
               data.gasLimit = decodedTx.gasLimit.toString();
               data.nonceBatchId = config.NONCE_BATCH_ID;
               data.expiry = config.EXPIRY;
@@ -99012,7 +99256,7 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
     message.data = "0x0";
     message.batchId = config.NONCE_BATCH_ID;
     message.nonce = parseInt(nonce);
-    message.value = web3.utils.toHex(withdrawAmount || 0);
+    message.value = getWeb3(engine).utils.toHex(withdrawAmount || 0);
     message.txGas = 0;
     message.expiry = config.EXPIRY;
     message.baseGas = config.BASE_GAS;
@@ -99031,7 +99275,7 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
     });
 
     try {
-      web3.currentProvider.send({
+      getWeb3(engine).currentProvider.send({
         jsonrpc: JSON_RPC_VERSION,
         id: DEFAULT_PAYLOAD_ID,
         method: config.signTypedV3Method,
@@ -99052,7 +99296,7 @@ Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb
           let data = {};
           data.signature = response.result;
           data.to = receiverAddress;
-          data.value = web3.utils.toHex(withdrawAmount) || 0;
+          data.value = getWeb3(engine).utils.toHex(withdrawAmount) || 0;
           data.from = account;
           data.data = "0x0";
           data.expiry = config.EXPIRY;
@@ -99135,7 +99379,7 @@ async function handleSendTransaction(engine, payload, end) {
         } else {
           _logMessage(`Falling back to default provider as strict mode is false in biconomy`);
 
-          return web3.currentProvider.send(payload, end);
+          return getWeb3(engine).currentProvider.send(payload, end);
         }
       }
 
@@ -99155,34 +99399,59 @@ async function handleSendTransaction(engine, payload, end) {
       let paramArray = [];
       let contractAddr = api.contractAddress.toLowerCase();
       let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-      let forwardedData, gasLimitNum;
+      let forwardedData, gasLimitNum; // todo
+      // gas estimation step for hasLimitNum = txGas
+      // use forwarded data, biconomy forwarder : from, recipient address :to
 
       if (api.url == NATIVE_META_TX_URL) {
-        if (metaTxApproach == TRUSTED_FORWARDER) {
-          forwardedData = payload.params[0].data; // call "TrustedForwarderClient" helper method here to get req, domainSeperator and signature
-          //todo
-          //fix below issue to estimate gas
-          //if(gasLimit) {gasLimitNum = web3.utils.toNumber(gasLimit)} else {gasLimitNum = 75000}
+        if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+          forwardedData = payload.params[0].data; // test with biconomy forwarder and add to erc20ForwarderClient buildTx as well
+          // Check if gas limit is present, it not calculate gas limit
 
-          gasLimitNum = 75000;
+          let paramArrayForGasCalculation = [];
+
+          for (let i = 0; i < params.length; i++) {
+            paramArrayForGasCalculation.push(_getParamValue(params[i]));
+          }
+
+          if (!gasLimit || parseInt(gasLimit) == 0) {
+            let contractABI = smartContractMap[to];
+
+            if (contractABI) {
+              let web3 = getWeb3(engine);
+              let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+              gasLimit = await contract.methods[methodName].apply(null, paramArrayForGasCalculation).estimateGas({
+                from: account
+              }); // do not send this value in API call. only meant for txGas
+
+              gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
+
+              _logMessage('gas limit number' + gasLimitNum);
+            }
+          } else {
+            gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
+          }
+
           const request = (await (0, _biconomyforwarder.buildForwardTxRequest)(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
 
           _logMessage(request);
 
           paramArray.push(request);
 
-          if (signatureType && signatureType == EIP712_SIGN) {
-            const domainSeparator = (0, _biconomyforwarder.getDomainSeperator)();
+          if (signatureType && signatureType == engine.EIP712_SIGN) {
+            const domainSeparator = (0, _biconomyforwarder.getDomainSeperator)(biconomyForwarderDomainData);
 
             _logMessage(domainSeparator);
 
             paramArray.push(domainSeparator);
-            const signatureEIP712 = await getSignatureEIP712(account, request);
+            const signatureEIP712 = await getSignatureEIP712(engine, account, request);
             console.log(signatureEIP712);
             paramArray.push(signatureEIP712);
           } else {
-            const signaturePersonal = await getSignaturePersonal(account, request);
-            console.log(signaturePersonal);
+            const signaturePersonal = await getSignaturePersonal(engine, account, request);
+
+            _logMessage(signaturePersonal);
+
             paramArray.push(signaturePersonal);
           }
 
@@ -99190,12 +99459,10 @@ async function handleSendTransaction(engine, payload, end) {
           data.from = account;
           data.apiId = api.id;
           data.params = paramArray;
-          data.gasLimit = gasLimit;
           data.to = to;
-          /* if below is not explicitly passed biconomy core will assume it for personal signature and would expect two parameters*/
 
-          if (data.signatureType) {
-            data.signatureType = EIP712_SIGN;
+          if (signatureType && signatureType == engine.EIP712_SIGN) {
+            data.signatureType = engine.EIP712_SIGN;
           }
 
           await _sendTransaction(engine, account, api, data, end);
@@ -99229,15 +99496,16 @@ async function handleSendTransaction(engine, payload, end) {
             let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
             return end(error);
-          } // Check if gas limit is present, it not calculate gas limit
+          } // Check if gas limit is present, if not calculate gas limit
 
 
           if (!gasLimit || parseInt(gasLimit) == 0) {
             let contractABI = smartContractMap[to];
 
             if (contractABI) {
+              let web3 = getWeb3(engine);
               let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
-              gasLimit = await contract.methods[methodName].apply(null, paramArray).estimateGas({
+              gasLimit = await contract.methods[methodName].apply(null, paramArrayForGas).estimateGas({
                 from: userContractWallet
               });
             }
@@ -99254,7 +99522,7 @@ async function handleSendTransaction(engine, payload, end) {
           message.data = payload.params[0].data;
           message.batchId = config.NONCE_BATCH_ID;
           message.nonce = parseInt(nonce);
-          message.value = web3.utils.toHex(payload.params[0].value || 0);
+          message.value = getWeb3(engine).utils.toHex(payload.params[0].value || 0);
           message.txGas = gasLimit ? gasLimit : 0;
           message.expiry = config.EXPIRY;
           message.baseGas = config.BASE_GAS;
@@ -99297,7 +99565,7 @@ async function handleSendTransaction(engine, payload, end) {
               data.expiry = config.EXPIRY;
               data.baseGas = config.BASE_GAS;
               data.userContract = userContractWallet;
-              data.value = web3.utils.toHex(payload.params[0].value || 0);
+              data.value = getWeb3(engine).utils.toHex(payload.params[0].value || 0);
               data.gasLimit = gasLimit ? gasLimit : 0;
               data.relayerPayment = {
                 token: relayerPayment.token,
@@ -99324,7 +99592,7 @@ async function handleSendTransaction(engine, payload, end) {
       } else {
         _logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
 
-        return web3.currentProvider.send(payload, end);
+        return getWeb3(engine).currentProvider.send(payload, end);
       }
     }
   } else {
@@ -99364,10 +99632,7 @@ async function _getUserNonce(address, engine) {
   }
 }
 
-async function getSignatureEIP712(account, request) {
-  const erc20fr = Object.assign({}, request);
-  erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
-  delete erc20fr.data;
+async function getSignatureEIP712(engine, account, request) {
   const dataToSign = JSON.stringify({
     types: {
       EIP712Domain: domainType,
@@ -99375,10 +99640,10 @@ async function getSignatureEIP712(account, request) {
     },
     domain: biconomyForwarderDomainData,
     primaryType: "ERC20ForwardRequest",
-    message: erc20fr
+    message: request
   });
   const promi = new Promise(async function (resolve, reject) {
-    await web3.currentProvider.send({
+    await getWeb3(engine).currentProvider.send({
       jsonrpc: "2.0",
       id: 999999999999,
       method: "eth_signTypedData_v4",
@@ -99394,9 +99659,9 @@ async function getSignatureEIP712(account, request) {
   return promi;
 }
 
-async function getSignaturePersonal(account, req) {
+async function getSignaturePersonal(engine, account, req) {
   const hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [req.from, req.to, req.token, req.txGas, req.tokenGasPrice, req.batchId, req.batchNonce, req.deadline, ethers.utils.keccak256(req.data)]);
-  const signature = await web3.eth.personal.sign("0x" + hashToSign.toString("hex"), account);
+  const signature = await getWeb3(engine).eth.personal.sign("0x" + hashToSign.toString("hex"), account);
   return signature;
 }
 /**
@@ -99460,9 +99725,44 @@ eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, (dappId, engine) => {
     _logMessage(error);
   });
 });
+eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async engine => {
+  try {
+    const biconomyAttributes = {
+      apiKey: engine.apiKey,
+      dappAPIMap: engine.dappAPIMap,
+      decoderMap: decoderMap
+    };
+    const ethersProvider = new ethers.providers.Web3Provider(engine.originalProvider);
+    const signer = ethersProvider.getSigner();
+    const address = await signer.getAddress();
+
+    _logMessage(address);
+
+    const feeProxyAddress = engine.options.feeProxyAddress || engine.feeProxyAddress;
+    const transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress;
+    const feeProxy = new ethers.Contract(feeProxyAddress, _abis.feeProxyAbi, signer);
+    const oracleAggregatorAddress = await feeProxy.oracleAggregator();
+    const feeManagerAddress = await feeProxy.feeManager();
+    const forwarderAddress = await feeProxy.forwarder();
+    const oracleAggregator = new ethers.Contract(oracleAggregatorAddress, _abis.oracleAggregatorAbi, signer);
+    const feeManager = new ethers.Contract(feeManagerAddress, _abis.feeManagerAbi, signer);
+    const forwarder = new ethers.Contract(forwarderAddress, _abis.forwarderAbi, signer);
+    const transferHandler = new ethers.Contract(transferHandlerAddress, _abis.transferHandlerAbi, signer);
+    engine.permitClient = new _PermitClient.default(engine, daiDomainData, feeProxyAddress);
+    engine.erc20ForwarderClient = new _ERC20ForwarderClient.default(biconomyAttributes, signer, engine.networkId, ethersProvider, feeProxyDomainData, biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator, feeManager);
+
+    _logMessage(engine.permitClient);
+
+    _logMessage(engine.erc20ForwarderClient);
+
+    engine.status = STATUS.BICONOMY_READY;
+    eventEmitter.emit(STATUS.BICONOMY_READY);
+  } catch (error) {
+    _logMessage(error);
+  }
+});
 eventEmitter.on(EVENTS.DAPP_API_DATA_READY, engine => {
-  engine.status = STATUS.BICONOMY_READY;
-  eventEmitter.emit(STATUS.BICONOMY_READY);
+  eventEmitter.emit(EVENTS.HELPER_CLENTS_READY, engine);
 });
 /**
  * Get user account from current provider using eth_accounts method.
@@ -99477,14 +99777,14 @@ function _getUserAccount(engine, payload, cb) {
     }
 
     if (cb) {
-      web3.currentProvider.send({
+      getWeb3(engine).currentProvider.send({
         jsonrpc: JSON_RPC_VERSION,
         id: id,
         method: "eth_accounts",
         params: []
       }, (error, response) => {
-        if (response && response.result && response.result.length == 0 && web3.eth.defaultAccount && web3.eth.defaultAccount != "") {
-          response.result.push(web3.eth.defaultAccount);
+        if (response && response.result && response.result.length == 0 && getWeb3(engine).eth.defaultAccount && getWeb3(engine).eth.defaultAccount != "") {
+          response.result.push(getWeb3(engine).eth.defaultAccount);
           cb(error, response);
         } else {
           cb(error, response);
@@ -99492,7 +99792,7 @@ function _getUserAccount(engine, payload, cb) {
       });
     } else {
       return new Promise(function (resolve, reject) {
-        web3.currentProvider.send({
+        getWeb3(engine).currentProvider.send({
           jsonrpc: JSON_RPC_VERSION,
           id: id,
           method: "eth_accounts",
@@ -99502,8 +99802,8 @@ function _getUserAccount(engine, payload, cb) {
             reject(error);
           } else if (!res.result) {
             reject(`Invalid response ${res}`);
-          } else if (res.result && res.result.length == 0 && web3.eth.defaultAccount && web3.eth.defaultAccount != "") {
-            resolve(web3.eth.defaultAccount);
+          } else if (res.result && res.result.length == 0 && getWeb3(engine).eth.defaultAccount && getWeb3(engine).eth.defaultAccount != "") {
+            resolve(getWeb3(engine).eth.defaultAccount);
           } else {
             resolve(res.result[0]);
           }
@@ -99540,7 +99840,7 @@ function _getParamValue(paramObj) {
     switch (type) {
       case (type.match(/^uint/) || type.match(/^int/) || {}).input:
         value = scientificToDecimal(parseInt(paramObj.value));
-        value = web3.utils.toHex(value);
+        value = getWeb3(this).utils.toHex(value);
         break;
 
       case "string":
@@ -99628,7 +99928,7 @@ async function _init(apiKey, engine) {
 
         _logMessage(`Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`);
 
-        web3.currentProvider.send({
+        getWeb3(engine).currentProvider.send({
           jsonrpc: JSON_RPC_VERSION,
           id: "102",
           method: "net_version",
@@ -99638,6 +99938,7 @@ async function _init(apiKey, engine) {
             return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), error || networkResponse.error);
           } else {
             let providerNetworkId = networkResponse.result;
+            engine.networkId = providerNetworkId;
 
             _logMessage(`Current provider network id: ${providerNetworkId}`);
 
@@ -99645,6 +99946,9 @@ async function _init(apiKey, engine) {
               return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH, `Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${dappNetworkId}`));
             } else {
               domainData.chainId = providerNetworkId;
+              biconomyForwarderDomainData.chainId = providerNetworkId;
+              daiDomainData.chainId = providerNetworkId;
+              feeProxyDomainData.chainId = providerNetworkId;
               fetch(`${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`).then(response => response.json()).then(systemInfo => {
                 if (systemInfo) {
                   domainType = systemInfo.domainType;
@@ -99655,7 +99959,18 @@ async function _init(apiKey, engine) {
                   loginMessageType = systemInfo.loginMessageType;
                   loginDomainData = systemInfo.loginDomainData;
                   forwardRequestType = systemInfo.forwardRequestType;
-                  forwarderAddress = systemInfo.biconomyForwarderAddress;
+                  engine.forwarderAddress = systemInfo.biconomyForwarderAddress;
+                  engine.feeProxyAddress = systemInfo.ercFeeProxyAddress;
+                  engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
+                  engine.daiTokenAddress = systemInfo.daiTokenAddress;
+                  engine.TRUSTED_FORWARDER = systemInfo.trustedForwarderMetaTransaction;
+                  engine.ERC20_FORWARDER = systemInfo.erc20ForwarderMetaTransaction;
+                  engine.DEFAULT = systemInfo.defaultMetaTransaction;
+                  engine.EIP712_SIGN = systemInfo.eip712Sign;
+                  engine.PERSONAL_SIGN = systemInfo.personalSign;
+                  biconomyForwarderDomainData.verifyingContract = engine.forwarderAddress;
+                  feeProxyDomainData.verifyingContract = engine.forwarderAddress;
+                  daiDomainData.verifyingContract = engine.daiTokenAddress;
 
                   if (systemInfo.relayHubAddress) {
                     domainData.verifyingContract = systemInfo.relayHubAddress;
@@ -99664,7 +99979,8 @@ async function _init(apiKey, engine) {
                   return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.INVALID_DATA, "Could not get signature types from server. Contact Biconomy Team"));
                 }
 
-                biconomyForwarder = new web3.eth.Contract(_abis.forwarderAbi, forwarderAddress); // Get dapps smart contract data from biconomy servers
+                let web3 = getWeb3(engine);
+                biconomyForwarder = new web3.eth.Contract(_abis.forwarderAbi, engine.forwarderAddress); // Get dapps smart contract data from biconomy servers
 
                 let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
                 fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey)).then(response => response.json()).then(function (result) {
@@ -99874,7 +100190,7 @@ Biconomy.prototype.accountLogin = async function (signer, signature, cb) {
 };
 
 const getLoginTransactionReceipt = async (engine, txHash, userAddress) => {
-  var receipt = await web3.eth.getTransactionReceipt(txHash);
+  var receipt = await getWeb3(engine).eth.getTransactionReceipt(txHash);
 
   if (receipt) {
     if (receipt.status) {
@@ -99947,7 +100263,7 @@ Biconomy.prototype.login = async function (signer, cb) {
       return reject(response);
     }
 
-    web3.currentProvider.sendAsync({
+    getWeb3(engine).currentProvider.sendAsync({
       jsonrpc: JSON_RPC_VERSION,
       id: "101",
       method: config.signTypedV3Method,
@@ -100124,18 +100440,18 @@ function _logMessage(message) {
 }
 
 var scientificToDecimal = function (num) {
-  var nsign = Math.sign(num); //remove the sign
+  var nsign = Math.sign(num); // remove the sign
 
-  num = Math.abs(num); //if the number is in scientific notation remove it
+  num = Math.abs(num); // if the number is in scientific notation remove it
 
   if (/\d+\.?\d*e[\+\-]*\d+/i.test(num)) {
     var zero = "0",
         parts = String(num).toLowerCase().split("e"),
-        //split into coeff and exponent
+        // split into coeff and exponent
     e = parts.pop(),
-        //store the exponential part
+        // store the exponential part
     l = Math.abs(e),
-        //get the number of zeros
+        // get the number of zeros
     sign = e / l,
         coeff_array = parts[0].split(".");
 
@@ -100165,7 +100481,354 @@ var scientificToDecimal = function (num) {
 var _default = Biconomy;
 exports.default = _default;
 
-},{"./abis":586,"./biconomyforwarder":587,"./config":588,"abi-decoder":148,"ethereum-tx-decoder":289,"ethereumjs-abi":290,"ethers":325,"events":206,"node-fetch":410,"promise":430,"web3":568}],586:[function(require,module,exports){
+},{"./ERC20ForwarderClient":586,"./PermitClient":587,"./abis":588,"./biconomyforwarder":589,"./config":590,"abi-decoder":148,"ethereum-tx-decoder":289,"ethereumjs-abi":290,"ethers":325,"events":206,"node-fetch":410,"promise":430,"punycode":207,"web3":568}],586:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _ethers = require("ethers");
+
+const {
+  config,
+  RESPONSE_CODES
+} = require("./config");
+
+const abiDecoder = require("abi-decoder"); // should be present in system info as well
+
+
+const erc20ForwardRequestType = config.erc20ForwardRequestType;
+const domainType = config.domainType;
+
+function formatMessage(code, message) {
+  return {
+    code: code,
+    message: message
+  };
+} // pass the networkId to get gas price
+
+
+const getGasPrice = async networkId => {
+  const apiInfo = `${config.baseURL}/api/v1/gas-price?networkId=${networkId}`;
+  const response = await fetch(apiInfo);
+  const responseJson = await response.json();
+  console.log("Response JSON " + JSON.stringify(responseJson));
+  return _ethers.ethers.utils.parseUnits(responseJson.gasPrice.value.toString(), "gwei").toString();
+};
+/**
+ * Single method to be used for logging purpose.
+ *
+ * @param {string} message Message to be logged
+ */
+
+
+function _logMessage(message) {
+  if (config && config.logsEnabled && console.log) {
+    console.log(message);
+  }
+}
+
+class ERC20ForwarderClient {
+  constructor(forwarderClientOptions, signer, networkId, provider, feeProxyDomainData, biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator, feeManager) {
+    this.biconomyAttributes = forwarderClientOptions;
+    this.signer = signer;
+    this.networkId = networkId;
+    this.provider = provider;
+    this.feeProxyDomainData = feeProxyDomainData;
+    this.biconomyForwarderDomainData = biconomyForwarderDomainData;
+    this.feeProxy = feeProxy;
+    this.oracleAggregator = oracleAggregator;
+    this.feeManager = feeManager;
+    this.forwarder = forwarder;
+    this.transferHandler = transferHandler;
+  }
+
+  getApiId(req) {
+    const method = this.biconomy.decoderMap[req.to.toLowerCase()].decodeMethod(req.data);
+    return this.biconomy.dappAPIMap[req.to.toLowerCase()][method.name.toString()];
+  }
+
+  async getTokenGasPrice(tokenAddress) {
+    const gasPrice = _ethers.ethers.BigNumber.from(await getGasPrice(this.networkId));
+
+    const tokenPrice = await this.oracleAggregator.getTokenPrice(tokenAddress);
+    const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(tokenAddress);
+    return gasPrice.mul(_ethers.ethers.BigNumber.from(10).pow(tokenOracleDecimals)).div(tokenPrice).toString();
+  }
+
+  async buildERC20TxRequest(account, to, txGas, data, newBatch = false) {
+    const userAddress = account;
+    const batchId = newBatch ? await this.forwarder.getBatch(userAddress) : 0;
+    let nonce = await this.forwarder.getNonce(userAddress, batchId);
+    const batchNonce = Number(nonce);
+    const tokenGasPrice = await this.getTokenGasPrice(token);
+    const req = {
+      from: userAddress,
+      to: to,
+      token: token,
+      txGas: txGas,
+      tokenGasPrice: tokenGasPrice,
+      batchId: batchId,
+      batchNonce: batchNonce,
+      deadline: Math.floor(Date.now() / 1000 + 3600),
+      data: data
+    };
+    return req;
+  }
+
+  async buildTx(to, token, txGas, data, newBatch = false) {
+    const userAddress = await this.signer.getAddress();
+    const batchId = newBatch ? await this.forwarder.getBatch(userAddress) : 0;
+    let nonce = await this.forwarder.getNonce(userAddress, batchId);
+    const batchNonce = Number(nonce);
+    const tokenGasPrice = await this.getTokenGasPrice(token);
+    const req = {
+      from: userAddress,
+      to: to,
+      token: token,
+      txGas: txGas,
+      tokenGasPrice: tokenGasPrice,
+      batchId: batchId,
+      batchNonce: batchNonce,
+      deadline: Math.floor(Date.now() / 1000 + 3600),
+      data: data
+    };
+    const feeMultiplier = await this.feeManager.getFeeMultiplier(userAddress, token);
+    const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(tokenAddress);
+    const transferHandlerGas = await this.feeProxy.transferHandlerGas(); // todo
+    // verify cost calculation
+
+    let cost = _ethers.ethers.BigNumber.from(req.txGas.toString()).add(transferHandlerGas).mul(_ethers.ethers.BigNumber.from(req.tokenGasPrice)).mul(_ethers.ethers.BigNumber.from(feeMultiplier.toString)).div(_ethers.ethers.BigNumber.from(10000)).div(_ethers.ethers.BigNumber.from(10).pow(_ethers.ethers.BigNumber.from(tokenOracleDecimals)));
+
+    let fee = parseFloat(cost.toString()); // exact amount in tokens
+
+    return {
+      request: req,
+      cost: fee
+    };
+  }
+
+  async buildTransferTx(token, to, amount) {
+    // should have call to check if user approved transferHandler
+    const txCall = await this.transferHandler.populateTransaction.transfer(token, to, amount);
+    return await this.buildTx(this.transferHandler.address, token, 100000, txCall.data);
+  } // todo
+  // test after error handler changes
+
+
+  async sendTxEIP712(req) {
+    // should have call to check if user approved transferHandler
+    const domainSeparator = _ethers.ethers.utils.keccak256(_ethers.ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "uint256", "address"], [_ethers.ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"), _ethers.ethers.utils.id(this.feeProxyDomainData.name), _ethers.ethers.utils.id(this.feeProxyDomainData.version), this.feeProxyDomainData.chainId, this.feeProxyDomainData.verifyingContract]));
+
+    const userAddress = await this.signer.getAddress();
+    const dataToSign = {
+      types: {
+        EIP712Domain: domainType,
+        ERC20ForwardRequest: erc20ForwardRequestType
+      },
+      domain: this.feeProxyDomainData,
+      primaryType: "ERC20ForwardRequest",
+      message: req
+    };
+    const sig = await this.provider.send("eth_signTypedData_v4", [req.from, JSON.stringify(dataToSign)]);
+    const api = this.getApiId(req);
+    const apiId = api.id;
+    /**
+    * check if api is present
+    * if not present send normal transaction based on method,to,req.data
+    * instead of meta transaction call to the server api
+    * possibly include biconomy's event emitter to throw error
+    */
+
+    const metaTxBody = {
+      to: req.to,
+      from: userAddress,
+      apiId: apiId,
+      params: [req, domainSeparator, sig],
+      signatureType: "EIP712Sign"
+    };
+    fetch(`${config.baseURL}/api/v2/meta-tx/native`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.biconomy.apiKey
+      },
+      body: JSON.stringify(metaTxBody)
+    }).then(function (txResponse) {
+      const responseJson = txResponse.json();
+      return responseJson["txHash"];
+    }).catch(function (error) {
+      // could use event emitter from biconomy
+      _logMessage(error.toString());
+
+      return formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server");
+    });
+    const responseJson = await biconomy.json();
+    return responseJson["txHash"];
+  }
+
+  async sendTxPersonalSign(req) {
+    const hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [req.from, req.to, req.token, req.txGas, req.tokenGasPrice, req.batchId, req.batchNonce, req.deadline, _ethers.ethers.utils.keccak256(req.data)]);
+    const userAddress = await this.signer.getAddress();
+    const sig = this.provider.signMessage(hashToSign);
+    const api = this.getApiId(req);
+    const apiId = api.id;
+    const metaTxBody = {
+      to: req.to,
+      from: userAddress,
+      apiId: apiId,
+      params: [req, sig]
+    };
+    fetch(`${config.baseURL}/api/v2/meta-tx/native`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.biconomy.apiKey
+      },
+      body: JSON.stringify(metaTxBody)
+    }).then(function (txResponse) {
+      const responseJson = txResponse.json();
+      return responseJson["txHash"];
+    }).catch(function (error) {
+      // todo
+      // use event emitter from biconomy
+      _logMessage(error.toString());
+
+      return formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server");
+    });
+  }
+
+  async getSignatureEIP712(account, request) {
+    const dataToSign = JSON.stringify({
+      types: {
+        EIP712Domain: domainType,
+        ERC20ForwardRequest: erc20ForwardRequestType
+      },
+      domain: this.biconomyForwarderDomainData,
+      primaryType: "ERC20ForwardRequest",
+      message: request
+    });
+    const promi = new Promise(async function (resolve, reject) {
+      await getWeb3(engine).currentProvider.send({
+        jsonrpc: "2.0",
+        id: 999999999999,
+        method: "eth_signTypedData_v4",
+        params: [account, dataToSign]
+      }, function (error, res) {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(res.result);
+        }
+      });
+    });
+    return promi;
+  }
+
+  async getSignaturePersonal(account, req) {
+    const hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [req.from, req.to, req.token, req.txGas, req.tokenGasPrice, req.batchId, req.batchNonce, req.deadline, _ethers.ethers.utils.keccak256(req.data)]);
+    const signature = await getWeb3(engine).eth.personal.sign("0x" + hashToSign.toString("hex"), account);
+    return signature;
+  }
+
+}
+
+var _default = ERC20ForwarderClient;
+exports.default = _default;
+
+},{"./config":590,"abi-decoder":148,"ethers":325}],587:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _abis = require("./abis");
+
+var _ethers = require("ethers");
+
+const {
+  config
+} = require("./config"); // work on this later to use smart contract address nad provider id from biconomy
+
+
+class PermitClient {
+  constructor(provider, daiDomainData, feeProxyAddress) {
+    const ethersProvider = new _ethers.ethers.providers.Web3Provider(provider);
+    this.provider = ethersProvider;
+    this.signer = ethersProvider.getSigner();
+    this.daiDomainData = daiDomainData;
+    this.feeProxyAddress = feeProxyAddress;
+  }
+
+  async daiPermit(daiPermitOptions) {
+    const spender = daiPermitOptions.spender || this.feeProxyAddress;
+    const expiry = daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
+    const allowed = daiPermitOptions.allowed || true;
+    const dai = new _ethers.ethers.Contract(this.daiDomainData.verifyingContract, _abis.daiAbi, this.signer);
+    const userAddress = await this.signer.getAddress();
+    const nonce = await dai.nonces(userAddress);
+    const permitDataToSign = {
+      types: {
+        EIP712Domain: config.domainType,
+        Permit: config.daiPermitType
+      },
+      domain: this.daiDomainData,
+      primaryType: "Permit",
+      message: {
+        holder: userAddress,
+        spender: spender,
+        nonce: parseInt(nonce),
+        expiry: parseInt(expiry),
+        allowed: true
+      }
+    };
+    const result = await this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign)]);
+    console.log("success", result);
+    const signature = result.substring(2);
+    const r = "0x" + signature.substring(0, 64);
+    const s = "0x" + signature.substring(64, 128);
+    const v = parseInt(signature.substring(128, 130), 16);
+    await dai.permit(userAddress, spender, parseInt(nonce), parseInt(expiry.toString()), allowed, v, r, s);
+  }
+
+  async eip2612Permit(tokenDomainData, spender, value, deadline) {
+    const userAddress = await this.signer.getAddress();
+    const token = new _ethers.ethers.Contract(tokenDomainData.verifyingContract, _abis.erc20Eip2612Abi, this.signer);
+    const nonce = await this.token.nonces(userAddress);
+    const permitDataToSign = {
+      types: {
+        EIP712Domain: config.domainType,
+        Permit: config.eip2612PermitType
+      },
+      domain: tokenDomainData,
+      primaryType: "Permit",
+      message: {
+        holder: userAddress,
+        spender: spender,
+        nonce: parseInt(nonce),
+        value: value,
+        deadline: deadline
+      }
+    };
+    const result = await this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign)]);
+    console.log("success", result);
+    const signature = result.substring(2);
+    const r = "0x" + signature.substring(0, 64);
+    const s = "0x" + signature.substring(64, 128);
+    const v = parseInt(signature.substring(128, 130), 16);
+    await token.permit(this.signerAddress, spender, value, parseInt(deadline.toString()), v, r, s);
+  }
+
+}
+
+var _default = PermitClient;
+exports.default = _default;
+
+},{"./abis":588,"./config":590,"ethers":325}],588:[function(require,module,exports){
 const feeProxyAbi = [{"inputs":[{"internalType":"uint256","name":"_transferHandlerGas","type":"uint256"},{"internalType":"address","name":"_feeReceiver","type":"address"},{"internalType":"address","name":"_feeManager","type":"address"},{"internalType":"addresspayable","name":"_forwarder","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"uint256","name":"batchId","type":"uint256"},{"indexed":true,"internalType":"uint256","name":"batchNonce","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"charge","type":"uint256"},{"indexed":false,"internalType":"address","name":"token","type":"address"}],"name":"FeeCharged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"inputs":[{"components":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"txGas","type":"uint256"},{"internalType":"uint256","name":"tokenGasPrice","type":"uint256"},{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"uint256","name":"batchNonce","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"internalType":"structERC20ForwardRequestTypes.ERC20ForwardRequest","name":"req","type":"tuple"},{"internalType":"bytes32","name":"domainSeparator","type":"bytes32"},{"internalType":"bytes","name":"sig","type":"bytes"}],"name":"executeEIP712","outputs":[{"internalType":"bool","name":"success","type":"bool"},{"internalType":"bytes","name":"ret","type":"bytes"}],"stateMutability":"payable","type":"function"},{"inputs":[{"components":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"txGas","type":"uint256"},{"internalType":"uint256","name":"tokenGasPrice","type":"uint256"},{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"uint256","name":"batchNonce","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"internalType":"structERC20ForwardRequestTypes.ERC20ForwardRequest","name":"req","type":"tuple"},{"internalType":"bytes","name":"sig","type":"bytes"}],"name":"executePersonalSign","outputs":[{"internalType":"bool","name":"success","type":"bool"},{"internalType":"bytes","name":"ret","type":"bytes"}],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"feeManager","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"feeReceiver","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"forwarder","outputs":[{"internalType":"addresspayable","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"uint256","name":"batchId","type":"uint256"}],"name":"getNonce","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"oracleAggregator","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_feeManager","type":"address"}],"name":"setFeeManager","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_feeReceiver","type":"address"}],"name":"setFeeReceiver","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"oa","type":"address"}],"name":"setOracleAggregator","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_transferHandlerGas","type":"uint256"}],"name":"setTransferHandlerGas","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"transferHandlerGas","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]
 const oracleAggregatorAbi = [{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"getTokenOracleDecimals","outputs":[{"internalType":"uint8","name":"_tokenOracleDecimals","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"getTokenPrice","outputs":[{"internalType":"uint256","name":"tokenPriceUnadjusted","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"address","name":"callAddress","type":"address"},{"internalType":"uint8","name":"decimals","type":"uint8"},{"internalType":"bytes","name":"callData","type":"bytes"},{"internalType":"bool","name":"signed","type":"bool"}],"name":"setTokenOracle","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}];
 const forwarderAbi = [{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"domainSeparator","type":"bytes32"},{"indexed":false,"internalType":"bytes","name":"domainValue","type":"bytes"}],"name":"DomainRegistered","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"uint256","name":"batchId","type":"uint256"},{"indexed":true,"internalType":"uint256","name":"batchNonce","type":"uint256"},{"indexed":false,"internalType":"bool","name":"success","type":"bool"},{"indexed":false,"internalType":"bytes","name":"returnData","type":"bytes"},{"indexed":false,"internalType":"address","name":"feeProxy","type":"address"},{"indexed":false,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"txGas","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"tokenGasPrice","type":"uint256"},{"indexed":false,"internalType":"bytes","name":"data","type":"bytes"}],"name":"ForwardedTx","type":"event"},{"inputs":[],"name":"EIP712_DOMAIN_TYPE","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"REQUEST_TYPEHASH","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"domains","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"txGas","type":"uint256"},{"internalType":"uint256","name":"tokenGasPrice","type":"uint256"},{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"uint256","name":"batchNonce","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"internalType":"struct ERC20ForwardRequestTypes.ERC20ForwardRequest","name":"req","type":"tuple"},{"internalType":"bytes32","name":"domainSeparator","type":"bytes32"},{"internalType":"bytes","name":"sig","type":"bytes"}],"name":"executeEIP712","outputs":[{"internalType":"bool","name":"success","type":"bool"},{"internalType":"bytes","name":"ret","type":"bytes"}],"stateMutability":"payable","type":"function"},{"inputs":[{"components":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"txGas","type":"uint256"},{"internalType":"uint256","name":"tokenGasPrice","type":"uint256"},{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"uint256","name":"batchNonce","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"internalType":"struct ERC20ForwardRequestTypes.ERC20ForwardRequest","name":"req","type":"tuple"},{"internalType":"bytes","name":"sig","type":"bytes"}],"name":"executePersonalSign","outputs":[{"internalType":"bool","name":"success","type":"bool"},{"internalType":"bytes","name":"ret","type":"bytes"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"uint256","name":"batchId","type":"uint256"}],"name":"getNonce","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"highestBatchId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"version","type":"string"}],"name":"registerDomainSeparator","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"txGas","type":"uint256"},{"internalType":"uint256","name":"tokenGasPrice","type":"uint256"},{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"uint256","name":"batchNonce","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"internalType":"struct ERC20ForwardRequestTypes.ERC20ForwardRequest","name":"req","type":"tuple"},{"internalType":"bytes32","name":"domainSeparator","type":"bytes32"},{"internalType":"bytes","name":"sig","type":"bytes"}],"name":"verifyEIP712","outputs":[],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"txGas","type":"uint256"},{"internalType":"uint256","name":"tokenGasPrice","type":"uint256"},{"internalType":"uint256","name":"batchId","type":"uint256"},{"internalType":"uint256","name":"batchNonce","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"internalType":"struct ERC20ForwardRequestTypes.ERC20ForwardRequest","name":"req","type":"tuple"},{"internalType":"bytes","name":"sig","type":"bytes"}],"name":"verifyPersonalSign","outputs":[],"stateMutability":"view","type":"function"},{"stateMutability":"payable","type":"receive"}];
@@ -100183,7 +100846,7 @@ module.exports = {
     erc20Eip2612Abi,
     transferHandlerAbi
 }
-},{}],587:[function(require,module,exports){
+},{}],589:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -100198,7 +100861,6 @@ const {
 } = require("./config");
 
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
-const biconomyForwarderDomainData = config.biconomyForwarderDomainData;
 
 const buildForwardTxRequest = async (account, to, gasLimitNum, data, biconomyForwarder, newBatch = false) => {
   const batchId = newBatch ? await biconomyForwarder.methods.getBatch(userAddress).call() : 0;
@@ -100221,7 +100883,7 @@ const buildForwardTxRequest = async (account, to, gasLimitNum, data, biconomyFor
 
 exports.buildForwardTxRequest = buildForwardTxRequest;
 
-const getDomainSeperator = () => {
+const getDomainSeperator = biconomyForwarderDomainData => {
   const domainSeparator = _ethers.ethers.utils.keccak256(_ethers.ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "uint256", "address"], [_ethers.ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"), _ethers.ethers.utils.id(biconomyForwarderDomainData.name), _ethers.ethers.utils.id(biconomyForwarderDomainData.version), biconomyForwarderDomainData.chainId, biconomyForwarderDomainData.verifyingContract]));
 
   return domainSeparator;
@@ -100229,7 +100891,7 @@ const getDomainSeperator = () => {
 
 exports.getDomainSeperator = getDomainSeperator;
 
-},{"./config":588,"ethers":325}],588:[function(require,module,exports){
+},{"./config":590,"ethers":325}],590:[function(require,module,exports){
 let config = {}
 config.version = 'v1';
 config.version2 = 'v2';
@@ -100239,6 +100901,12 @@ config.loginVersion = "1";
 config.eip712SigVersion = "1";
 config.eip712DomainName = "Biconomy Meta Transaction";
 config.eip712VerifyingContract = "0x3457dC2A8Ff1d3FcC45eAd532CA1740f5c477160";
+config.daiDomainName = "Dai Stablecoin";
+config.daiVersion = "1";
+config.feeProxyDomainName = "TEST";
+config.feeProxyVersion = "1";
+config.forwarderDomainName = "TEST";
+config.forwarderVersion = "1";
 config.baseURL = "https://api.biconomy.io";
 config.nativeMetaTxUrl = `/api/${config.version2}/meta-tx/native`;
 config.userLoginPath = `/api/${config.version2}/dapp-user/login`;
@@ -100262,9 +100930,6 @@ config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-config.EIP712_SIGN = "EIP712Sign";
-config.TRUSTED_FORWARDER = "TrustedForwarder"; // final enum to add 
-//config.FEE_PROXY_ADDRESS_KOVAN = "0x1E13cbCb6B695D10B68b2f83D71F0D201504C598";
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;
@@ -100273,7 +100938,8 @@ const EVENTS = {
 	SMART_CONTRACT_DATA_READY: 'smart_contract_data_ready',
 	DAPP_API_DATA_READY: 'dapp_api_data_ready',
 	LOGIN_CONFIRMATION: 'login_confirmation',
-	BICONOMY_ERROR: 'biconomy_error'
+	BICONOMY_ERROR: 'biconomy_error',
+	HELPER_CLENTS_READY: 'permit_and_ercforwarder_clients_ready'
 };
 
 const RESPONSE_CODES = {
@@ -100292,16 +100958,12 @@ const RESPONSE_CODES = {
 	SUCCESS_RESPONSE: 'B200',
 	USER_CONTRACT_CREATION_FAILED:'B512',
 	EVENT_NOT_SUPPORTED: 'B513',
-	INVALID_DATA: 'B514'
+	INVALID_DATA: 'B514',
+	INVALID_OPERATION: 'B515'
 };
 
-config.biconomyForwarderDomainData = {
-    name : "TEST",
-    version : "1",
-    chainId : 42,
-    verifyingContract : "0xBFA21CD2F21a8E581E77942B2831B378d2378E69"
-  };
 
+// could get these from sys info call
 config.forwardRequestType = [
     {name:'from',type:'address'},
     {name:'to',type:'address'},
@@ -100311,8 +100973,31 @@ config.forwardRequestType = [
     {name:'batchId',type:'uint256'},
     {name:'batchNonce',type:'uint256'},
     {name:'deadline',type:'uint256'},
-    {name:'dataHash',type:'bytes32'}
+    {name:'data',type:'bytes'}
 ];
+
+config.daiPermitType = [
+	{ name: "holder", type: "address" },
+	{ name: "spender", type: "address" },
+	{ name: "nonce", type: "uint256" },
+	{ name: "expiry", type: "uint256" },
+	{ name: "allowed", type: "bool" },
+  ];
+
+config.eip2612PermitType = [
+	{ name: "owner", type: "address" },
+	{ name: "spender", type: "address" },
+	{ name: "value", type: "uint256" },
+	{ name: "nonce", type: "uint256" },
+	{ name: "deadline", type: "uint256" },
+  ];
+
+config.domainType = [
+	{ name: "name", type: "string" },
+	{ name: "version", type: "string" },
+	{ name: "chainId", type: "uint256" },
+	{ name: "verifyingContract", type: "address" },
+  ];
 
 const BICONOMY_RESPONSE_CODES = {
 	SUCCESS : 200,

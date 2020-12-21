@@ -2,6 +2,7 @@ import {ethers} from "ethers";
 const {config, RESPONSE_CODES} = require("./config");
 const abiDecoder = require("abi-decoder");
 
+// should be present in system info as well
 const erc20ForwardRequestType = config.erc20ForwardRequestType;
 const domainType = config.domainType;
 
@@ -131,9 +132,6 @@ class ERC20ForwarderClient {
             this.feeProxyDomainData.verifyingContract,
         ]));
         const userAddress = await this.signer.getAddress();
-        const erc20fr = Object.assign({}, req);
-        erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
-        delete erc20fr.data;
         const dataToSign = {
             types: {
                 EIP712Domain: domainType,
@@ -141,7 +139,7 @@ class ERC20ForwarderClient {
             },
             domain: this.feeProxyDomainData,
             primaryType: "ERC20ForwardRequest",
-            message: erc20fr
+            message: req
         };
 
         const sig = await this.provider.send("eth_signTypedData_v4", [req.from, JSON.stringify(dataToSign),]);
@@ -235,9 +233,6 @@ class ERC20ForwarderClient {
     }
 
     async getSignatureEIP712(account, request) {
-        const erc20fr = Object.assign({}, request);
-        erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
-        delete erc20fr.data;
         const dataToSign = JSON.stringify({
             types: {
                 EIP712Domain: domainType,
@@ -245,7 +240,7 @@ class ERC20ForwarderClient {
             },
             domain: this.biconomyForwarderDomainData,
             primaryType: "ERC20ForwardRequest",
-            message: erc20fr
+            message: request
         });
 
         const promi = new Promise(async function (resolve, reject) {

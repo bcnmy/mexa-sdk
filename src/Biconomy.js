@@ -483,9 +483,6 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                     return reject(error);
                 } _logMessage(request);
 
-                const erc20fr = Object.assign({}, request);
-                erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
-                delete erc20fr.data;
                 const eip712DataToSign = {
                     types: {
                         EIP712Domain: domainType,
@@ -493,7 +490,7 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                     },
                     domain: biconomyForwarderDomainData,
                     primaryType: "ERC20ForwardRequest",
-                    message: erc20fr
+                    message: request
                 };
 
                 const hashToSign = abi.soliditySHA3([
@@ -1217,9 +1214,6 @@ async function _getUserNonce(address, engine) {
 }
 
 async function getSignatureEIP712(engine, account, request) {
-    const erc20fr = Object.assign({}, request);
-    erc20fr.dataHash = ethers.utils.keccak256(erc20fr.data);
-    delete erc20fr.data;
     const dataToSign = JSON.stringify({
         types: {
             EIP712Domain: domainType,
@@ -1227,7 +1221,7 @@ async function getSignatureEIP712(engine, account, request) {
         },
         domain: biconomyForwarderDomainData,
         primaryType: "ERC20ForwardRequest",
-        message: erc20fr
+        message: request
     });
 
     const promi = new Promise(async function (resolve, reject) {
