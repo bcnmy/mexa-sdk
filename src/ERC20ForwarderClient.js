@@ -59,7 +59,7 @@ class ERC20ForwarderClient {
         return gasPrice.mul(ethers.BigNumber.from(10).pow(tokenOracleDecimals)).div(tokenPrice).toString();
     }
 
-    async buildERC20TxRequest(account, to, txGas, data, newBatch = false) {
+    async buildERC20TxRequest(account, to, txGas, data, token, newBatch = false) {
       const userAddress = account;
       const batchId = newBatch ? await this.forwarder.getBatch(userAddress) : 0;
       let nonce = await this.forwarder.getNonce(userAddress, batchId);

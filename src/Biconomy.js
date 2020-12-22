@@ -473,7 +473,7 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                 if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                     request = (await buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
                 } else if (metaTxApproach == engine.ERC20_FORWARDER) {
-                    request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data);
+                    request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data, engine.daiTokenAddress);
                 } else {
                     let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
                     if (cb)
@@ -705,7 +705,7 @@ async function sendSignedTransaction(engine, payload, end) {
                         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                             request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
                         } else if (metaTxApproach == engine.ERC20_FORWARDER) {
-                            request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData);
+                            request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData, engine.daiTokenAddress);
                         }
                         _logMessage(request);
 
