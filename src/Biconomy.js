@@ -2,6 +2,7 @@ const Promise = require("promise");
 const ethers = require("ethers");
 const txDecoder = require("ethereum-tx-decoder");
 const abi = require("ethereumjs-abi");
+const {toJSONRPCPayload} = require('./util');
 const {
     config,
     RESPONSE_CODES,
@@ -99,6 +100,9 @@ function Biconomy(provider, options) {
     this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
     this.ERROR = EVENTS.BICONOMY_ERROR;
     this.pendingLoginTransactions = {};
+    this.jsonRPC = {
+		messageId: 0
+	}
     this.originalProvider = provider;
 
     if (options.debug) {
@@ -145,7 +149,6 @@ function Biconomy(provider, options) {
                 getWeb3(self).currentProvider.send(payload, cb);
             }
         };
-
         this.request = function (args, cb) {
             let payload = {
                 method: args.method,
@@ -205,10 +208,8 @@ function Biconomy(provider, options) {
                             }
                             if (response.result) {
                                 resolve(response.result);
-                                _logMessage(response.result);
                             } else {
                                 resolve(response);
-                                _logMessage(response);
                             }
                         });
                     });
@@ -1337,26 +1338,41 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         };
         const ethersProvider = new ethers.providers.Web3Provider(engine.originalProvider);
         const signer = ethersProvider.getSigner();
-        const address = await signer.getAddress();
-        _logMessage(address);
-
+        let signerOrProvider = signer;
+        let isSignerWithAccounts = true;
+        try {
+            await signer.getAddress();
+        } catch(error) {
+            _logMessage("Given provider does not have accounts information");
+            signerOrProvider = ethersProvider;
+            isSignerWithAccounts = false;
+        }
         const feeProxyAddress = engine.options.feeProxyAddress || engine.feeProxyAddress;
         const transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
-        const feeProxy = new ethers.Contract(feeProxyAddress, feeProxyAbi, signer);
-        const oracleAggregatorAddress = await feeProxy.oracleAggregator();
-        const feeManagerAddress = await feeProxy.feeManager();
-        const forwarderAddress = await feeProxy.forwarder();
-        const oracleAggregator = new ethers.Contract(oracleAggregatorAddress, oracleAggregatorAbi, signer);
-        const feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signer);
-        const forwarder = new ethers.Contract(forwarderAddress, forwarderAbi, signer);
-        const transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signer);
+        if(feeProxyAddress) {
 
-        engine.permitClient = new PermitClient(engine, daiDomainData, feeProxyAddress);
-        engine.erc20ForwarderClient = new ERC20ForwarderClient(biconomyAttributes, signer, engine.networkId, ethersProvider, feeProxyDomainData, biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator, feeManager);
+            const feeProxy = new ethers.Contract(feeProxyAddress, feeProxyAbi, signerOrProvider);
+            const oracleAggregatorAddress = await feeProxy.oracleAggregator();
+            const feeManagerAddress = await feeProxy.feeManager();
+            const forwarderAddress = await feeProxy.forwarder();
+            const oracleAggregator = new ethers.Contract(oracleAggregatorAddress, oracleAggregatorAbi, signerOrProvider);
+            const feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider);
+            const forwarder = new ethers.Contract(forwarderAddress, forwarderAbi, signerOrProvider);
+            const transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signerOrProvider);
 
-        _logMessage(engine.permitClient);
-        _logMessage(engine.erc20ForwarderClient);
+            engine.permitClient = new PermitClient(engine, daiDomainData, feeProxyAddress);
+            engine.erc20ForwarderClient = new ERC20ForwarderClient({
+                forwarderClientOptions: biconomyAttributes,
+                signer,
+                networkId: engine.networkId,
+                provider: ethersProvider,
+                feeProxyDomainData, biconomyForwarderDomainData, feeProxy,
+                transferHandler, forwarder, oracleAggregator, feeManager, isSignerWithAccounts});
+
+            _logMessage(engine.permitClient);
+            _logMessage(engine.erc20ForwarderClient);
+        }
         engine.status = STATUS.BICONOMY_READY;
         eventEmitter.emit(STATUS.BICONOMY_READY);
     } catch (error) {
@@ -1509,7 +1525,7 @@ async function _sendTransaction(engine, account, api, data, cb) {
  * Function to initialize the biconomy object with DApp information.
  * It fetches the dapp's smart contract from biconomy database and initialize the decoders for each smart
  * contract which will be used to decode information during function calls.
- * @param dappId Id for dapp whose information is to be fetched
+ * @param dappId Id for dapp whos information is to be fetched
  * @param apiKey API key used to authenticate the request at biconomy server
  * @param _this object representing biconomy provider
  **/
