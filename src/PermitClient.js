@@ -18,7 +18,7 @@ class PermitClient {
         const expiry = daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
         const allowed = daiPermitOptions.allowed || true;
         const dai = new ethers.Contract(this.daiDomainData.verifyingContract, daiAbi, this.signer);
-        const userAddress = await this.signer.getAddress();
+        const userAddress = await this.signer.getAddress(); // should we provider account in options and not this.signer? 
         const nonce = await dai.nonces(userAddress);
         const permitDataToSign = {
             types: {
