@@ -33,7 +33,9 @@ function _logMessage(message) {
 }
 
 class ERC20ForwarderClient {
-    constructor(forwarderClientOptions, signer, networkId, provider, feeProxyDomainData, biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator, feeManager) {
+    constructor({forwarderClientOptions, signer, networkId, provider, feeProxyDomainData,
+        biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator,
+        feeManager, isSignerWithAccounts}) {
         this.biconomyAttributes = forwarderClientOptions;
         this.signer = signer;
         this.networkId = networkId;
@@ -45,6 +47,7 @@ class ERC20ForwarderClient {
         this.feeManager = feeManager;
         this.forwarder = forwarder;
         this.transferHandler = transferHandler;
+        this.isSignerWithAccounts = isSignerWithAccounts;
     }
 
     getApiId(req) {
