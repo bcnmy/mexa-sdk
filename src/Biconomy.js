@@ -440,7 +440,9 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                 for (let i = 0; i < params.length; i++) {
                     paramArray.push(_getParamValue(params[i], engine));
                 }
-
+                
+                let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
+                _logMessage(`signer is ${account}`);
                 let contractAddr = api.contractAddress.toLowerCase();
                 let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
                 let gasLimit = decodedTx.gasLimit;
@@ -463,8 +465,7 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                 }
 
 
-                let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
-                _logMessage(`signer is ${account}`);
+                
                 if (! account) {
                     let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Not able to get user account from signed transaction`);
                     return end(error);
