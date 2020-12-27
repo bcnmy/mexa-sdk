@@ -475,6 +475,8 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
                 if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                     request = (await buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
                 } else if (metaTxApproach == engine.ERC20_FORWARDER) {
+                    //todo
+                    // how does the users provide custom token address here?
                     request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data, engine.daiTokenAddress);
                 } else {
                     let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
@@ -597,7 +599,10 @@ async function sendSignedTransaction(engine, payload, end) {
         let data = payload.params[0];
         let rawTransaction,
             signature,
+            tokenAddress,
             signatureType;
+        // user would need to pass token address as well!
+        // OR they could pass the symbol and engine will provide the address for you..
 
         if (typeof data == "string") {
             // Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
@@ -607,6 +612,7 @@ async function sendSignedTransaction(engine, payload, end) {
             signature = data.signature;
             rawTransaction = data.rawTransaction;
             signatureType = data.signatureType;
+            tokenAddress = data.tokenAddress;
         }
 
         if (rawTransaction) {
@@ -1578,6 +1584,8 @@ async function _init(apiKey, engine) {
                                     engine.feeProxyAddress = systemInfo.ercFeeProxyAddress;
                                     engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
                                     engine.daiTokenAddress = systemInfo.daiTokenAddress;
+                                    engine.usdtTokenAddress = systemInfo.usdtTokenAddress;
+                                    engine.usdcTokenAddress = systemInfo.usdcTokenAddress;
                                     engine.TRUSTED_FORWARDER = systemInfo.trustedForwarderMetaTransaction;
                                     engine.ERC20_FORWARDER = systemInfo.erc20ForwarderMetaTransaction;
                                     engine.DEFAULT = systemInfo.defaultMetaTransaction;
