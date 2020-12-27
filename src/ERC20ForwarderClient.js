@@ -101,9 +101,11 @@ class ERC20ForwarderClient {
             data: data
         };
 
+        debugger;
         const feeMultiplier = await this.feeManager.getFeeMultiplier(userAddress, token);
         const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(token);
         const transferHandlerGas = await this.feeProxy.transferHandlerGas(token);
+        _logMessage(transferHandlerGas.toString());
         // todo
         // verify cost calculation
         let cost = ethers.BigNumber.from(req.txGas.toString())
