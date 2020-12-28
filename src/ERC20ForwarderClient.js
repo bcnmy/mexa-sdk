@@ -125,10 +125,10 @@ class ERC20ForwarderClient {
     }
 
     // todo
+    // review the changes done in the way promises are resolved and txhash returns
     // test after error handler changes
-    sendTxEIP712(req) { // should have call to check if user approved transferHandler
-        return new Promise(async (resolve, reject)=>{
-            try {
+    async sendTxEIP712(req) { 
+        // should have call to check if user approved transferHandler
                 const domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([
                     "bytes32",
                     "bytes32",
@@ -170,9 +170,8 @@ class ERC20ForwarderClient {
                         req, domainSeparator, sig
                     ],
                     signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
-                    gasLimit: 1000000
                 };
-                fetch(`${
+                const txResponse = await fetch(`${
                     config.baseURL
                 }/api/v2/meta-tx/native`, {
                     method: "POST",
@@ -181,22 +180,16 @@ class ERC20ForwarderClient {
                         "x-api-key": this.biconomyAttributes.apiKey
                     },
                     body: JSON.stringify(metaTxBody)
-                }).then(function (txResponse) {
-                    const responseJson = txResponse.json();
-                    resolve(responseJson["txHash"]);
-                }).catch(function (error) { // could use event emitter from biconomy
-                    _logMessage(error.toString());
-                    reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server"));
                 });
-            } catch(error) {
-                reject(error);
-            }
-        });
+
+                const responseJson = await txResponse.json();
+                return responseJson["txHash"];
     }
 
-    sendTxPersonalSign(req) {
-        return new Promise(async (resolve, reject)=>{
-            try {
+    // todo
+    // review the changes done in the way promises are resolved and txhash returns
+    // test after error handler changes
+    async sendTxPersonalSign(req) {
                 const hashToSign = abi.soliditySHA3([
                     "address",
                     "address",
@@ -229,7 +222,8 @@ class ERC20ForwarderClient {
                     params: [req, sig],
                     signatureType: this.biconomyAttributes.signType.PERSONAL_SIGN
                 };
-                fetch(`${
+
+                const txResponse = await fetch(`${
                     config.baseURL
                 }/api/v2/meta-tx/native`, {
                     method: "POST",
@@ -238,19 +232,10 @@ class ERC20ForwarderClient {
                         "x-api-key": this.biconomyAttributes.apiKey
                     },
                     body: JSON.stringify(metaTxBody)
-                }).then(function (txResponse) {
-                    const responseJson = txResponse.json();
-                    resolve(responseJson["txHash"]);
-                }).catch(function (error) {
-                    // todo
-                    // use event emitter from biconomy
-                    _logMessage(error.toString());
-                    reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Meta transaction API call failed at the server"));
                 });
-            } catch(error) {
-                reject(error);
-            }
-        });
+
+                const responseJson = await txResponse.json();
+                return responseJson["txHash"];
     }
 
     async getSignatureEIP712(account, request) {
