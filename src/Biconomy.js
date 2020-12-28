@@ -1371,7 +1371,6 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
             engine.permitClient = new PermitClient(engine, daiDomainData, feeProxyAddress);
             engine.erc20ForwarderClient = new ERC20ForwarderClient({
                 forwarderClientOptions: biconomyAttributes,
-                signer,
                 networkId: engine.networkId,
                 provider: ethersProvider,
                 feeProxyDomainData, biconomyForwarderDomainData, feeProxy,

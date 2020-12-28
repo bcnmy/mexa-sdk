@@ -33,11 +33,10 @@ function _logMessage(message) {
 }
 
 class ERC20ForwarderClient {
-    constructor({forwarderClientOptions, signer, networkId, provider, feeProxyDomainData,
+    constructor({forwarderClientOptions, networkId, provider, feeProxyDomainData,
         biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator,
         feeManager, isSignerWithAccounts}) {
         this.biconomyAttributes = forwarderClientOptions;
-        this.signer = signer;
         this.networkId = networkId;
         this.provider = provider;
         this.feeProxyDomainData = feeProxyDomainData;
@@ -83,7 +82,7 @@ class ERC20ForwarderClient {
     }
 
     async buildTx(to, token, txGas, data, newBatch = false) {
-        const userAddress = await this.signer.getAddress();
+        const userAddress = await (this.provider.getSigner()).getAddress();
         const batchId = newBatch ? await this.forwarder.getBatch(userAddress) : 0;
         let nonce = await this.forwarder.getNonce(userAddress, batchId);
         const batchNonce = Number(nonce);
@@ -127,7 +126,7 @@ class ERC20ForwarderClient {
     // todo
     // review the changes done in the way promises are resolved and txhash returns
     // test after error handler changes
-    async sendTxEIP712(req) { 
+    async sendTxEIP712(req,signature = null) { 
         // should have call to check if user approved transferHandler
                 const domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([
                     "bytes32",
@@ -142,7 +141,7 @@ class ERC20ForwarderClient {
                     this.feeProxyDomainData.chainId,
                     this.feeProxyDomainData.verifyingContract,
                 ]));
-                const userAddress = await this.signer.getAddress();
+                const userAddress = await (this.provider.getSigner()).getAddress();
                 const dataToSign = {
                     types: {
                         EIP712Domain: domainType,
@@ -153,7 +152,7 @@ class ERC20ForwarderClient {
                     message: req
                 };
 
-                const sig = await this.provider.send("eth_signTypedData_v4", [req.from, JSON.stringify(dataToSign),]);
+                const sig = (signature == null) ? await this.provider.send("eth_signTypedData_v4", [req.from, JSON.stringify(dataToSign),]) : signature;
                 const api = this.getApiId(req);
                 const apiId = api.id;
                 /**
@@ -189,7 +188,7 @@ class ERC20ForwarderClient {
     // todo
     // review the changes done in the way promises are resolved and txhash returns
     // test after error handler changes
-    async sendTxPersonalSign(req) {
+    async sendTxPersonalSign(req,signature = null) {
                 const hashToSign = abi.soliditySHA3([
                     "address",
                     "address",
@@ -211,8 +210,9 @@ class ERC20ForwarderClient {
                     req.deadline,
                     ethers.utils.keccak256(req.data),
                 ]);
-                const userAddress = await this.signer.getAddress();
-                const sig = await this.signer.signMessage(hashToSign);
+                const signer = this.provider.getSigner()
+                const userAddress = await signer.getAddress();
+                const sig = (signature == null) ? await signer.signMessage(hashToSign) : signature;
                 const api = this.getApiId(req);
                 const apiId = api.id;
                 const metaTxBody = {
