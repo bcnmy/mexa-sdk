@@ -1368,7 +1368,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
             const forwarder = new ethers.Contract(forwarderAddress, forwarderAbi, signerOrProvider);
             const transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signerOrProvider);
 
-            engine.permitClient = new PermitClient(engine, daiDomainData, feeProxyAddress);
+            // removed dai domain data
+            // might add networkId
+            engine.permitClient = new PermitClient(engine, feeProxyAddress);
             engine.erc20ForwarderClient = new ERC20ForwarderClient({
                 forwarderClientOptions: biconomyAttributes,
                 networkId: engine.networkId,
