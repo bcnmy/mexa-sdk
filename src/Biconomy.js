@@ -54,6 +54,7 @@ let domainData = {
     verifyingContract: config.eip712VerifyingContract
 };
 
+//moved to permit client
 let daiDomainData = {
     name: config.daiDomainName,
     version: config.daiVersion

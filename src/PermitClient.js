@@ -18,7 +18,7 @@ class PermitClient {
         const ethersProvider = new ethers.providers.Web3Provider(provider);
         this.provider = ethersProvider;
         this.feeProxyAddress = feeProxyAddress;
-      //this.daiDomainData = daiDomainData;
+        this.daiDomainData = daiDomainData;
     }
 
     async daiPermit(daiPermitOptions) {
