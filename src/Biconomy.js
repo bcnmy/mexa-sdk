@@ -521,7 +521,8 @@ Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransacti
 
                 const dataToSign = {
                     eip712Format: eip712DataToSign,
-                    personalSignatureFormat: hashToSign
+                    personalSignatureFormat: hashToSign,
+                    request: request
                 };
 
                 if (cb)
@@ -1043,7 +1044,7 @@ async function handleSendTransaction(engine, payload, end) {
                         _logMessage(domainSeparator);
                         paramArray.push(domainSeparator);
                         const signatureEIP712 = await getSignatureEIP712(engine, account, request);
-                        console.log(signatureEIP712);
+                        _logMessage(signatureEIP712);
                         paramArray.push(signatureEIP712);
                     } else {
                         const signaturePersonal = await getSignaturePersonal(engine, account, request);

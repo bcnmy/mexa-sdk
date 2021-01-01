@@ -17,7 +17,7 @@ const getGasPrice = async (networkId) => {
     }/api/v1/gas-price?networkId=${networkId}`;
     const response = await fetch(apiInfo);
     const responseJson = await response.json();
-    console.log("Response JSON " + JSON.stringify(responseJson));
+    _logMessage("Response JSON " + JSON.stringify(responseJson));
     return ethers.utils.parseUnits(responseJson.gasPrice.value.toString(), "gwei").toString();
 };
 

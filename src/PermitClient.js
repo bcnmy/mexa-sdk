@@ -13,6 +13,17 @@ let daiTokenAddressMap = {}, feeProxyAddressMap = {};
 daiTokenAddressMap[42] = "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa";
 //feeProxyAddressMap[42] = "0x966445784b8dd7a925794D35e335B2dd80C458A7";
 
+/**
+ * Single method to be used for logging purpose.
+ *
+ * @param {string} message Message to be logged
+ */
+function _logMessage(message) {
+    if (config && config.logsEnabled && console.log) {
+        console.log(message);
+    }
+}
+
 class PermitClient {
     constructor(provider, feeProxyAddress) {
         const ethersProvider = new ethers.providers.Web3Provider(provider);
@@ -50,7 +61,7 @@ class PermitClient {
             }
         };
         const result = await this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign),]);
-        console.log("success", result);
+        _logMessage("success", result);
         const signature = result.substring(2);
         const r = "0x" + signature.substring(0, 64);
         const s = "0x" + signature.substring(64, 128);
@@ -58,6 +69,8 @@ class PermitClient {
         await dai.permit(userAddress, spender, parseInt(nonce), parseInt(expiry.toString()), allowed, v, r, s);
     }
 
+    //todo
+    //should we give holder or owner option also
     async eip2612Permit(permitOptions) {
         const tokenDomainData = permitOptions.domainData;
         const spender = permitOptions.spender || this.feeProxyAddress;
@@ -82,7 +95,7 @@ class PermitClient {
             }
         };
         const result = await this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign),]);
-        console.log("success", result);
+        _logMessage("success", result);
         const signature = result.substring(2);
         const r = "0x" + signature.substring(0, 64);
         const s = "0x" + signature.substring(64, 128);
