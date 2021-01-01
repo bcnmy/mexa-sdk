@@ -601,6 +601,7 @@ async function sendSignedTransaction(engine, payload, end) {
         let data = payload.params[0];
         let rawTransaction,
             signature,
+            request
             tokenAddress,
             signatureType;
         // user would need to pass token address as well!
@@ -615,6 +616,7 @@ async function sendSignedTransaction(engine, payload, end) {
             rawTransaction = data.rawTransaction;
             signatureType = data.signatureType;
             tokenAddress = data.tokenAddress;
+            request = data.forwardRequest;
         }
 
         if (rawTransaction) {
@@ -677,7 +679,7 @@ async function sendSignedTransaction(engine, payload, end) {
                 /**
          * based on the api check contract meta transaction type
          * change paramArray accordingly
-         * build request
+         * build request EDIT : do not build the request again it will result in signature mismatch 
          * create domain seperator based on signature type
          * use already available signature
          * send API call with appropriate parameters based on signature type
@@ -711,12 +713,12 @@ async function sendSignedTransaction(engine, payload, end) {
                         } else {
                             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
                         }
-                        let request;
-                        if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+                
+                        /*if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                             request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
                         } else if (metaTxApproach == engine.ERC20_FORWARDER) {
                             request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData, engine.daiTokenAddress);
-                        }
+                        }*/
                         _logMessage(request);
 
                         paramArray.push(request);
