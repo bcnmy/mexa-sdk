@@ -403,7 +403,7 @@ Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
     });
 };
 
-Biconomy.prototype.getForwardRequestMessageToSign = async function (rawTransaction, cb) {
+Biconomy.prototype.getForwardRequestAndMessageToSign = async function (rawTransaction, cb) {
     let engine = this;
     return new Promise(async (resolve, reject) => {
         if (rawTransaction) {
@@ -601,11 +601,12 @@ async function sendSignedTransaction(engine, payload, end) {
         let data = payload.params[0];
         let rawTransaction,
             signature,
-            request
+            request,
             tokenAddress,
             signatureType;
-        // user would need to pass token address as well!
+        // user would need to pass token address as well! 
         // OR they could pass the symbol and engine will provide the address for you..
+        // default is DAI
 
         if (typeof data == "string") {
             // Here user send the rawTransaction in the payload directly. Probably the case of native meta transaction
@@ -615,7 +616,7 @@ async function sendSignedTransaction(engine, payload, end) {
             signature = data.signature;
             rawTransaction = data.rawTransaction;
             signatureType = data.signatureType;
-            tokenAddress = data.tokenAddress;
+            tokenAddress = (data.tokenAddress) ? data.tokenAddress : engine.daiTokenAddress;
             request = data.forwardRequest;
         }
 
