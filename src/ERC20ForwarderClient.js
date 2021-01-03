@@ -2,9 +2,12 @@ import {ethers} from "ethers";
 const {config, RESPONSE_CODES} = require("./config");
 const abi = require("ethereumjs-abi");
 
+
 // should be present in system info as well
 const erc20ForwardRequestType = config.forwardRequestType;
 const domainType = config.domainType;
+const FORWARD_OVERHEAD_PERSONAL_SIGN = config.overHeadPersonalSign;
+const FORWARD_OVERHEAD_EIP712_SIGN = config.overHeadEIP712Sign;
 
 function formatMessage(code, message) {
     return {code: code, message: message};
@@ -108,6 +111,7 @@ class ERC20ForwarderClient {
         // todo
         // verify cost calculation
         let cost = ethers.BigNumber.from(req.txGas.toString())
+        .add(ethers.BigNumber.from(FORWARD_OVERHEAD_EIP712_SIGN.toString())) // estimate on the higher end
         .add(transferHandlerGas)
         .mul(ethers.BigNumber.from(req.tokenGasPrice))
         .mul(ethers.BigNumber.from(feeMultiplier.toString()))
