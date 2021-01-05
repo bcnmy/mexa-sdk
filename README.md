@@ -45,37 +45,6 @@ Congratulations!! You have now enabled meta transactions in your DApp. Interact 
 
 Now whenever there is a write transaction action initiated from user \(registered in mexa dashboard also\), mexa will ask for user’s signature and handle the transaction rather than sending signed transaction directly to blockchain from user’s wallet.
 
-### User Login
-
-Biconomy uses Contract Wallet to relay the user’s transaction to your dapp smart contract so msg.sender in your smart contracts will be user contract wallet address, so user first needs to login to biconomy to use meta transactions. We just need users signature and public address to login.
-
-Mexa exposes a login method to let your users login to biconomy to have their contract wallet created if user comes for the first time or just return existing contract wallet address for existing users.
-
-```javascript
-biconomy.login(<public wallet address>, (error, response) => {
- if(error) {
- // Error while user login to biconomy
- return;
- }
-
- if(response.transactionHash) {
- // First time user. Contract wallet transaction pending. Wait for confirmation.
- } else if(response.userContract) {
- // Existing user login successful
- }
-});
-```
-
-### Contract Wallet Confirmation
-
-When user login for the first time, you’ll get the transaction hash for user’s contract wallet creation transaction. On transaction confirmation mexa will emit a confirmation event.
-
-```javascript
-biconomy.onEvent(biconomy.LOGIN_CONFIRMATION, (log) => {
- // User's Contract Wallet creation successful
-});
-```
-
 ### Configuration
 
 Biconomy constructor takes 2 parameters
