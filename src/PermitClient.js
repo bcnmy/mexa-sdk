@@ -13,6 +13,9 @@ let daiTokenAddressMap = {}, feeProxyAddressMap = {};
 daiTokenAddressMap[42] = "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa";
 //feeProxyAddressMap[42] = "0x966445784b8dd7a925794D35e335B2dd80C458A7";
 
+//Rinkeby
+daiTokenAddressMap[4] = "0xc7ad46e0b8a400bb3c915120d284aafba8fc4735";
+
 /**
  * Single method to be used for logging purpose.
  *
