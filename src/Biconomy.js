@@ -217,7 +217,6 @@ function Biconomy(provider, options) {
                 } else {
                     return Promise.reject("Invalid provider object passed to Biconomy as it doesn't support request or send method");
                 }
-                // return getWeb3(self).currentProvider.request(payload, cb);
             }
         };
         this.sendAsync = this.send;
@@ -226,184 +225,7 @@ function Biconomy(provider, options) {
     }
 }
 
-/**
- * This method returns an EIP712 formatted data ready to be signed
- * that will be used in login method/API.
- * LoginMessageType [
- * 	 { name: "userAddress", type: "address"},
- *   { name: "nonce", type: "uint256"},
- *   { name: "providerId", type: "string"}
- * ]
- */
-Biconomy.prototype.getLoginMessageToSign = function (signer) {
-    let engine = this;
-    return new Promise(async (resolve, reject) => {
-        try {
-            if (! signer || typeof signer != "string") {
-                let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "signer parameter is mandatory and should be of type 'string'");
-                return reject(response);
-            }
-            let message = {};
-            message.userAddress = signer.toLowerCase();
-            message.providerId = engine.providerId;
-            let nonce = await _getUserNonce(signer, this);
-            if (! nonce) {
-                nonce = 0;
-            }
-            message.nonce = nonce;
-
-            const dataToSign = {
-                types: {
-                    EIP712Domain: loginDomainType,
-                    LoginMessage: loginMessageType
-                },
-                domain: loginDomainData,
-                primaryType: "LoginMessage",
-                message: message
-            };
-            resolve(dataToSign);
-        } catch (error) {
-            reject(error);
-        }
-    });
-};
-
-/**
- * This method returns an EIP712 formatted data ready to be signed
- * that will be used while sending the transaction using web3.eth.sendSignedTransaction
- * Returned data structure types
- * RelayerPaymentType [
- *   { name: "token", type: "address"},
- *   { name: "amount", type: "uint256"}
- * ]
-
- * MetaTransactionType = [
- *	{ name: "from", type: "address"},
- *	{ name: "to", type: "address"},
- *	{ name: "data", type: "bytes"},
- *	{ name: "batchId", type: "uint256"},
- *	{ name: "nonce", type: "uint256"},
- *	{ name: "expiry", type: "uint256"},
- *	{ name: "txGas", type: "uint256"},
- *	{ name: "baseGas", type: "uint256"},
- *	{ name: "value", type: "uint256"},
- *  { name: "metaInfo", type: "MetaInfo"},
- *  { name: "relayerPayment", type: "RelayerPayment"}
- * ]
- */
-Biconomy.prototype.getUserMessageToSign = function (rawTransaction, cb) {
-    let engine = this;
-    return new Promise(async (resolve, reject) => {
-        if (rawTransaction) {
-            let decodedTx = txDecoder.decodeTx(rawTransaction);
-            if (decodedTx.to && decodedTx.data && decodedTx.value) {
-                let to = decodedTx.to.toLowerCase();
-                let methodInfo = decodeMethod(to, decodedTx.data);
-                if (! methodInfo) {
-                    let error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH, `Smart Contract address registered on dashboard is different than what is sent(${
-                        decodedTx.to
-                    }) in current transaction`);
-                    if (cb)
-                        cb(error);
-
-
-
-                    return reject(error);
-                }
-                let methodName = methodInfo.name;
-                let api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
-                if (! api) {
-                    api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
-                }
-                if (! api) {
-                    _logMessage(`API not found for method ${methodName}`);
-                    let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, `No API found on dashboard for called method ${methodName}`);
-                    if (cb)
-                        cb(error);
-
-
-
-                    return reject(error);
-                }
-                _logMessage("API found");
-                let params = methodInfo.params;
-                let paramArray = [];
-                for (let i = 0; i < params.length; i++) {
-                    paramArray.push(_getParamValue(params[i], engine));
-                }
-
-                let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
-                _logMessage(`signer is ${account}`);
-                if (! account) {
-                    let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Not able to get user account from signed transaction`);
-                    return end(error);
-                }
-
-                let userContractWallet = await _getUserContractWallet(engine, account);
-                _logMessage(`User contract wallet ${userContractWallet}`);
-
-                if (! userContractWallet) {
-                    let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
-                    if (cb)
-                        cb(error);
-
-
-
-                    return reject(error);
-                }
-
-                let metaInfo = {};
-                metaInfo.contractWallet = userContractWallet;
-
-                let relayerPayment = {};
-                relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-                relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
-
-                let message = {};
-                message.from = account;
-                message.to = to;
-                message.data = decodedTx.data;
-                message.batchId = config.NONCE_BATCH_ID;
-                let nonce = await _getUserContractNonce(account, engine);
-                message.nonce = parseInt(nonce);
-                message.value = getWeb3(engine).utils.toHex(decodedTx.value);
-                message.txGas = decodedTx.gasLimit.toString() ? decodedTx.gasLimit.toString() : 0;
-                message.expiry = config.EXPIRY;
-                message.baseGas = config.BASE_GAS;
-                message.metaInfo = metaInfo;
-                message.relayerPayment = relayerPayment;
-
-                const dataToSign = {
-                    types: {
-                        EIP712Domain: domainType,
-                        MetaInfo: metaInfoType,
-                        RelayerPayment: relayerPaymentType,
-                        MetaTransaction: metaTransactionType
-                    },
-                    domain: domainData,
-                    primaryType: "MetaTransaction",
-                    message: message
-                };
-                if (cb)
-                    cb(null, dataToSign);
-
-
-
-                return resolve(dataToSign);
-            } else {
-                let error = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`);
-                if (cb)
-                    cb(error);
-
-
-
-                return reject(error);
-            }
-        }
-    });
-};
-
-Biconomy.prototype.getForwardRequestAndMessageToSign = async function (rawTransaction, cb) {
+Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction, cb) {
     let engine = this;
     return new Promise(async (resolve, reject) => {
         if (rawTransaction) {
@@ -430,9 +252,6 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = async function (rawTransa
                     let error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, `No API found on dashboard for called method ${methodName}`);
                     if (cb)
                         cb(error);
-
-
-
                     return reject(error);
                 }
                 _logMessage("API found");
@@ -441,9 +260,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = async function (rawTransa
                 for (let i = 0; i < params.length; i++) {
                     paramArray.push(_getParamValue(params[i], engine));
                 }
-                
+
                 let account = getWeb3(engine).eth.accounts.recoverTransaction(rawTransaction);
-                _logMessage(`signer is ${account}`);
+                _logMessage(`Signer is ${account}`);
                 let contractAddr = api.contractAddress.toLowerCase();
                 let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
                 let gasLimit = decodedTx.gasLimit;
@@ -456,17 +275,16 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = async function (rawTransa
                         let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
                         gasLimit = await contract.methods[methodName].apply(null, paramArray).estimateGas({from: account});
 
-
-                        // do not send this value in API call. only meant for txGas
+                        // Do not send this value in API call. only meant for txGas
                         gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
-                        _logMessage('gas limit number' + gasLimitNum);
+                        _logMessage(`Gas limit number ${gasLimitNum}`);
                     }
                 } else {
                     gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
                 }
 
 
-                
+
                 if (! account) {
                     let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Not able to get user account from signed transaction`);
                     return end(error);
@@ -476,16 +294,17 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = async function (rawTransa
                 if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                     request = (await buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
                 } else if (metaTxApproach == engine.ERC20_FORWARDER) {
-                    //todo
-                    // how does the users provide custom token address here?
+                    // TODO: How does the users provide custom token address here?
                     request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data, engine.daiTokenAddress);
                 } else {
                     let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
                     if (cb)
                         cb(error);
-
                     return reject(error);
-                } _logMessage(request);
+                }
+
+                _logMessage("Forward Request is: ");
+                _logMessage(request);
 
                 const eip712DataToSign = {
                     types: {
@@ -527,7 +346,6 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = async function (rawTransa
 
                 if (cb)
                     cb(null, dataToSign);
-
 
                 return resolve(dataToSign);
             } else {
@@ -604,7 +422,7 @@ async function sendSignedTransaction(engine, payload, end) {
             request,
             tokenAddress,
             signatureType;
-        // user would need to pass token address as well! 
+        // user would need to pass token address as well!
         // OR they could pass the symbol and engine will provide the address for you..
         // default is DAI
 
@@ -680,7 +498,7 @@ async function sendSignedTransaction(engine, payload, end) {
                 /**
          * based on the api check contract meta transaction type
          * change paramArray accordingly
-         * build request EDIT : do not build the request again it will result in signature mismatch 
+         * build request EDIT : do not build the request again it will result in signature mismatch
          * create domain seperator based on signature type
          * use already available signature
          * send API call with appropriate parameters based on signature type
@@ -714,7 +532,7 @@ async function sendSignedTransaction(engine, payload, end) {
                         } else {
                             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
                         }
-                
+
                         /*if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                             request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
                         } else if (metaTxApproach == engine.ERC20_FORWARDER) {
@@ -756,41 +574,34 @@ async function sendSignedTransaction(engine, payload, end) {
                         await _sendTransaction(engine, account, api, data, end);
                     }
                 } else {
-                    if (! engine.isLogin) {
-                        let error = {};
-                        error.message = "User not logged in to biconomy";
-                        error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
-                        return end(error);
-                    } else {
-                        if (signature) {
-                            let relayerPayment = {};
-                            relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-                            relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
+                    if (signature) {
+                        let relayerPayment = {};
+                        relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
+                        relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
 
-                            let data = {};
-                            data.rawTx = rawTransaction;
-                            data.signature = signature;
-                            data.to = to;
-                            data.from = account;
-                            data.apiId = api.id;
-                            data.data = decodedTx.data;
-                            data.value = getWeb3(engine).utils.toHex(decodedTx.value);
-                            data.gasLimit = decodedTx.gasLimit.toString();
-                            data.nonceBatchId = config.NONCE_BATCH_ID;
-                            data.expiry = config.EXPIRY;
-                            data.baseGas = config.BASE_GAS;
-                            data.relayerPayment = {
-                                token: relayerPayment.token,
-                                amount: relayerPayment.amount
-                            };
-                            _sendTransaction(engine, account, api, data, end);
-                        } else {
-                            let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, `Invalid payload data ${
-                                JSON.stringify(payload.params[0])
-                            }. message and signature are required in param object`);
-                            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-                            end(error);
-                        }
+                        let data = {};
+                        data.rawTx = rawTransaction;
+                        data.signature = signature;
+                        data.to = to;
+                        data.from = account;
+                        data.apiId = api.id;
+                        data.data = decodedTx.data;
+                        data.value = getWeb3(engine).utils.toHex(decodedTx.value);
+                        data.gasLimit = decodedTx.gasLimit.toString();
+                        data.nonceBatchId = config.NONCE_BATCH_ID;
+                        data.expiry = config.EXPIRY;
+                        data.baseGas = config.BASE_GAS;
+                        data.relayerPayment = {
+                            token: relayerPayment.token,
+                            amount: relayerPayment.amount
+                        };
+                        _sendTransaction(engine, account, api, data, end);
+                    } else {
+                        let error = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, `Invalid payload data ${
+                            JSON.stringify(payload.params[0])
+                        }. message and signature are required in param object`);
+                        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+                        end(error);
                     }
                 }
             } else {
@@ -814,137 +625,6 @@ async function sendSignedTransaction(engine, payload, end) {
     }
 }
 
-/**
- * Method to withdraw ether from use contract wallets.
- * It takes the receiverAddress and withdraw amount in wei.
- * An optional callback parameter can also be given that has first parameter as error and
- * second parameter as result containing withdraw transaction hash.
- *
- * Returns a promise that resolves to result object containing withdraw transaction hash.
- */
-Biconomy.prototype.withdrawFunds = function (receiverAddress, withdrawAmount, cb) {
-    let engine = this;
-    return new Promise(async (resolve, reject) => {
-        let account = await _getUserAccount(this);
-        let nonce = await _getUserContractNonce(account, this);
-        let userContractWallet = await _getUserContractWallet(engine, account);
-        if (! userContractWallet) {
-            let error = formatMessage(RESPONSE_CODES.USER_CONTRACT_NOT_FOUND, `User contract wallet not found`);
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-            if (cb)
-                cb(error);
-
-
-
-            return reject(error);
-        }
-        let metaInfo = {};
-        metaInfo.contractWallet = userContractWallet;
-
-        let relayerPayment = {};
-        relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-        relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
-
-        let message = {};
-        message.from = account;
-        message.to = receiverAddress;
-        message.data = "0x0";
-        message.batchId = config.NONCE_BATCH_ID;
-        message.nonce = parseInt(nonce);
-        message.value = getWeb3(engine).utils.toHex(withdrawAmount || 0);
-        message.txGas = 0;
-        message.expiry = config.EXPIRY;
-        message.baseGas = config.BASE_GAS;
-        message.metaInfo = metaInfo;
-        message.relayerPayment = relayerPayment;
-        const dataToSign = JSON.stringify({
-            types: {
-                EIP712Domain: domainType,
-                MetaInfo: metaInfoType,
-                RelayerPayment: relayerPaymentType,
-                MetaTransaction: metaTransactionType
-            },
-            domain: domainData,
-            primaryType: "MetaTransaction",
-            message: message
-        });
-
-        try {
-            getWeb3(engine).currentProvider.send({
-                jsonrpc: JSON_RPC_VERSION,
-                id: DEFAULT_PAYLOAD_ID,
-                method: config.signTypedV3Method,
-                params: [account, dataToSign]
-            }, function (error, response) {
-                _logMessage(`User signature for payload id ${DEFAULT_PAYLOAD_ID} is ${
-                    response.result
-                }`);
-                if (error) {
-                    if (cb) {
-                        cb(error);
-                    }
-                    reject(error);
-                } else if (response && response.error) {
-                    if (cb)
-                        cb(response.error);
-
-
-
-                    reject(response.error);
-                } else if (response && response.result) {
-                    let data = {};
-                    data.signature = response.result;
-                    data.to = receiverAddress;
-                    data.value = getWeb3(engine).utils.toHex(withdrawAmount) || 0;
-                    data.from = account;
-                    data.data = "0x0";
-                    data.expiry = config.EXPIRY;
-                    data.baseGas = config.BASE_GAS;
-                    data.gasLimit = 0;
-                    data.nonceBatchId = config.NONCE_BATCH_ID;
-                    data.relayerPayment = relayerPayment;
-
-                    let fetchOptions = getFetchOptions("POST", engine.apiKey);
-                    fetchOptions.body = JSON.stringify(data);
-                    fetch(`${baseURL}${withdrawFundsUrl}`, fetchOptions).then((response) => response.json()).then(function (response) {
-                        if (response) {
-                            if (cb)
-                                cb(null, response);
-
-
-
-                            let result = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE, response.log);
-                            result.txHash = response.txHash;
-                            resolve(result);
-                        } else {
-                            let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Unable to get response for api ${withdrawFundsUrl}`);
-                            if (cb)
-                                cb(error);
-
-
-
-                            reject(error);
-                        }
-                    }).catch(function (error) {
-                        if (cb)
-                            cb(formatMessage(error.flag, error.log));
-
-
-
-                        reject(formatMessage(error.flag, error.log));
-                    });
-                }
-            });
-        } catch (error) {
-            if (cb)
-                cb(error);
-
-
-
-            reject(error);
-        }
-    });
-};
 /**
  * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v3
  * method and send the request to biconomy for processing and call the callback method 'end'
@@ -1047,11 +727,11 @@ async function handleSendTransaction(engine, payload, end) {
                         _logMessage(domainSeparator);
                         paramArray.push(domainSeparator);
                         const signatureEIP712 = await getSignatureEIP712(engine, account, request);
-                        _logMessage(signatureEIP712);
+                        _logMessage(`EIP712 signature is ${signatureEIP712}`);
                         paramArray.push(signatureEIP712);
                     } else {
                         const signaturePersonal = await getSignaturePersonal(engine, account, request);
-                        _logMessage(signaturePersonal);
+                        _logMessage(`Personal signature is ${signaturePersonal}`);
                         paramArray.push(signaturePersonal);
                     }
 
@@ -1198,34 +878,7 @@ async function handleSendTransaction(engine, payload, end) {
     }
 }
 
-/**
- * It fetches the user nonce used during login.
- *
- * @param {string} address User address whole nonce is requested
- * @param {object} engine Reference to Mexa object.
- */
-async function _getUserNonce(address, engine) {
-    try {
-        let getNonceAPI = `${baseURL}/api/${
-            config.version
-        }/dapp-user/getNonce?signer=${address}`;
-        let response = await fetch(getNonceAPI, getFetchOptions("GET", engine.apiKey));
-        if (response.ok) {
-            response = await response.json();
-            if (response) {
-                return response.nonce;
-            }
-        }
-        return;
-    } catch (error) {
-        if (error.response.status == 404) {
-            return 0;
-        }
-        return;
-    }
-}
-
-async function getSignatureEIP712(engine, account, request) {
+function getSignatureEIP712(engine, account, request) {
     const dataToSign = JSON.stringify({
         types: {
             EIP712Domain: domainType,
@@ -1280,31 +933,6 @@ async function getSignaturePersonal(engine, account, req) {
     const signature = await getWeb3(engine).eth.personal.sign("0x" + hashToSign.toString("hex"), account);
 
     return signature;
-}
-
-/**
- * It query biconomy server for user contract nonce.
- *
- * @param {string} address user address whole nonce is requested
- * @param {object} engine Reference to mexa object
- */
-async function _getUserContractNonce(address, engine) {
-    try {
-        let getNonceAPI = `${baseURL}/api/${
-            config.version2
-        }/dapp-user/getContractNonce?signer=${address}`;
-        let response = await fetch(getNonceAPI, getFetchOptions("GET", engine.apiKey));
-        if (response && response.ok) {
-            let data = await response.json();
-            if (data) {
-                return data.nonce;
-            }
-        }
-        return;
-    } catch (error) {
-        _logMessage(error);
-        return;
-    }
 }
 
 // On getting smart contract data get the API data also
@@ -1506,31 +1134,19 @@ async function _sendTransaction(engine, account, api, data, cb) {
                 error.message = result.log || result.message;
                 if (cb)
                     cb(error);
-
-
-
             } else {
                 if (cb)
                     cb(null, result.txHash);
-
-
-
             }
         }).catch(function (error) {
             _logMessage(error);
             if (cb)
                 cb(error);
-
-
-
         });
     } else {
         _logMessage(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`);
         if (cb)
             cb(`Invalid arguments, provider: ${engine} account: ${account} api: ${api} data: ${data}`, null);
-
-
-
     }
 }
 
@@ -1667,347 +1283,11 @@ async function _init(apiKey, engine) {
 }
 
 async function _checkUserLogin(engine, dappId) {
-    let userLocalAccount = getFromStorage(USER_ACCOUNT);
-    let userLocalContract = getFromStorage(USER_CONTRACT);
-    if (userLocalContract && userLocalAccount) {
-        _getUserAccount(engine, undefined, (error, response) => {
-            if (error || !response || response.error) {
-                return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND, "Could not get user account"));
-            }
-            let account = response.result[0];
-            _getUserContractWallet(engine, account, (error, userContract) => {
-                if (userContract && account && account.toUpperCase() == userLocalAccount.toUpperCase() && userContract.toUpperCase() == userLocalContract.toUpperCase()) {
-                    engine.isLogin = true;
-                    _logMessage("Biconomy user login set to true");
-                }
-                eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
-            });
-        });
-    } else {
-        eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
-    }
+    eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
 }
-
-/**
- * Method to get user contract wallet from biconomy server.
- **/
-async function _getUserContractWallet(engine, address, cb) {
-    let promise = new Promise((resolve, reject) => {
-        if (address) {
-            engine.sendAsync({
-                jsonrpc: JSON_RPC_VERSION,
-                id: "102",
-                method: "net_version",
-                params: []
-            }, function (error, response) {
-                if (error || (response && response.error)) {
-                    _logMessage(error || response.error);
-                    eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), error || networkResponse.error);
-                    reject("Could not get network version");
-                } else {
-                    let networkId = response.result;
-                    fetch(`${baseURL}${getUserContractPath}?owner=${address}&&networkId=${networkId}`, getFetchOptions("GET", engine.apiKey)).then((response) => response.json()).then(function (data) {
-                        _logMessage(data);
-                        if (data.flag && data.flag == BICONOMY_RESPONSE_CODES.SUCCESS) {
-                            if (cb) {
-                                cb(null, data.userContract);
-                            }
-                            resolve(data.userContract);
-                        } else {
-                            if (cb) {
-                                cb("User contract not found");
-                            }
-                            reject("User contract not found");
-                        }
-                    }).catch(function (error) {
-                        _logMessage(error);
-                        let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Error while fetching user contract ${
-                            JSON.stringify(error)
-                        }`);
-                        if (cb)
-                            cb(response);
-
-
-
-                        reject(response);
-                    });
-                }
-            });
-        } else {
-            let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "Input address is not valid");
-            if (cb)
-                cb(response);
-
-
-
-            reject(response);
-        }
-    });
-    return promise;
-}
-
-/**
- * Function used to login user. This creates a smart contract wallet for new user and
- * just returns contract wallet address for existing user.
- *
- * This function should be used when you have access to user's private key.
- *
- * @param {string} signer User Externally Owned Account (EOA) address
- * @param {string} signature EIP712 formatted signature signed using signer address
- * @param {function} cb Optional callback method with error first parameter
- *
- * @returns A promise that resolves to response containg transaction hash for new user
- * and user contract wallet address for existing user.
- *
- * Refer to https://docs.biconomy.io for more details on how to use it.
- */
-Biconomy.prototype.accountLogin = async function (signer, signature, cb) {
-    let engine = this;
-    return new Promise(async (resolve, reject) => {
-        let data = {};
-        data.signature = signature;
-        data.from = signer;
-        data.providerId = engine.providerId;
-        let fetchOption = getFetchOptions("POST", engine.apiKey);
-        fetchOption.body = JSON.stringify(data);
-
-        fetch(`${baseURL}${userLoginPath}`, fetchOption).then((response) => response.json()).then(function (data) {
-            if (data) {
-                let result = {};
-                if (data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
-                    result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
-                    if (data.userContract) {
-                        result.message = `User login successfull`;
-                        result.userContract = data.userContract;
-                        engine.isLogin = true;
-                        _setLocalData(signer, data.userContract);
-                    } else if (data.transactionHash) {
-                        result.message = `User contract creation initiated`;
-                        result.transactionHash = data.transactionHash;
-                        loginInterval = setInterval(function () {
-                            getLoginTransactionReceipt(engine, data.transactionHash, signer);
-                        }, 2000);
-                    }
-                    if (cb)
-                        cb(null, result);
-
-
-
-                    resolve(result);
-                } else {
-                    result.code = RESPONSE_CODES.ERROR_RESPONSE;
-                    result.message = data.log;
-                    if (cb)
-                        cb(result, null);
-
-
-
-                    reject(result);
-                }
-            } else {
-                let error = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, `Invalid response from api ${url}`);
-                if (cb)
-                    cb(error);
-
-
-
-                reject(error);
-            }
-        }).catch(function (error) {
-            _logMessage(error);
-            cb(error, null);
-            reject(error);
-        });
-    });
-};
-
-const getLoginTransactionReceipt = async (engine, txHash, userAddress) => {
-    var receipt = await getWeb3(engine).eth.getTransactionReceipt(txHash);
-    if (receipt) {
-        if (receipt.status) {
-            await _getUserContractWallet(engine, userAddress, (error, userContract) => {
-                if (!error && userContract) {
-                    _setLocalData(userAddress, userContract);
-                    engine.isLogin = true;
-                    eventEmitter.emit(EVENTS.LOGIN_CONFIRMATION, "User Contract wallet created Successfully", userContract);
-                }
-            });
-        } else if (! receipt.status) {
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.USER_CONTRACT_CREATION_FAILED, "User Contract wallet creation Failed"));
-        }
-        if (loginInterval) {
-            clearInterval(loginInterval);
-        }
-    }
-};
 
 Biconomy.prototype.isReady = function () {
     return this.status === STATUS.BICONOMY_READY;
-};
-
-/**
- * Method used to login to biconomy. It takes user's public address as input
- * and if user contract wallet is not found for the user then it deploys
- * new user contract for the user. It user contract already exists it just
- * resolve to the contract wallet address.
- *
- * @returns Promise object that resolve to either transactionHash info or Contract wallet address
- **/
-Biconomy.prototype.login = async function (signer, cb) {
-    return new Promise(async (resolve, reject) => {
-        if (! signer || typeof signer != "string") {
-            let response = formatMessage(RESPONSE_CODES.INVALID_DATA, "signer parameter is mandatory and should be of type 'string'");
-            if (cb)
-                cb(response);
-
-
-
-            reject(response);
-            return;
-        }
-        let engine = this;
-        let message = {};
-        message.userAddress = signer.toLowerCase();
-        message.providerId = engine.providerId;
-        let nonce = await _getUserNonce(signer, this);
-        if (! nonce) {
-            nonce = 0;
-        }
-        message.nonce = nonce;
-
-        const dataToSign = JSON.stringify({
-            types: {
-                EIP712Domain: loginDomainType,
-                LoginMessage: loginMessageType
-            },
-            domain: loginDomainData,
-            primaryType: "LoginMessage",
-            message: message
-        });
-
-        _logMessage(`Biconomy engine status ${
-            engine.status
-        }`);
-        if (engine.status != STATUS.BICONOMY_READY) {
-            let response = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Biconomy SDK is not initialized properly");
-            if (cb)
-                cb(response);
-
-
-
-            return reject(response);
-        }
-        getWeb3(engine).currentProvider.sendAsync({
-            jsonrpc: JSON_RPC_VERSION,
-            id: "101",
-            method: config.signTypedV3Method,
-            params: [signer, dataToSign]
-        }, function (error, signature) {
-            if (error) {
-                let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
-                if (cb)
-                    cb(response);
-
-
-
-                reject(response);
-            } else {
-                let data = {};
-                data.signature = signature.result;
-                data.from = signer;
-                data.providerId = engine.providerId;
-
-                let fetchOption = getFetchOptions("POST", engine.apiKey);
-                fetchOption.body = JSON.stringify(data);
-                fetch(`${baseURL}${userLoginPath}`, fetchOption).then((response) => response.json()).then(function (data) {
-                    _logMessage(data);
-                    let result = {};
-                    if (data.flag && data.flag == BICONOMY_RESPONSE_CODES.ACTION_COMPLETE) {
-                        result.code = RESPONSE_CODES.SUCCESS_RESPONSE;
-                        if (data.userContract) {
-                            result.message = `User login successfull`;
-                            result.userContract = data.userContract;
-                            engine.isLogin = true;
-                            _setLocalData(signer, data.userContract);
-                        } else if (data.transactionHash) {
-                            result.message = `User contract creation initiated`;
-                            result.transactionHash = data.transactionHash;
-                            loginInterval = setInterval(function () {
-                                getLoginTransactionReceipt(engine, data.transactionHash, signer);
-                            }, 2000);
-                        }
-                        if (cb)
-                            cb(null, result);
-
-
-
-                        resolve(result);
-                    } else {
-                        result.code = RESPONSE_CODES.ERROR_RESPONSE;
-                        result.message = data.log;
-                        if (cb)
-                            cb(result, null);
-
-
-
-                        reject(result);
-                    }
-                }).catch(function (error) {
-                    _logMessage(error);
-                    let response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, error);
-                    if (cb)
-                        cb(response);
-
-
-
-                    reject(response);
-                });
-            }
-        });
-    });
-};
-
-/**
- * Function used to logout user from biconomy. It clears any internal user state and local storage.
- */
-Biconomy.prototype.logout = function () {
-    removeFromStorage(USER_ACCOUNT);
-    removeFromStorage(USER_CONTRACT);
-    this.isLogin = false;
-};
-
-/**
- * Function to return user contract wallet address.
- *
- * @param {string} userAddress User address for which contract wallet is requested
- * @returns A promise that resolves to user contact wallet if it exists else error response.
- */
-Biconomy.prototype.getUserContract = async function (userAddress) {
-    let response;
-    if (! userAddress) {
-        throw new Error(formatMessage(RESPONSE_CODES.INVALID_DATA, "Please pass a user address"));
-    }
-    if (this.isLogin) {
-        let userAddressFromStorage = getFromStorage(USER_ACCOUNT);
-        if (userAddressFromStorage && userAddress) {
-            if (userAddressFromStorage.toLowerCase() === userAddress.toLowerCase()) {
-                response = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE, "User Contract Wallet address fetched successfully");
-                response.userContract = getFromStorage(USER_CONTRACT);
-            }
-            if (! response) {
-                let userContract = await _getUserContractWallet(this, userAddress);
-                if (userContract) {
-                    response = formatMessage(RESPONSE_CODES.SUCCESS_RESPONSE, "User Contract Wallet address fetched successfully");
-                    response.userContract = userContract;
-                } else {
-                    response = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Unable to fetch User Contract Wallet");
-                }
-            }
-        }
-    } else {
-        response = formatMessage(RESPONSE_CODES.USER_NOT_LOGGED_IN, "Please login to biconomy first");
-    }
-    return response;
 };
 
 Biconomy.prototype.getUserAccount = async function () {
@@ -2026,22 +1306,6 @@ function getFetchOptions(method, apiKey) {
 
 function formatMessage(code, message) {
     return {code: code, message: message};
-}
-
-/**
- * Setting data in localstorage to check later if user contract and user account
- * already exists and user has already logged in to biconomy once.
- **/
-function _setLocalData(signer, userContract) {
-    if (typeof localStorage != "undefined") {
-        if (signer && userContract) {
-            localStorage.setItem(USER_ACCOUNT, signer);
-            localStorage.setItem(USER_CONTRACT, userContract);
-        }
-    } else {
-        this[USER_ACCOUNT] = signer;
-        this[USER_CONTRACT] = userContract;
-    }
 }
 
 function removeFromStorage(key) {
