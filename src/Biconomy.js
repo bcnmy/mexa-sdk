@@ -1003,7 +1003,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
 
             // removed dai domain data
             // might add networkId
-            engine.permitClient = new PermitClient(engine, feeProxyAddress);
+            engine.permitClient = new PermitClient(engine, feeProxyAddress, engine.daiTokenAddress);
             engine.erc20ForwarderClient = new ERC20ForwarderClient({
                 forwarderClientOptions: biconomyAttributes,
                 networkId: engine.networkId,

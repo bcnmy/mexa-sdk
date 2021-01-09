@@ -44,7 +44,7 @@ function _logMessage(message) {
 }
 
 /**
- * Class to provider method to interact with Biconomy's ERC20Forwarder smart contract
+ * Class to provide methods to interact with Biconomy's ERC20Forwarder smart contract
  * to send meta transactions and let end users pay the gas fee in ERC20 tokens.
  * Check https://docs.biconomy.io to see list of supported tokens and guides on how to use this.
  *
@@ -291,8 +291,9 @@ class ERC20ForwarderClient {
      * @param {string} signature Signature string singed from user account
      * @param {string} userAddress User blockchain address
      */
-    async sendTxEIP712(req, signature = null, userAddress) {
+    async sendTxEIP712({req, signature = null, userAddress}) {
         // TODO: Check if user has given the approval to ERC20Forwarder contract
+        // TODO : If signature is not passed and user Address is passed it shouldnt assume sugnature as user address
         try {
             const domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([
                 "bytes32",
@@ -335,6 +336,7 @@ class ERC20ForwarderClient {
             const metaTxBody = {
                 to: req.to,
                 from: userAddress,
+                gasLimit: 500000,
                 apiId: apiId,
                 params: [
                     req, domainSeparator, sig
@@ -371,7 +373,7 @@ class ERC20ForwarderClient {
      * @param {string} signature Signature string singed from user account
      * @param {string} userAddress User blockchain address
      */
-    async sendTxPersonalSign(req, signature = null, userAddress) {
+    async sendTxPersonalSign({req, signature = null, userAddress}) {
         try {
             const hashToSign = abi.soliditySHA3([
                 "address",
