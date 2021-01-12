@@ -225,7 +225,7 @@ function Biconomy(provider, options) {
     }
 }
 
-Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction, cb) {
+Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction, tokenAddress, cb) {
     let engine = this;
     return new Promise(async (resolve, reject) => {
         if (rawTransaction) {
@@ -243,6 +243,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                     return reject(error);
                 }
                 let methodName = methodInfo.name;
+                //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given 
+                let token = (tokenAddress) ? tokenAddress : engine.daiTokenAddress;
+                _logMessage(tokenAddress);
                 let api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
                 if (! api) {
                     api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
@@ -294,8 +297,8 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 if (metaTxApproach == engine.TRUSTED_FORWARDER) {
                     request = (await buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
                 } else if (metaTxApproach == engine.ERC20_FORWARDER) {
-                    // TODO: How does the users provide custom token address here?
-                    request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data, engine.daiTokenAddress);
+                    //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given 
+                    request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data, token);
                 } else {
                     let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
                     if (cb)
@@ -420,7 +423,6 @@ async function sendSignedTransaction(engine, payload, end) {
         let rawTransaction,
             signature,
             request,
-            tokenAddress,
             signatureType;
         // user would need to pass token address as well!
         // OR they could pass the symbol and engine will provide the address for you..
@@ -434,7 +436,6 @@ async function sendSignedTransaction(engine, payload, end) {
             signature = data.signature;
             rawTransaction = data.rawTransaction;
             signatureType = data.signatureType;
-            tokenAddress = (data.tokenAddress) ? data.tokenAddress : engine.daiTokenAddress;
             request = data.forwardRequest;
         }
 
