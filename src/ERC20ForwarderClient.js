@@ -1,6 +1,7 @@
 import {ethers} from "ethers";
 const {config} = require("./config");
 const abi = require("ethereumjs-abi");
+import {tokenAbi, erc20Eip2612Abi} from "./abis";
 
 const erc20ForwardRequestType = config.forwardRequestType;
 const domainType = config.domainType;
@@ -260,9 +261,20 @@ class ERC20ForwarderClient {
             .mul(ethers.BigNumber.from(req.tokenGasPrice))
             .mul(ethers.BigNumber.from(feeMultiplier.toString()))
             .div(ethers.BigNumber.from(10000));
+            let spendValue = parseFloat(cost).toString();
             cost = (parseFloat(cost)/parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))).toFixed(2);
             let fee = parseFloat(cost.toString()); // Exact amount in tokens
             _logMessage(`Estimated Transaction Fee in token address ${token} is ${fee}`)
+
+            const allowedToSpend = await this.feeProxyApproved(req.token, userAddress, spendValue);
+            if(!allowedToSpend)
+            {
+              throw new Error("You have not given approval to ERC Forwarder contract to spend tokens");
+            }
+            else{
+                _logMessage(`${userAddress} has given permission ${this.feeProxy.address} to spend required amount of tokens`);
+            }
+
             return {request: req, cost: fee};
         } catch(error) {
             _logMessage(error);
@@ -280,6 +292,17 @@ class ERC20ForwarderClient {
         }
     }
 
+    async feeProxyApproved(tokenAddress,userAddress,spendValue){
+        let token = new ethers.Contract(tokenAddress,tokenAbi,this.provider.getSigner());
+        spendValue = Number(spendValue);
+        const allowance = await token.allowance(userAddress,this.feeProxy.address);
+        if (allowance > spendValue)
+            return true;
+        else
+            return false;
+    }
+
+
     /**
      * Method gets the user signature in EIP712 format and send the transaction
      * via Biconomy meta transaction API .
@@ -292,8 +315,7 @@ class ERC20ForwarderClient {
      * @param {string} userAddress User blockchain address
      */
     async sendTxEIP712({req, signature = null, userAddress}) {
-        // TODO: Check if user has given the approval to ERC20Forwarder contract
-        // TODO : If signature is not passed and user Address is passed it shouldnt assume sugnature as user address
+        
         try {
             const domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([
                 "bytes32",
@@ -316,7 +338,7 @@ class ERC20ForwarderClient {
             if(!userAddress) {
                 throw new Error("Either pass userAddress param or pass a provider to Biconomy with user accounts information");
             }
-
+            
             const dataToSign = {
                 types: {
                     EIP712Domain: domainType,
@@ -336,7 +358,6 @@ class ERC20ForwarderClient {
             const metaTxBody = {
                 to: req.to,
                 from: userAddress,
-                gasLimit: 500000,
                 apiId: apiId,
                 params: [
                     req, domainSeparator, sig
@@ -374,6 +395,7 @@ class ERC20ForwarderClient {
      * @param {string} userAddress User blockchain address
      */
     async sendTxPersonalSign({req, signature = null, userAddress}) {
+   
         try {
             const hashToSign = abi.soliditySHA3([
                 "address",
