@@ -34,6 +34,32 @@ const getGasPrice = async (networkId) => {
 };
 
 /**
+ * Method to get the token gas price for a given network and a given token
+ * This method will be called for unsupported networks for token gas price V1
+ * @param {address} tokenAddress token address id for which token gas price is needed
+ * @param {Number} networkId network id on which this token exists 
+ */
+const getTokenGasPriceFromServer = async (tokenAddress,networkId) => {
+    const tokenGasPriceURL = `${
+        config.baseURL
+    }/api/v1/token-gas-price?tokenAddress=${tokenAddress}&networkId=${networkId}`;
+    try {
+        const response = await fetch(tokenGasPriceURL);
+        if(response && response.json) {
+            const responseJson = await response.json();
+            _logMessage("Token Gas Price Response JSON " + JSON.stringify(responseJson));
+            if(responseJson && responseJson.tokenGasPrice && responseJson.tokenGasPrice.value) {
+                return responseJson.tokenGasPrice.value.toString();
+            }
+        }
+        throw new Error(`Error getting gas price from url ${tokenGasPriceURL}`)
+    } catch(error) {
+        _logMessage(error);
+        throw error;
+    }
+};
+
+/**
  * Single method to be used for logging purpose.
  *
  * @param {string} message Message to be logged
@@ -54,7 +80,7 @@ function _logMessage(message) {
 class ERC20ForwarderClient {
     constructor({forwarderClientOptions, networkId, provider, feeProxyDomainData,
         biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator,
-        feeManager, isSignerWithAccounts}) {
+        feeManager, isSignerWithAccounts, tokenGasPriceV1SupportedNetworks}) {
         this.biconomyAttributes = forwarderClientOptions;
         this.networkId = networkId;
         this.provider = provider;
@@ -66,6 +92,7 @@ class ERC20ForwarderClient {
         this.forwarder = forwarder;
         this.transferHandler = transferHandler;
         this.isSignerWithAccounts = isSignerWithAccounts;
+        this.tokenGasPriceV1SupportedNetworks = tokenGasPriceV1SupportedNetworks
     }
 
     /**
@@ -169,6 +196,8 @@ class ERC20ForwarderClient {
      */
     async buildERC20TxRequest(account, to, txGas, data, token, batchId = 0, deadlineInSec = 3600) {
         try {
+            let networkId = this.networkId;
+            let isRegularTokenGasPriceSupported = (this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1) ? false : true; 
             if(!this.forwarder) throw new Error("Biconomy Forwarder contract is not initialized properly.");
             if(!ethers.utils.isAddress(account)) throw new Error(`User address ${account} is not a valid ethereum address`);
             if(!ethers.utils.isAddress(to)) throw new Error(`"to" address ${to} is not a valid ethereum address`);
@@ -178,7 +207,14 @@ class ERC20ForwarderClient {
 
             let nonce = await this.forwarder.getNonce(account, batchId);
             const batchNonce = Number(nonce);
-            const tokenGasPrice = await this.getTokenGasPrice(token);
+            let tokenGasPrice;
+            if(isRegularTokenGasPriceSupported)
+            {
+            tokenGasPrice = await this.getTokenGasPrice(token);
+            }
+            else{
+                tokenGasPrice = await getTokenGasPriceFromServer(token,networkId);
+            }
 
             const req = {
                 from: account,
@@ -216,6 +252,8 @@ class ERC20ForwarderClient {
      */
     async buildTx(to, token, txGas, data, batchId = 0, deadlineInSec = 3600) {
         try {
+            let networkId = this.networkId;
+            let isRegularTokenGasPriceSupported = (this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1) ? false : true; 
             if(!this.forwarder) throw new Error("Biconomy Forwarder contract is not initialized properly.");
             if(!this.feeManager) throw new Error("Biconomy Fee Manager contract is not initialized properly.");
             if(!this.oracleAggregator) throw new Error("Biconomy Oracle Aggregator contract is not initialized properly.");
@@ -233,7 +271,15 @@ class ERC20ForwarderClient {
 
             const userAddress = await (this.provider.getSigner()).getAddress();
             let nonce = await this.forwarder.getNonce(userAddress, batchId);
-            const tokenGasPrice = await this.getTokenGasPrice(token);
+            let tokenGasPrice;
+            if(isRegularTokenGasPriceSupported)
+            {
+            tokenGasPrice = await this.getTokenGasPrice(token);
+            }
+            else{
+                //api call
+            tokenGasPrice = await getTokenGasPriceFromServer(token,networkId);
+            }
 
             const req = {
                 from: userAddress,
