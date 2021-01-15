@@ -1001,7 +1001,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
             const feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider);
             const forwarder = new ethers.Contract(forwarderAddress, forwarderAbi, signerOrProvider);
             const transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signerOrProvider);
-            const tokenGasPriceV1SupportedNetworks = engine.tokenGasPriceV1SupportedNetworks;
+            const erc20ForwarderSupportedNetworks = engine.erc20ForwarderSupportedNetworks;
 
             // removed dai domain data
             // might add networkId
@@ -1011,7 +1011,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
                 networkId: engine.networkId,
                 provider: ethersProvider,
                 feeProxyDomainData, biconomyForwarderDomainData, feeProxy,
-                transferHandler, forwarder, oracleAggregator, feeManager, isSignerWithAccounts, tokenGasPriceV1SupportedNetworks});
+                transferHandler, forwarder, oracleAggregator, feeManager, isSignerWithAccounts, erc20ForwarderSupportedNetworks});
 
             _logMessage(engine.permitClient);
             _logMessage(engine.erc20ForwarderClient);
@@ -1215,7 +1215,7 @@ async function _init(apiKey, engine) {
                                     engine.DEFAULT = systemInfo.defaultMetaTransaction;
                                     engine.EIP712_SIGN =  systemInfo.eip712Sign;
                                     engine.PERSONAL_SIGN = systemInfo.personalSign;
-                                    engine.tokenGasPriceV1SupportedNetworks = systemInfo.tokenGasPriceV1SupportedNetworks;
+                                    engine.erc20ForwarderSupportedNetworks = systemInfo.erc20ForwarderSupportedNetworks;
 
                                     biconomyForwarderDomainData.verifyingContract = engine.forwarderAddress;
                                     feeProxyDomainData.verifyingContract = engine.forwarderAddress;
