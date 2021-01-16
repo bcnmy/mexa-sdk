@@ -80,7 +80,7 @@ function _logMessage(message) {
 class ERC20ForwarderClient {
     constructor({forwarderClientOptions, networkId, provider, feeProxyDomainData,
         biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator,
-        feeManager, isSignerWithAccounts, erc20ForwarderSupportedNetworks}) {
+        feeManager, isSignerWithAccounts, tokenGasPriceV1SupportedNetworks}) {
         this.biconomyAttributes = forwarderClientOptions;
         this.networkId = networkId;
         this.provider = provider;
@@ -92,7 +92,7 @@ class ERC20ForwarderClient {
         this.forwarder = forwarder;
         this.transferHandler = transferHandler;
         this.isSignerWithAccounts = isSignerWithAccounts;
-        this.erc20ForwarderSupportedNetworks = erc20ForwarderSupportedNetworks
+        this.tokenGasPriceV1SupportedNetworks = tokenGasPriceV1SupportedNetworks
     }
 
     /**
@@ -197,7 +197,7 @@ class ERC20ForwarderClient {
     async buildERC20TxRequest(account, to, txGas, data, token, batchId = 0, deadlineInSec = 3600) {
         try {
             let networkId = this.networkId;
-            let isRegularTokenGasPriceSupported = (this.erc20ForwarderSupportedNetworks.indexOf(networkId) == -1) ? false : true; 
+            let isRegularTokenGasPriceSupported = (this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1) ? false : true; 
             if(!this.forwarder) throw new Error("Biconomy Forwarder contract is not initialized properly.");
             if(!ethers.utils.isAddress(account)) throw new Error(`User address ${account} is not a valid ethereum address`);
             if(!ethers.utils.isAddress(to)) throw new Error(`"to" address ${to} is not a valid ethereum address`);
@@ -253,7 +253,7 @@ class ERC20ForwarderClient {
     async buildTx(to, token, txGas, data, batchId = 0, deadlineInSec = 3600) {
         try {
             let networkId = this.networkId;
-            let isRegularTokenGasPriceSupported = (this.erc20ForwarderSupportedNetworks.indexOf(networkId) == -1) ? false : true; 
+            let isRegularTokenGasPriceSupported = (this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1) ? false : true; 
             if(!this.forwarder) throw new Error("Biconomy Forwarder contract is not initialized properly.");
             if(!this.feeManager) throw new Error("Biconomy Fee Manager contract is not initialized properly.");
             if(!this.oracleAggregator) throw new Error("Biconomy Oracle Aggregator contract is not initialized properly.");
