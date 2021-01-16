@@ -25,10 +25,10 @@ function _logMessage(message) {
  * Check https://docs.biconomy.io to see examples of how to use permit client to give one time token approvals
  */
 class PermitClient {
-  constructor(provider, feeProxyAddress, daiTokenAddress) {
+  constructor(provider, erc20ForwarderAddress, daiTokenAddress) {
     const ethersProvider = new ethers.providers.Web3Provider(provider);
     this.provider = ethersProvider;
-    this.feeProxyAddress = feeProxyAddress;
+    this.erc20ForwarderAddress = erc20ForwarderAddress;
     this.daiTokenAddress = daiTokenAddress;
     this.daiDomainData = daiDomainData;
   }
@@ -42,7 +42,7 @@ class PermitClient {
    */
   async daiPermit(daiPermitOptions) {
     try {
-      const spender = daiPermitOptions.spender || this.feeProxyAddress;
+      const spender = daiPermitOptions.spender || this.erc20ForwarderAddress;
       const expiry =
         daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
       const allowed = daiPermitOptions.allowed || true;
@@ -110,7 +110,7 @@ class PermitClient {
   async eip2612Permit(permitOptions) {
     try {
       const tokenDomainData = permitOptions.domainData;
-      const spender = permitOptions.spender || this.feeProxyAddress;
+      const spender = permitOptions.spender || this.erc20ForwarderAddress;
       const value = permitOptions.value;
       const deadline =
         permitOptions.deadline || Math.floor(Date.now() / 1000 + 3600);

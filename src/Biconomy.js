@@ -25,10 +25,10 @@ import PermitClient from "./PermitClient";
 import ERC20ForwarderClient from "./ERC20ForwarderClient";
 import {buildForwardTxRequest, getDomainSeperator} from "./biconomyforwarder";
 import {
-    feeProxyAbi,
+    erc20ForwarderAbi,
     oracleAggregatorAbi,
     feeManagerAbi,
-    forwarderAbi,
+    biconomyForwarderAbi,
     transferHandlerAbi
 } from "./abis";
 
@@ -65,9 +65,9 @@ let biconomyForwarderDomainData = {
     version: config.forwarderVersion
 }
 
-let feeProxyDomainData = {
-    name: config.feeProxyDomainName,
-    version: config.feeProxyVersion
+let erc20ForwarderDomainData = {
+    name: config.erc20ForwarderDomainName,
+    version: config.erc20ForwarderVersion
 };
 
 // EIP712 format data for login
@@ -988,29 +988,29 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
             signerOrProvider = ethersProvider;
             isSignerWithAccounts = false;
         }
-        const feeProxyAddress = engine.options.feeProxyAddress || engine.feeProxyAddress;
+        const erc20ForwarderAddress = engine.options.erc20ForwarderAddress || engine.erc20ForwarderAddress;
         const transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
-        if(feeProxyAddress) {
+        if(erc20ForwarderAddress) {
 
-            const feeProxy = new ethers.Contract(feeProxyAddress, feeProxyAbi, signerOrProvider);
-            const oracleAggregatorAddress = await feeProxy.oracleAggregator();
-            const feeManagerAddress = await feeProxy.feeManager();
-            const forwarderAddress = await feeProxy.forwarder();
+            const erc20Forwarder = new ethers.Contract(erc20ForwarderAddress, erc20ForwarderAbi, signerOrProvider);
+            const oracleAggregatorAddress = await erc20Forwarder.oracleAggregator();
+            const feeManagerAddress = await erc20Forwarder.feeManager();
+            const forwarderAddress = await erc20Forwarder.forwarder();
             const oracleAggregator = new ethers.Contract(oracleAggregatorAddress, oracleAggregatorAbi, signerOrProvider);
             const feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider);
-            const forwarder = new ethers.Contract(forwarderAddress, forwarderAbi, signerOrProvider);
+            const forwarder = new ethers.Contract(forwarderAddress, biconomyForwarderAbi, signerOrProvider);
             const transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signerOrProvider);
             const tokenGasPriceV1SupportedNetworks = engine.tokenGasPriceV1SupportedNetworks;
 
             // removed dai domain data
             // might add networkId
-            engine.permitClient = new PermitClient(engine, feeProxyAddress, engine.daiTokenAddress);
+            engine.permitClient = new PermitClient(engine, erc20ForwarderAddress, engine.daiTokenAddress);
             engine.erc20ForwarderClient = new ERC20ForwarderClient({
                 forwarderClientOptions: biconomyAttributes,
                 networkId: engine.networkId,
                 provider: ethersProvider,
-                feeProxyDomainData, biconomyForwarderDomainData, feeProxy,
+                erc20ForwarderDomainData, biconomyForwarderDomainData, erc20Forwarder,
                 transferHandler, forwarder, oracleAggregator, feeManager, isSignerWithAccounts, tokenGasPriceV1SupportedNetworks});
 
             _logMessage(engine.permitClient);
@@ -1191,7 +1191,7 @@ async function _init(apiKey, engine) {
                             domainData.chainId = providerNetworkId;
                             biconomyForwarderDomainData.chainId = providerNetworkId;
                             daiDomainData.chainId = providerNetworkId;
-                            feeProxyDomainData.chainId = providerNetworkId;
+                            erc20ForwarderDomainData.chainId = providerNetworkId;
                             fetch(`${baseURL}/api/${
                                 config.version2
                             }/meta-tx/systemInfo?networkId=${providerNetworkId}`).then((response) => response.json()).then((systemInfo) => {
@@ -1205,7 +1205,7 @@ async function _init(apiKey, engine) {
                                     loginDomainData = systemInfo.loginDomainData;
                                     forwardRequestType = systemInfo.forwardRequestType;
                                     engine.forwarderAddress = systemInfo.biconomyForwarderAddress;
-                                    engine.feeProxyAddress = systemInfo.ercFeeProxyAddress;
+                                    engine.erc20ForwarderAddress = systemInfo.erc20ForwarderAddress;
                                     engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
                                     engine.daiTokenAddress = systemInfo.daiTokenAddress;
                                     engine.usdtTokenAddress = systemInfo.usdtTokenAddress;
@@ -1218,7 +1218,7 @@ async function _init(apiKey, engine) {
                                     engine.tokenGasPriceV1SupportedNetworks = systemInfo.tokenGasPriceV1SupportedNetworks;
 
                                     biconomyForwarderDomainData.verifyingContract = engine.forwarderAddress;
-                                    feeProxyDomainData.verifyingContract = engine.forwarderAddress;
+                                    erc20ForwarderDomainData.verifyingContract = engine.forwarderAddress;
                                     daiDomainData.verifyingContract = engine.daiTokenAddress;
 
 
@@ -1229,7 +1229,7 @@ async function _init(apiKey, engine) {
                                     return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.INVALID_DATA, "Could not get signature types from server. Contact Biconomy Team"));
                                 }
                                 let web3 = getWeb3(engine);
-                                biconomyForwarder = new web3.eth.Contract(forwarderAbi, engine.forwarderAddress);
+                                biconomyForwarder = new web3.eth.Contract(biconomyForwarderAbi, engine.forwarderAddress);
                                 // Get dapps smart contract data from biconomy servers
                                 let getDAppInfoAPI = `${baseURL}/api/${
                                     config.version

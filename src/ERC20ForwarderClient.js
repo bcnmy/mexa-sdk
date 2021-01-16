@@ -52,15 +52,15 @@ function _logMessage(message) {
  * This class supports both EIP712 and personal signatures.
  */
 class ERC20ForwarderClient {
-    constructor({forwarderClientOptions, networkId, provider, feeProxyDomainData,
-        biconomyForwarderDomainData, feeProxy, transferHandler, forwarder, oracleAggregator,
+    constructor({forwarderClientOptions, networkId, provider, erc20ForwarderDomainData,
+        biconomyForwarderDomainData, erc20Forwarder, transferHandler, forwarder, oracleAggregator,
         feeManager, isSignerWithAccounts, tokenGasPriceV1SupportedNetworks}) {
         this.biconomyAttributes = forwarderClientOptions;
         this.networkId = networkId;
         this.provider = provider;
-        this.feeProxyDomainData = feeProxyDomainData;
+        this.erc20ForwarderDomainData = erc20ForwarderDomainData;
         this.biconomyForwarderDomainData = biconomyForwarderDomainData;
-        this.feeProxy = feeProxy;
+        this.erc20Forwarder = erc20Forwarder;
         this.oracleAggregator = oracleAggregator;
         this.feeManager = feeManager;
         this.forwarder = forwarder;
@@ -250,7 +250,7 @@ class ERC20ForwarderClient {
             if(!this.forwarder) throw new Error("Biconomy Forwarder contract is not initialized properly.");
             if(!this.feeManager) throw new Error("Biconomy Fee Manager contract is not initialized properly.");
             if(!this.oracleAggregator) throw new Error("Biconomy Oracle Aggregator contract is not initialized properly.");
-            if(!this.feeProxy) throw new Error("Biconomy Fee Proxy contract is not initialized properly.");
+            if(!this.erc20Forwarder) throw new Error("Biconomy Fee Proxy contract is not initialized properly.");
 
             if(!ethers.utils.isAddress(to)) throw new Error(`"to" address ${to} is not a valid ethereum address`);
             if(!ethers.utils.isAddress(token)) throw new Error(`"token" address ${token} is not a valid ethereum address`);
@@ -280,8 +280,8 @@ class ERC20ForwarderClient {
 
             const feeMultiplier = await this.feeManager.getFeeMultiplier(userAddress, token);
             const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(token);
-            const transferHandlerGas = await this.feeProxy.transferHandlerGas(token);
-            _logMessage(`TransferHandler gas from ERC20FeeProxy contract is ${transferHandlerGas.toString()}`);
+            const transferHandlerGas = await this.erc20Forwarder.transferHandlerGas(token);
+            _logMessage(`TransferHandler gas from ERC20erc20Forwarder contract is ${transferHandlerGas.toString()}`);
 
             if(feeMultiplier == undefined || tokenOracleDecimals == undefined || transferHandlerGas == undefined)
                 throw new Error(`One of the values is undefined. feeMultiplier: ${feeMultiplier} tokenOracleDecimals: ${tokenOracleDecimals} transferHandlerGas: ${transferHandlerGas}`)
@@ -297,13 +297,13 @@ class ERC20ForwarderClient {
             let fee = parseFloat(cost.toString()); // Exact amount in tokens
             _logMessage(`Estimated Transaction Fee in token address ${token} is ${fee}`)
 
-            const allowedToSpend = await this.feeProxyApproved(req.token, userAddress, spendValue);
+            const allowedToSpend = await this.erc20ForwarderApproved(req.token, userAddress, spendValue);
             if(!allowedToSpend)
             {
               throw new Error("You have not given approval to ERC Forwarder contract to spend tokens");
             }
             else{
-                _logMessage(`${userAddress} has given permission ${this.feeProxy.address} to spend required amount of tokens`);
+                _logMessage(`${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`);
             }
 
             return {request: req, cost: fee};
@@ -323,10 +323,10 @@ class ERC20ForwarderClient {
         }
     }
 
-    async feeProxyApproved(tokenAddress,userAddress,spendValue){
+    async erc20ForwarderApproved(tokenAddress,userAddress,spendValue){
         let token = new ethers.Contract(tokenAddress,tokenAbi,this.provider.getSigner());
         spendValue = Number(spendValue);
-        const allowance = await token.allowance(userAddress,this.feeProxy.address);
+        const allowance = await token.allowance(userAddress,this.erc20Forwarder.address);
         if (allowance > spendValue)
             return true;
         else
@@ -356,10 +356,10 @@ class ERC20ForwarderClient {
                 "address"
             ], [
                 ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                ethers.utils.id(this.feeProxyDomainData.name),
-                ethers.utils.id(this.feeProxyDomainData.version),
-                this.feeProxyDomainData.chainId,
-                this.feeProxyDomainData.verifyingContract,
+                ethers.utils.id(this.erc20ForwarderDomainData.name),
+                ethers.utils.id(this.erc20ForwarderDomainData.version),
+                this.erc20ForwarderDomainData.chainId,
+                this.erc20ForwarderDomainData.verifyingContract,
             ]));
 
             if(this.isSignerWithAccounts) {
@@ -375,7 +375,7 @@ class ERC20ForwarderClient {
                     EIP712Domain: domainType,
                     ERC20ForwardRequest: erc20ForwardRequestType
                 },
-                domain: this.feeProxyDomainData,
+                domain: this.erc20ForwarderDomainData,
                 primaryType: "ERC20ForwardRequest",
                 message: req
             };
