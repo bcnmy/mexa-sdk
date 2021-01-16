@@ -34,32 +34,6 @@ const getGasPrice = async (networkId) => {
 };
 
 /**
- * Method to get the token gas price for a given network and a given token
- * This method will be called for unsupported networks for token gas price V1
- * @param {address} tokenAddress token address id for which token gas price is needed
- * @param {Number} networkId network id on which this token exists 
- */
-const getTokenGasPriceFromServer = async (tokenAddress,networkId) => {
-    const tokenGasPriceURL = `${
-        config.baseURL
-    }/api/v1/token-gas-price?tokenAddress=${tokenAddress}&networkId=${networkId}`;
-    try {
-        const response = await fetch(tokenGasPriceURL);
-        if(response && response.json) {
-            const responseJson = await response.json();
-            _logMessage("Token Gas Price Response JSON " + JSON.stringify(responseJson));
-            if(responseJson && responseJson.tokenGasPrice && responseJson.tokenGasPrice.value) {
-                return responseJson.tokenGasPrice.value.toString();
-            }
-        }
-        throw new Error(`Error getting gas price from url ${tokenGasPriceURL}`)
-    } catch(error) {
-        _logMessage(error);
-        throw error;
-    }
-};
-
-/**
  * Single method to be used for logging purpose.
  *
  * @param {string} message Message to be logged
@@ -154,11 +128,13 @@ class ERC20ForwarderClient {
      * current gas price of the blockchain. It refers to a oracleAgggregator
      * smart contract that fetches the token price from onchain price oracles like
      * ChainLink, Uniswap etc.
-     *
+     * @notice this method also checks if token gas price is supported for current provider network otherwise result is fetched form the server
      * @param {string} tokenAddress Token Address
      */
     async getTokenGasPrice(tokenAddress) {
         try {
+            let networkId = this.networkId;
+            let isRegularTokenGasPriceSupported = (this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1) ? false : true; 
             if(!ethers.utils.isAddress(tokenAddress))
                 throw new Error(`Invalid token address: ${tokenAddress} Please passs a valid ethereum address`);
             if(!this.oracleAggregator)
@@ -168,6 +144,31 @@ class ERC20ForwarderClient {
             if(gasPrice == undefined || gasPrice == 0) {
                 throw new Error(`Invalid gasPrice value ${gasPrice}. Unable to fetch gas price.`);
             }
+
+            if(!isRegularTokenGasPriceSupported)
+            {
+                try {
+                    const tokenGasPriceURL = `${
+                        config.baseURL
+                    }/api/v1/token-gas-price?tokenAddress=${tokenAddress}&networkId=${networkId}`;
+                    
+                    const response = await fetch(tokenGasPriceURL);
+                    if(response && response.json) {
+                        const responseJson = await response.json();
+                        _logMessage("Token Gas Price Response JSON " + JSON.stringify(responseJson));
+                        if(responseJson && responseJson.tokenGasPrice && responseJson.tokenGasPrice.value) {
+                            return responseJson.tokenGasPrice.value.toString();
+                        }
+                    }
+                    else{
+                    throw new Error(`Error getting gas price from url ${tokenGasPriceURL}`)
+                    }
+                } catch(error) {
+                    _logMessage(error);
+                    throw error;
+                } 
+            }
+
             const tokenPrice = await this.oracleAggregator.getTokenPrice(tokenAddress);
             const tokenOracleDecimals = await this.oracleAggregator.getTokenOracleDecimals(tokenAddress);
 
@@ -176,7 +177,7 @@ class ERC20ForwarderClient {
             return gasPrice.mul(ethers.BigNumber.from(10).pow(tokenOracleDecimals)).div(tokenPrice).toString();
         } catch(error) {
             _logMessage(error);
-            throw error;
+            throw new Error(`Error getting gas price ${tokenGasPriceURL}`)
         }
     }
 
@@ -207,15 +208,7 @@ class ERC20ForwarderClient {
 
             let nonce = await this.forwarder.getNonce(account, batchId);
             const batchNonce = Number(nonce);
-            let tokenGasPrice;
-            if(isRegularTokenGasPriceSupported)
-            {
-            tokenGasPrice = await this.getTokenGasPrice(token);
-            }
-            else{
-                tokenGasPrice = await getTokenGasPriceFromServer(token,networkId);
-            }
-
+            const tokenGasPrice = await this.getTokenGasPrice(token);
             const req = {
                 from: account,
                 to: to,
@@ -271,15 +264,7 @@ class ERC20ForwarderClient {
 
             const userAddress = await (this.provider.getSigner()).getAddress();
             let nonce = await this.forwarder.getNonce(userAddress, batchId);
-            let tokenGasPrice;
-            if(isRegularTokenGasPriceSupported)
-            {
-            tokenGasPrice = await this.getTokenGasPrice(token);
-            }
-            else{
-                //api call
-            tokenGasPrice = await getTokenGasPriceFromServer(token,networkId);
-            }
+            const tokenGasPrice = await this.getTokenGasPrice(token);
 
             const req = {
                 from: userAddress,
