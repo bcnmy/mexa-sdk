@@ -41,6 +41,7 @@ let biconomyForwarder;
 const events = require("events");
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
+let trustedForwarderOverhead;
 
 let domainType,
   metaInfoType,
@@ -54,21 +55,12 @@ let domainData = {
   verifyingContract: config.eip712VerifyingContract,
 };
 
-//moved to permit client
 let daiDomainData = {
   name: config.daiDomainName,
   version: config.daiVersion,
 };
 
-let biconomyForwarderDomainData = {
-  name: config.forwarderDomainName,
-  version: config.forwarderVersion,
-};
-
-let erc20ForwarderDomainData = {
-  name: config.erc20ForwarderDomainName,
-  version: config.erc20ForwarderVersion,
-};
+let forwarderDomainData;
 
 // EIP712 format data for login
 let loginDomainType, loginMessageType, loginDomainData;
@@ -351,7 +343,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
             EIP712Domain: domainType,
             ERC20ForwardRequest: forwardRequestType,
           },
-          domain: biconomyForwarderDomainData,
+          domain: forwarderDomainData,
           primaryType: "ERC20ForwardRequest",
           message: request,
         };
@@ -616,7 +608,7 @@ async function sendSignedTransaction(engine, payload, end) {
 
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               const domainSeparator = getDomainSeperator(
-                biconomyForwarderDomainData
+                forwarderDomainData
               );
               _logMessage(domainSeparator);
               paramArray.push(domainSeparator);
@@ -819,7 +811,7 @@ async function handleSendTransaction(engine, payload, end) {
           paramArray.push(request);
           if (signatureType && signatureType == engine.EIP712_SIGN) {
             const domainSeparator = getDomainSeperator(
-              biconomyForwarderDomainData
+              forwarderDomainData
             );
             _logMessage(domainSeparator);
             paramArray.push(domainSeparator);
@@ -1013,7 +1005,7 @@ function getSignatureEIP712(engine, account, request) {
       EIP712Domain: domainType,
       ERC20ForwardRequest: forwardRequestType,
     },
-    domain: biconomyForwarderDomainData,
+    domain: forwarderDomainData,
     primaryType: "ERC20ForwardRequest",
     message: request,
   });
@@ -1177,8 +1169,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         forwarderClientOptions: biconomyAttributes,
         networkId: engine.networkId,
         provider: ethersProvider,
-        erc20ForwarderDomainData,
-        biconomyForwarderDomainData,
+        forwarderDomainData,
         erc20Forwarder,
         transferHandler,
         forwarder,
@@ -1416,9 +1407,7 @@ async function _init(apiKey, engine) {
                   );
                 } else {
                   domainData.chainId = providerNetworkId;
-                  biconomyForwarderDomainData.chainId = providerNetworkId;
                   daiDomainData.chainId = providerNetworkId;
-                  erc20ForwarderDomainData.chainId = providerNetworkId;
                   fetch(
                     `${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`
                   )
@@ -1433,6 +1422,8 @@ async function _init(apiKey, engine) {
                         loginMessageType = systemInfo.loginMessageType;
                         loginDomainData = systemInfo.loginDomainData;
                         forwardRequestType = systemInfo.forwardRequestType;
+                        forwarderDomainData = systemInfo.forwarderDomainData;
+                        trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
                         engine.forwarderAddress =
                           systemInfo.biconomyForwarderAddress;
                         engine.erc20ForwarderAddress =
@@ -1452,10 +1443,7 @@ async function _init(apiKey, engine) {
                         engine.tokenGasPriceV1SupportedNetworks =
                           systemInfo.tokenGasPriceV1SupportedNetworks;
 
-                        biconomyForwarderDomainData.verifyingContract =
-                          engine.forwarderAddress;
-                        erc20ForwarderDomainData.verifyingContract =
-                          engine.forwarderAddress;
+                       
                         daiDomainData.verifyingContract =
                           engine.daiTokenAddress;
 
