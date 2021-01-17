@@ -96162,7 +96162,7 @@ const abi = require("ethereumjs-abi");
 
 const {
   toJSONRPCPayload
-} = require('./util');
+} = require("./util");
 
 const {
   config,
@@ -96196,25 +96196,18 @@ const events = require("events");
 
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
+let trustedForwarderOverhead;
 let domainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType;
 let domainData = {
   name: config.eip712DomainName,
   version: config.eip712SigVersion,
   verifyingContract: config.eip712VerifyingContract
-}; //moved to permit client
-
+};
 let daiDomainData = {
   name: config.daiDomainName,
   version: config.daiVersion
 };
-let biconomyForwarderDomainData = {
-  name: config.forwarderDomainName,
-  version: config.forwarderVersion
-};
-let erc20ForwarderDomainData = {
-  name: config.erc20ForwarderDomainName,
-  version: config.erc20ForwarderVersion
-}; // EIP712 format data for login
+let forwarderDomainData; // EIP712 format data for login
 
 let loginDomainType, loginMessageType, loginDomainData;
 
@@ -96399,7 +96392,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
           return reject(error);
         }
 
-        let methodName = methodInfo.name; //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given 
+        let methodName = methodInfo.name; //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
 
         let token = tokenAddress ? tokenAddress : engine.daiTokenAddress;
 
@@ -96465,7 +96458,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
           request = (await (0, _biconomyforwarder.buildForwardTxRequest)(account, to, gasLimitNum, decodedTx.data, biconomyForwarder)).request;
         } else if (metaTxApproach == engine.ERC20_FORWARDER) {
-          //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given 
+          //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
           request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, decodedTx.data, token);
         } else {
           let error = formatMessage(RESPONSE_CODES.INVALID_OPERATION, `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`);
@@ -96482,7 +96475,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
             EIP712Domain: domainType,
             ERC20ForwardRequest: forwardRequestType
           },
-          domain: biconomyForwarderDomainData,
+          domain: forwarderDomainData,
           primaryType: "ERC20ForwardRequest",
           message: request
         };
@@ -96650,15 +96643,14 @@ async function sendSignedTransaction(engine, payload, end) {
           return end(error);
         }
         /**
-        * based on the api check contract meta transaction type
-        * change paramArray accordingly
-        * build request EDIT : do not build the request again it will result in signature mismatch
-        * create domain seperator based on signature type
-        * use already available signature
-        * send API call with appropriate parameters based on signature type
-        * //todo
-        * //test more in trusted-forwarder-demo branch - in progress
-        */
+         * based on the api check contract meta transaction type
+         * change paramArray accordingly
+         * build request EDIT : do not build the request again it will result in signature mismatch
+         * create domain seperator based on signature type
+         * use already available signature
+         * send API call with appropriate parameters based on signature type
+         *
+         */
 
 
         let forwardedData, gasLimitNum;
@@ -96686,16 +96678,16 @@ async function sendSignedTransaction(engine, payload, end) {
 
                 gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
 
-                _logMessage('gas limit number' + gasLimitNum);
+                _logMessage("gas limit number" + gasLimitNum);
               }
             } else {
               gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
             }
             /*if (metaTxApproach == engine.TRUSTED_FORWARDER) {
-                request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
-            } else if (metaTxApproach == engine.ERC20_FORWARDER) {
-                request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData, engine.daiTokenAddress);
-            }*/
+                            request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
+                        } else if (metaTxApproach == engine.ERC20_FORWARDER) {
+                            request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData, engine.daiTokenAddress);
+                        }*/
 
 
             _logMessage(request);
@@ -96703,7 +96695,7 @@ async function sendSignedTransaction(engine, payload, end) {
             paramArray.push(request);
 
             if (signatureType && signatureType == engine.EIP712_SIGN) {
-              const domainSeparator = (0, _biconomyforwarder.getDomainSeperator)(biconomyForwarderDomainData);
+              const domainSeparator = (0, _biconomyforwarder.getDomainSeperator)(forwarderDomainData);
 
               _logMessage(domainSeparator);
 
@@ -96851,14 +96843,11 @@ async function handleSendTransaction(engine, payload, end) {
       let paramArray = [];
       let contractAddr = api.contractAddress.toLowerCase();
       let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-      let forwardedData, gasLimitNum; // todo
-      // gas estimation step for hasLimitNum = txGas
-      // use forwarded data, biconomy forwarder : from, recipient address :to
+      let forwardedData, gasLimitNum;
 
       if (api.url == NATIVE_META_TX_URL) {
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
-          forwardedData = payload.params[0].data; // test with biconomy forwarder and add to erc20ForwarderClient buildTx as well
-          // Check if gas limit is present, it not calculate gas limit
+          forwardedData = payload.params[0].data; // Check if gas limit is present, it not calculate gas limit
 
           let paramArrayForGasCalculation = [];
 
@@ -96878,7 +96867,7 @@ async function handleSendTransaction(engine, payload, end) {
 
               gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
 
-              _logMessage('gas limit number' + gasLimitNum);
+              _logMessage("gas limit number" + gasLimitNum);
             }
           } else {
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
@@ -96891,7 +96880,7 @@ async function handleSendTransaction(engine, payload, end) {
           paramArray.push(request);
 
           if (signatureType && signatureType == engine.EIP712_SIGN) {
-            const domainSeparator = (0, _biconomyforwarder.getDomainSeperator)(biconomyForwarderDomainData);
+            const domainSeparator = (0, _biconomyforwarder.getDomainSeperator)(forwarderDomainData);
 
             _logMessage(domainSeparator);
 
@@ -97062,7 +97051,7 @@ function getSignatureEIP712(engine, account, request) {
       EIP712Domain: domainType,
       ERC20ForwardRequest: forwardRequestType
     },
-    domain: biconomyForwarderDomainData,
+    domain: forwarderDomainData,
     primaryType: "ERC20ForwardRequest",
     message: request
   });
@@ -97166,8 +97155,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async engine => {
         forwarderClientOptions: biconomyAttributes,
         networkId: engine.networkId,
         provider: ethersProvider,
-        erc20ForwarderDomainData,
-        biconomyForwarderDomainData,
+        forwarderDomainData,
         erc20Forwarder,
         transferHandler,
         forwarder,
@@ -97373,9 +97361,7 @@ async function _init(apiKey, engine) {
               return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH, `Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${dappNetworkId}`));
             } else {
               domainData.chainId = providerNetworkId;
-              biconomyForwarderDomainData.chainId = providerNetworkId;
               daiDomainData.chainId = providerNetworkId;
-              erc20ForwarderDomainData.chainId = providerNetworkId;
               fetch(`${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`).then(response => response.json()).then(systemInfo => {
                 if (systemInfo) {
                   domainType = systemInfo.domainType;
@@ -97386,6 +97372,8 @@ async function _init(apiKey, engine) {
                   loginMessageType = systemInfo.loginMessageType;
                   loginDomainData = systemInfo.loginDomainData;
                   forwardRequestType = systemInfo.forwardRequestType;
+                  forwarderDomainData = systemInfo.forwarderDomainData;
+                  trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
                   engine.forwarderAddress = systemInfo.biconomyForwarderAddress;
                   engine.erc20ForwarderAddress = systemInfo.erc20ForwarderAddress;
                   engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
@@ -97398,8 +97386,6 @@ async function _init(apiKey, engine) {
                   engine.EIP712_SIGN = systemInfo.eip712Sign;
                   engine.PERSONAL_SIGN = systemInfo.personalSign;
                   engine.tokenGasPriceV1SupportedNetworks = systemInfo.tokenGasPriceV1SupportedNetworks;
-                  biconomyForwarderDomainData.verifyingContract = engine.forwarderAddress;
-                  erc20ForwarderDomainData.verifyingContract = engine.forwarderAddress;
                   daiDomainData.verifyingContract = engine.daiTokenAddress;
 
                   if (systemInfo.relayHubAddress) {
@@ -97646,8 +97632,7 @@ class ERC20ForwarderClient {
     forwarderClientOptions,
     networkId,
     provider,
-    erc20ForwarderDomainData,
-    biconomyForwarderDomainData,
+    forwarderDomainData,
     erc20Forwarder,
     transferHandler,
     forwarder,
@@ -97659,8 +97644,7 @@ class ERC20ForwarderClient {
     this.biconomyAttributes = forwarderClientOptions;
     this.networkId = networkId;
     this.provider = provider;
-    this.erc20ForwarderDomainData = erc20ForwarderDomainData;
-    this.biconomyForwarderDomainData = biconomyForwarderDomainData;
+    this.forwarderDomainData = forwarderDomainData;
     this.erc20Forwarder = erc20Forwarder;
     this.oracleAggregator = oracleAggregator;
     this.feeManager = feeManager;
@@ -97943,7 +97927,7 @@ class ERC20ForwarderClient {
     userAddress
   }) {
     try {
-      const domainSeparator = _ethers.ethers.utils.keccak256(_ethers.ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "uint256", "address"], [_ethers.ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"), _ethers.ethers.utils.id(this.erc20ForwarderDomainData.name), _ethers.ethers.utils.id(this.erc20ForwarderDomainData.version), this.erc20ForwarderDomainData.chainId, this.erc20ForwarderDomainData.verifyingContract]));
+      const domainSeparator = _ethers.ethers.utils.keccak256(_ethers.ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "uint256", "address"], [_ethers.ethers.utils.id("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"), _ethers.ethers.utils.id(this.forwarderDomainData.name), _ethers.ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.chainId, this.forwarderDomainData.verifyingContract]));
 
       if (this.isSignerWithAccounts) {
         userAddress = await this.provider.getSigner().getAddress();
@@ -97958,7 +97942,7 @@ class ERC20ForwarderClient {
           EIP712Domain: domainType,
           ERC20ForwardRequest: erc20ForwardRequestType
         },
-        domain: this.erc20ForwarderDomainData,
+        domain: this.forwarderDomainData,
         primaryType: "ERC20ForwardRequest",
         message: req
       };
@@ -99639,11 +99623,10 @@ config.eip712DomainName = "Biconomy Meta Transaction";
 config.eip712VerifyingContract = "0x3457dC2A8Ff1d3FcC45eAd532CA1740f5c477160";
 config.daiDomainName = "Dai Stablecoin";
 config.daiVersion = "1";
-config.erc20ForwarderDomainName = "Biconomy Forwarder";
-config.erc20ForwarderVersion = "1";
 config.forwarderDomainName = "Biconomy Forwarder";
 config.forwarderVersion = "1";
 config.baseURL = "https://api.biconomy.io";
+//could get this from sys info and pass it in constructor 
 config.overHeadEIP712Sign = 14975;
 config.overHeadPersonalSign = 13900;
 config.nativeMetaTxUrl = `/api/${config.version2}/meta-tx/native`;
