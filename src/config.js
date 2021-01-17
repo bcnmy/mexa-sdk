@@ -9,11 +9,10 @@ config.eip712DomainName = "Biconomy Meta Transaction";
 config.eip712VerifyingContract = "0x3457dC2A8Ff1d3FcC45eAd532CA1740f5c477160";
 config.daiDomainName = "Dai Stablecoin";
 config.daiVersion = "1";
-config.erc20ForwarderDomainName = "Biconomy Forwarder";
-config.erc20ForwarderVersion = "1";
 config.forwarderDomainName = "Biconomy Forwarder";
 config.forwarderVersion = "1";
 config.baseURL = "https://api.biconomy.io";
+//could get this from sys info and pass it in constructor 
 config.overHeadEIP712Sign = 14975;
 config.overHeadPersonalSign = 13900;
 config.nativeMetaTxUrl = `/api/${config.version2}/meta-tx/native`;
