@@ -60,8 +60,7 @@ class ERC20ForwarderClient {
     forwarderClientOptions,
     networkId,
     provider,
-    erc20ForwarderDomainData,
-    biconomyForwarderDomainData,
+    forwarderDomainData,
     erc20Forwarder,
     transferHandler,
     forwarder,
@@ -73,8 +72,7 @@ class ERC20ForwarderClient {
     this.biconomyAttributes = forwarderClientOptions;
     this.networkId = networkId;
     this.provider = provider;
-    this.erc20ForwarderDomainData = erc20ForwarderDomainData;
-    this.biconomyForwarderDomainData = biconomyForwarderDomainData;
+    this.forwarderDomainData = forwarderDomainData;
     this.erc20Forwarder = erc20Forwarder;
     this.oracleAggregator = oracleAggregator;
     this.feeManager = feeManager;
@@ -496,10 +494,10 @@ class ERC20ForwarderClient {
             ethers.utils.id(
               "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
             ),
-            ethers.utils.id(this.erc20ForwarderDomainData.name),
-            ethers.utils.id(this.erc20ForwarderDomainData.version),
-            this.erc20ForwarderDomainData.chainId,
-            this.erc20ForwarderDomainData.verifyingContract,
+            ethers.utils.id(this.forwarderDomainData.name),
+            ethers.utils.id(this.forwarderDomainData.version),
+            this.forwarderDomainData.chainId,
+            this.forwarderDomainData.verifyingContract,
           ]
         )
       );
@@ -519,7 +517,7 @@ class ERC20ForwarderClient {
           EIP712Domain: domainType,
           ERC20ForwardRequest: erc20ForwardRequestType,
         },
-        domain: this.erc20ForwarderDomainData,
+        domain: this.forwarderDomainData,
         primaryType: "ERC20ForwardRequest",
         message: req,
       };
