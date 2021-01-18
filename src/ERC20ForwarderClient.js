@@ -170,6 +170,7 @@ class ERC20ForwarderClient {
    */
   async getTokenGasPrice(tokenAddress) {
     try {
+      let tokenGasPriceURL;
       let networkId = this.networkId;
       let isRegularTokenGasPriceSupported =
         this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1
@@ -193,7 +194,7 @@ class ERC20ForwarderClient {
 
       if (!isRegularTokenGasPriceSupported) {
         try {
-          const tokenGasPriceURL = `${config.baseURL}/api/v1/token-gas-price?tokenAddress=${tokenAddress}&networkId=${networkId}`;
+          tokenGasPriceURL = `${config.baseURL}/api/v1/token-gas-price?tokenAddress=${tokenAddress}&networkId=${networkId}`;
 
           const response = await fetch(tokenGasPriceURL);
           if (response && response.json) {
@@ -236,7 +237,7 @@ class ERC20ForwarderClient {
         .toString();
     } catch (error) {
       _logMessage(error);
-      throw new Error(`Error getting gas price ${tokenGasPriceURL}`);
+      throw new Error(`Error getting token gas price inside SDK`);
     }
   }
 
