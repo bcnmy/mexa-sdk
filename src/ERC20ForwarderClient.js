@@ -247,68 +247,6 @@ class ERC20ForwarderClient {
    * If you want to perform parallel transactions from same user account,
    * use different batchIds.
    *
-   * @param {string} account User account address
-   * @param {string} to Target Smart contract address
-   * @param {number|string} txGas Estimated transaction gas for target method
-   * @param {string} data Encoded target method data to be called
-   * @param {string} token Token address in which gas payment is to be made
-   * @param {number} batchId Batch id used to determine user nonce on Biconomy Forwarder contract
-   * @param {number} deadlineInSec Deadline in seconds after which transaction will fail
-   */
-  async buildERC20TxRequest(
-    account,
-    to,
-    txGas,
-    data,
-    token,
-    batchId = 0,
-    deadlineInSec = 3600
-  ) {
-    try {
-      if (!this.forwarder)
-        throw new Error(
-          "Biconomy Forwarder contract is not initialized properly."
-        );
-      if (!ethers.utils.isAddress(account))
-        throw new Error(
-          `User address ${account} is not a valid ethereum address`
-        );
-      if (!ethers.utils.isAddress(to))
-        throw new Error(`"to" address ${to} is not a valid ethereum address`);
-      if (!ethers.utils.isAddress(token))
-        throw new Error(
-          `"token" address ${token} is not a valid ethereum address`
-        );
-
-      await this.checkTokenSupport(token);
-
-      let nonce = await this.forwarder.getNonce(account, batchId);
-      const batchNonce = Number(nonce);
-      const tokenGasPrice = await this.getTokenGasPrice(token);
-      const req = {
-        from: account,
-        to: to,
-        token: token,
-        txGas: txGas,
-        tokenGasPrice: tokenGasPrice,
-        batchId: batchId,
-        batchNonce: batchNonce,
-        deadline: Math.floor(Date.now() / 1000 + deadlineInSec),
-        data: data,
-      };
-      return req;
-    } catch (error) {
-      _logMessage(error);
-      throw error;
-    }
-  }
-
-  /**
-   * Method builds a request object based on the input parameters.
-   * Method fetches the user nonce from Biconomy Forwarder contract.
-   * If you want to perform parallel transactions from same user account,
-   * use different batchIds.
-   *
    * It returns the request object to be signed by the user and also gas estimation
    * in the given token to be used to pay transaction gas fee from user's account.
    *
@@ -319,7 +257,7 @@ class ERC20ForwarderClient {
    * @param {number} batchId Batch id used to determine user nonce on Biconomy Forwarder contract
    * @param {number} deadlineInSec Deadline in seconds after which transaction will fail
    */
-  async buildTx(to, token, txGas, data, batchId = 0, deadlineInSec = 3600) {
+  async buildTx({to, token, txGas, data, batchId = 0, deadlineInSec = 3600, userAddress}) {
     try {
       if (!this.forwarder)
         throw new Error(
@@ -353,8 +291,10 @@ class ERC20ForwarderClient {
         );
 
       await this.checkTokenSupport(token);
-
-      const userAddress = await this.provider.getSigner().getAddress();
+      
+      if(!userAddress)
+        userAddress = await this.provider.getSigner().getAddress();
+      
       let nonce = await this.forwarder.getNonce(userAddress, batchId);
       const tokenGasPrice = await this.getTokenGasPrice(token);
 
@@ -403,7 +343,7 @@ class ERC20ForwarderClient {
       cost = (
         parseFloat(cost) /
         parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))
-      ).toFixed(2);
+      ).toFixed(3);
       let fee = parseFloat(cost.toString()); // Exact amount in tokens
       _logMessage(
         `Estimated Transaction Fee in token address ${token} is ${fee}`

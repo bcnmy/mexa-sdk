@@ -306,7 +306,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           return end(error);
         }
 
-        let request;
+        let request, cost;
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
           request = (
             await buildForwardTxRequest(
@@ -319,13 +319,19 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           ).request;
         } else if (metaTxApproach == engine.ERC20_FORWARDER) {
           //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
-          request = await engine.erc20ForwarderClient.buildERC20TxRequest(
-            account,
+          let buildTxResponse = await engine.erc20ForwarderClient.buildTx({
+            userAddress: account,
             to,
-            gasLimitNum,
-            decodedTx.data,
+            txGas: gasLimitNum,
+            data: decodedTx.data,
             token
-          );
+          });
+          if(buildTxResponse) {
+            request = buildTxResponse.request;
+            cost = buildTxResponse.cost;
+          } else {
+            reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Unable to build forwarder request"));
+          }
         } else {
           let error = formatMessage(
             RESPONSE_CODES.INVALID_OPERATION,
@@ -377,6 +383,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           eip712Format: eip712DataToSign,
           personalSignatureFormat: hashToSign,
           request: request,
+          cost: cost
         };
 
         if (cb) cb(null, dataToSign);
