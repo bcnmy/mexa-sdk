@@ -173,7 +173,7 @@ class ERC20ForwarderClient {
       let tokenGasPriceURL;
       let networkId = this.networkId;
       let isRegularTokenGasPriceSupported =
-        this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1
+        this.tokenGasPriceV1SupportedNetworks.indexOf(parseInt(networkId)) == -1
           ? false
           : true;
       if (!ethers.utils.isAddress(tokenAddress))
@@ -265,11 +265,6 @@ class ERC20ForwarderClient {
     deadlineInSec = 3600
   ) {
     try {
-      let networkId = this.networkId;
-      let isRegularTokenGasPriceSupported =
-        this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1
-          ? false
-          : true;
       if (!this.forwarder)
         throw new Error(
           "Biconomy Forwarder contract is not initialized properly."
@@ -326,11 +321,6 @@ class ERC20ForwarderClient {
    */
   async buildTx(to, token, txGas, data, batchId = 0, deadlineInSec = 3600) {
     try {
-      let networkId = this.networkId;
-      let isRegularTokenGasPriceSupported =
-        this.tokenGasPriceV1SupportedNetworks.indexOf(networkId) == -1
-          ? false
-          : true;
       if (!this.forwarder)
         throw new Error(
           "Biconomy Forwarder contract is not initialized properly."

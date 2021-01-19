@@ -13,8 +13,8 @@ config.forwarderDomainName = "Biconomy Forwarder";
 config.forwarderVersion = "1";
 config.baseURL = "https://api.biconomy.io";
 //could get this from sys info and pass it in constructor 
-config.overHeadEIP712Sign = 14975;
-config.overHeadPersonalSign = 13900;
+config.overHeadEIP712Sign = 15030;
+config.overHeadPersonalSign = 13928;
 config.nativeMetaTxUrl = `/api/${config.version2}/meta-tx/native`;
 config.userLoginPath = `/api/${config.version2}/dapp-user/login`;
 config.withdrawFundsUrl = `/api/${config.version2}/meta-tx/withdraw`;
