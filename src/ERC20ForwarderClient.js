@@ -5,7 +5,6 @@ import { tokenAbi, erc20Eip2612Abi } from "./abis";
 
 const erc20ForwardRequestType = config.forwardRequestType;
 const domainType = config.domainType;
-const FORWARD_OVERHEAD_EIP712_SIGN = config.overHeadEIP712Sign;
 
 /**
  * Method to get the gas price for a given network that'll be used to
@@ -68,6 +67,7 @@ class ERC20ForwarderClient {
     feeManager,
     isSignerWithAccounts,
     tokenGasPriceV1SupportedNetworks,
+    trustedForwarderOverhead
   }) {
     this.biconomyAttributes = forwarderClientOptions;
     this.networkId = networkId;
@@ -80,6 +80,7 @@ class ERC20ForwarderClient {
     this.transferHandler = transferHandler;
     this.isSignerWithAccounts = isSignerWithAccounts;
     this.tokenGasPriceV1SupportedNetworks = tokenGasPriceV1SupportedNetworks;
+    this.trustedForwarderOverhead = trustedForwarderOverhead;
   }
 
   /**
@@ -334,7 +335,7 @@ class ERC20ForwarderClient {
         );
 
       let cost = ethers.BigNumber.from(req.txGas.toString())
-        .add(ethers.BigNumber.from(FORWARD_OVERHEAD_EIP712_SIGN.toString())) // Estimate on the higher end
+        .add(ethers.BigNumber.from(this.trustedForwarderOverhead.toString())) // Estimate on the higher end
         .add(transferHandlerGas)
         .mul(ethers.BigNumber.from(req.tokenGasPrice))
         .mul(ethers.BigNumber.from(feeMultiplier.toString()))

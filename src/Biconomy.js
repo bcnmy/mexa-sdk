@@ -1184,6 +1184,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         feeManager,
         isSignerWithAccounts,
         tokenGasPriceV1SupportedNetworks,
+        trustedForwarderOverhead
       });
 
       _logMessage(engine.permitClient);
