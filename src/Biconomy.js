@@ -44,7 +44,7 @@ let loginInterval;
 let trustedForwarderOverhead;
 
 let domainType,
-  newDomainType,
+  forwarderDomainType,
   metaInfoType,
   relayerPaymentType,
   metaTransactionType,
@@ -347,7 +347,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
 
         const eip712DataToSign = {
           types: {
-            EIP712Domain: newDomainType,
+            EIP712Domain: forwarderDomainType,
             ERC20ForwardRequest: forwardRequestType,
           },
           domain: forwarderDomainData,
@@ -1010,7 +1010,7 @@ async function handleSendTransaction(engine, payload, end) {
 function getSignatureEIP712(engine, account, request) {
   const dataToSign = JSON.stringify({
     types: {
-      EIP712Domain: newDomainType,
+      EIP712Domain: forwarderDomainType,
       ERC20ForwardRequest: forwardRequestType,
     },
     domain: forwarderDomainData,
@@ -1023,7 +1023,7 @@ function getSignatureEIP712(engine, account, request) {
       {
         jsonrpc: "2.0",
         id: 999999999999,
-        method: "eth_signTypedData_v4",
+        method: "eth_signTypedData_v3",
         params: [account, dataToSign],
       },
       function (error, res) {
@@ -1178,6 +1178,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         networkId: engine.networkId,
         provider: ethersProvider,
         forwarderDomainData,
+        forwarderDomainType,
         erc20Forwarder,
         transferHandler,
         forwarder,
@@ -1424,7 +1425,7 @@ async function _init(apiKey, engine) {
                     .then((systemInfo) => {
                       if (systemInfo) {
                         domainType = systemInfo.domainType;
-                        newDomainType = systemInfo.newDomainType;
+                        forwarderDomainType = systemInfo.forwarderDomainType;
                         metaInfoType = systemInfo.metaInfoType;
                         relayerPaymentType = systemInfo.relayerPaymentType;
                         metaTransactionType = systemInfo.metaTransactionType;

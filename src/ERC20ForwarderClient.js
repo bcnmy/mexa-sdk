@@ -4,7 +4,6 @@ const abi = require("ethereumjs-abi");
 import { tokenAbi, erc20Eip2612Abi } from "./abis";
 
 const erc20ForwardRequestType = config.forwardRequestType;
-const domainType = config.domainType;
 
 /**
  * Method to get the gas price for a given network that'll be used to
@@ -60,6 +59,7 @@ class ERC20ForwarderClient {
     networkId,
     provider,
     forwarderDomainData,
+    forwarderDomainType,
     erc20Forwarder,
     transferHandler,
     forwarder,
@@ -73,6 +73,7 @@ class ERC20ForwarderClient {
     this.networkId = networkId;
     this.provider = provider;
     this.forwarderDomainData = forwarderDomainData;
+    this.forwarderDomainType = forwarderDomainType;
     this.erc20Forwarder = erc20Forwarder;
     this.oracleAggregator = oracleAggregator;
     this.feeManager = feeManager;
@@ -446,7 +447,7 @@ class ERC20ForwarderClient {
 
       const dataToSign = {
         types: {
-          EIP712Domain: domainType,
+          EIP712Domain: this.forwarderDomainType,
           ERC20ForwardRequest: erc20ForwardRequestType,
         },
         domain: this.forwarderDomainData,
@@ -456,7 +457,7 @@ class ERC20ForwarderClient {
 
       const sig =
         signature == null
-          ? await this.provider.send("eth_signTypedData_v4", [
+          ? await this.provider.send("eth_signTypedData_v3", [
               req.from,
               JSON.stringify(dataToSign),
             ])
