@@ -44,6 +44,7 @@ let loginInterval;
 let trustedForwarderOverhead;
 
 let domainType,
+  newDomainType,
   metaInfoType,
   relayerPaymentType,
   metaTransactionType,
@@ -346,7 +347,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
 
         const eip712DataToSign = {
           types: {
-            EIP712Domain: domainType,
+            EIP712Domain: newDomainType,
             ERC20ForwardRequest: forwardRequestType,
           },
           domain: forwarderDomainData,
@@ -1009,7 +1010,7 @@ async function handleSendTransaction(engine, payload, end) {
 function getSignatureEIP712(engine, account, request) {
   const dataToSign = JSON.stringify({
     types: {
-      EIP712Domain: domainType,
+      EIP712Domain: newDomainType,
       ERC20ForwardRequest: forwardRequestType,
     },
     domain: forwarderDomainData,
@@ -1423,6 +1424,7 @@ async function _init(apiKey, engine) {
                     .then((systemInfo) => {
                       if (systemInfo) {
                         domainType = systemInfo.domainType;
+                        newDomainType = systemInfo.newDomainType;
                         metaInfoType = systemInfo.metaInfoType;
                         relayerPaymentType = systemInfo.relayerPaymentType;
                         metaTransactionType = systemInfo.metaTransactionType;

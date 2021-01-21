@@ -424,11 +424,11 @@ class ERC20ForwarderClient {
           ["bytes32", "bytes32", "bytes32", "uint256", "address"],
           [
             ethers.utils.id(
-              "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+              "EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"
             ),
             ethers.utils.id(this.forwarderDomainData.name),
             ethers.utils.id(this.forwarderDomainData.version),
-            this.forwarderDomainData.chainId,
+            this.forwarderDomainData.salt,
             this.forwarderDomainData.verifyingContract,
           ]
         )
