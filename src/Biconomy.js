@@ -604,12 +604,6 @@ async function sendSignedTransaction(engine, payload, end) {
                 gasLimit.toString()
               ).toNumber();
             }
-
-            /*if (metaTxApproach == engine.TRUSTED_FORWARDER) {
-                            request = (await buildForwardTxRequest(account, to, gasLimitNum, forwardedData, biconomyForwarder)).request;
-                        } else if (metaTxApproach == engine.ERC20_FORWARDER) {
-                            request = await engine.erc20ForwarderClient.buildERC20TxRequest(account, to, gasLimitNum, forwardedData, engine.daiTokenAddress);
-                        }*/
             _logMessage(request);
 
             paramArray.push(request);
@@ -742,7 +736,9 @@ async function handleSendTransaction(engine, payload, end) {
       let gasPrice = payload.params[0].gasPrice;
       let gasLimit = payload.params[0].gas;
       let signatureType = payload.params[0].signatureType;
+      _logMessage(payload.params[0]);
       _logMessage(api);
+      _logMessage(`gas limit : ${gasLimit}`);
 
       if (!api) {
         _logMessage(`API not found for method ${methodName}`);
@@ -773,6 +769,17 @@ async function handleSendTransaction(engine, payload, end) {
 
       let contractAddr = api.contractAddress.toLowerCase();
       let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+      if(metaTxApproach == engine.ERC20_FORWARDER)
+      {
+        let error = formatMessage(
+          RESPONSE_CODES.INVALID_PAYLOAD,
+          `This operation is not allowed for contracts registered as ERC20 Forwarder. Use ERC20Forwarder client instead!`
+        );
+        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+        end(error); 
+      }
+
+
       let forwardedData, gasLimitNum;
 
       if (api.url == NATIVE_META_TX_URL) {
@@ -786,30 +793,30 @@ async function handleSendTransaction(engine, payload, end) {
             paramArrayForGasCalculation.push(_getParamValue(params[i], engine));
           }
 
-          if (!gasLimit || parseInt(gasLimit) == 0) {
-            let contractABI = smartContractMap[to];
+          let contractABI = smartContractMap[to];
             if (contractABI) {
               let web3 = getWeb3(engine);
               let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
-              gasLimit = await contract.methods[methodName]
+              gasLimitNum = await contract.methods[methodName]
                 .apply(null, paramArrayForGasCalculation)
                 .estimateGas({ from: account });
 
-              // do not send this value in API call. only meant for txGas
-              gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
-                .add(ethers.BigNumber.from(5000))
-                .toNumber();
               _logMessage("gas limit number" + gasLimitNum);
             }
-          } else {
-            gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
-          }
+            else{
+              let error = formatMessage(
+                RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
+                `Smart contract ABI not found!`
+              );
+              eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+              end(error); 
+            }
 
           const request = (
             await buildForwardTxRequest(
               account,
               to,
-              gasLimitNum,
+              parseInt(gasLimitNum), //txGas
               forwardedData,
               biconomyForwarder
             )
@@ -845,6 +852,7 @@ async function handleSendTransaction(engine, payload, end) {
           data.apiId = api.id;
           data.params = paramArray;
           data.to = to;
+          data.gasLimit = gasLimit;
           if (signatureType && signatureType == engine.EIP712_SIGN) {
             data.signatureType = engine.EIP712_SIGN;
           }
