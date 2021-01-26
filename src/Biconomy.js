@@ -733,7 +733,7 @@ async function handleSendTransaction(engine, payload, end) {
           ? engine.dappAPIMap[config.SCW][methodName]
           : undefined;
       }
-      let gasPrice = payload.params[0].gasPrice;
+
       let gasLimit = payload.params[0].gas;
       let signatureType = payload.params[0].signatureType;
       _logMessage(payload.params[0]);
@@ -773,17 +773,17 @@ async function handleSendTransaction(engine, payload, end) {
       {
         let error = formatMessage(
           RESPONSE_CODES.INVALID_PAYLOAD,
-          `This operation is not allowed for contracts registered as ERC20 Forwarder. Use ERC20Forwarder client instead!`
+          `This operation is not allowed for contracts registered on dashboard as "ERC20Forwarder". Use ERC20Forwarder client instead!`
         );
         eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        end(error); 
+        return end(error); 
       }
-
 
       let forwardedData, gasLimitNum;
 
       if (api.url == NATIVE_META_TX_URL) {
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+          _logMessage("Smart contract is configured to use Trusted Forwarder as meta transaction type");
           forwardedData = payload.params[0].data;
 
           // Check if gas limit is present, it not calculate gas limit
@@ -801,7 +801,7 @@ async function handleSendTransaction(engine, payload, end) {
                 .apply(null, paramArrayForGasCalculation)
                 .estimateGas({ from: account });
 
-              _logMessage("gas limit number" + gasLimitNum);
+              _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
             }
             else{
               let error = formatMessage(
@@ -828,6 +828,7 @@ async function handleSendTransaction(engine, payload, end) {
             const domainSeparator = getDomainSeperator(
               forwarderDomainData
             );
+            _logMessage("Domain separator to be used:")
             _logMessage(domainSeparator);
             paramArray.push(domainSeparator);
             const signatureEIP712 = await getSignatureEIP712(
@@ -870,123 +871,12 @@ async function handleSendTransaction(engine, payload, end) {
           _sendTransaction(engine, account, api, data, end);
         }
       } else {
-        if (engine.isLogin) {
-          let nonce = await _getUserContractNonce(account, engine);
-          if (!nonce) {
-            let error = formatMessage(
-              RESPONSE_CODES.USER_ACCOUNT_NOT_FOUND,
-              `User is not a registered biconomy user`
-            );
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-            end(error);
-          }
-          let userContractWallet = await _getUserContractWallet(
-            engine,
-            account
-          );
-
-          if (!userContractWallet) {
-            let error = formatMessage(
-              RESPONSE_CODES.USER_CONTRACT_NOT_FOUND,
-              `User contract wallet not found`
-            );
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-            return end(error);
-          }
-
-          // Check if gas limit is present, if not calculate gas limit
-          if (!gasLimit || parseInt(gasLimit) == 0) {
-            let contractABI = smartContractMap[to];
-            if (contractABI) {
-              let web3 = getWeb3(engine);
-              let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
-              gasLimit = await contract.methods[methodName]
-                .apply(null, paramArrayForGas)
-                .estimateGas({ from: userContractWallet });
-            }
-          }
-
-          let metaInfo = {};
-          metaInfo.contractWallet = userContractWallet;
-
-          let relayerPayment = {};
-          relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
-          relayerPayment.amount = config.DEFAULT_RELAYER_PAYMENT_AMOUNT;
-
-          let message = {};
-          message.from = account;
-          message.to = to;
-          message.data = payload.params[0].data;
-          message.batchId = config.NONCE_BATCH_ID;
-          message.nonce = parseInt(nonce);
-          message.value = getWeb3(engine).utils.toHex(
-            payload.params[0].value || 0
-          );
-          message.txGas = gasLimit ? gasLimit : 0;
-          message.expiry = config.EXPIRY;
-          message.baseGas = config.BASE_GAS;
-          message.metaInfo = metaInfo;
-          message.relayerPayment = relayerPayment;
-
-          const dataToSign = JSON.stringify({
-            types: {
-              EIP712Domain: domainType,
-              MetaInfo: metaInfoType,
-              RelayerPayment: relayerPaymentType,
-              MetaTransaction: metaTransactionType,
-            },
-            domain: domainData,
-            primaryType: "MetaTransaction",
-            message: message,
-          });
-          _logMessage(dataToSign);
-          engine.send(
-            {
-              jsonrpc: JSON_RPC_VERSION,
-              id: payload.id,
-              method: config.signTypedV3Method,
-              params: [account, dataToSign],
-            },
-            function (error, response) {
-              _logMessage(
-                `User signature for payload id ${payload.id} is ${response.result}`
-              );
-              if (error) {
-                end(error);
-              } else if (response && response.error) {
-                end(response.error);
-              } else if (response && response.result) {
-                let data = {};
-                data.signature = response.result;
-                data.from = account;
-                data.to = to;
-                data.apiId = api.id;
-
-                data.data = payload.params[0].data;
-                data.nonceBatchId = config.NONCE_BATCH_ID;
-                data.expiry = config.EXPIRY;
-                data.baseGas = config.BASE_GAS;
-                data.userContract = userContractWallet;
-                data.value = getWeb3(engine).utils.toHex(
-                  payload.params[0].value || 0
-                );
-                data.gasLimit = gasLimit ? gasLimit : 0;
-                data.relayerPayment = {
-                  token: relayerPayment.token,
-                  amount: relayerPayment.amount,
-                };
-                _sendTransaction(engine, account, api, data, end);
-              } else {
-                end();
-              }
-            }
-          );
-        } else {
-          let error = {};
-          error.message = "User not logged in to biconomy";
-          error.code = RESPONSE_CODES.USER_NOT_LOGGED_IN;
-          return end(error);
-        }
+        let error = formatMessage(
+          RESPONSE_CODES.INVALID_OPERATION,
+          `Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with "native meta tx" checkbox selected.`
+        );
+        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+        return end(error); 
       }
     } else {
       if (engine.strictMode) {

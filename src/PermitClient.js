@@ -84,7 +84,7 @@ class PermitClient {
       const r = "0x" + signature.substring(0, 64);
       const s = "0x" + signature.substring(64, 128);
       const v = parseInt(signature.substring(128, 130), 16);
-      await dai.permit(
+      let tx = await dai.permit(
         userAddress,
         spender,
         parseInt(nonce),
@@ -94,6 +94,7 @@ class PermitClient {
         r,
         s
       );
+      return tx;
     } catch (error) {
       _logMessage(error);
       throw error;
@@ -147,7 +148,7 @@ class PermitClient {
       const r = "0x" + signature.substring(0, 64);
       const s = "0x" + signature.substring(64, 128);
       const v = parseInt(signature.substring(128, 130), 16);
-      await token.permit(
+      let tx = await token.permit(
         userAddress,
         spender,
         value,
@@ -156,6 +157,7 @@ class PermitClient {
         r,
         s
       );
+      return tx;
     } catch (error) {
       _logMessage(error);
       throw error;
