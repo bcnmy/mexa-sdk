@@ -7,6 +7,10 @@ config.loginVersion = "1";
 config.eip712SigVersion = "1";
 config.eip712DomainName = "Biconomy Meta Transaction";
 config.eip712VerifyingContract = "0x3457dC2A8Ff1d3FcC45eAd532CA1740f5c477160";
+config.daiDomainName = "Dai Stablecoin";
+config.daiVersion = "1";
+config.forwarderDomainName = "Biconomy Forwarder";
+config.forwarderVersion = "1";
 config.baseURL = "https://api.biconomy.io";
 config.nativeMetaTxUrl = `/api/${config.version2}/meta-tx/native`;
 config.userLoginPath = `/api/${config.version2}/dapp-user/login`;
@@ -30,6 +34,7 @@ config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 
+
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;
 
@@ -37,7 +42,8 @@ const EVENTS = {
 	SMART_CONTRACT_DATA_READY: 'smart_contract_data_ready',
 	DAPP_API_DATA_READY: 'dapp_api_data_ready',
 	LOGIN_CONFIRMATION: 'login_confirmation',
-	BICONOMY_ERROR: 'biconomy_error'
+	BICONOMY_ERROR: 'biconomy_error',
+	HELPER_CLENTS_READY: 'permit_and_ercforwarder_clients_ready'
 };
 
 const RESPONSE_CODES = {
@@ -56,8 +62,46 @@ const RESPONSE_CODES = {
 	SUCCESS_RESPONSE: 'B200',
 	USER_CONTRACT_CREATION_FAILED:'B512',
 	EVENT_NOT_SUPPORTED: 'B513',
-	INVALID_DATA: 'B514'
+	INVALID_DATA: 'B514',
+	INVALID_OPERATION: 'B515'
 };
+
+
+// could get these from sys info call
+config.forwardRequestType = [
+    {name:'from',type:'address'},
+    {name:'to',type:'address'},
+    {name:'token',type:'address'},
+    {name:'txGas',type:'uint256'},
+    {name:'tokenGasPrice',type:'uint256'},
+    {name:'batchId',type:'uint256'},
+    {name:'batchNonce',type:'uint256'},
+    {name:'deadline',type:'uint256'},
+    {name:'data',type:'bytes'}
+];
+
+config.daiPermitType = [
+	{ name: "holder", type: "address" },
+	{ name: "spender", type: "address" },
+	{ name: "nonce", type: "uint256" },
+	{ name: "expiry", type: "uint256" },
+	{ name: "allowed", type: "bool" },
+  ];
+
+config.eip2612PermitType = [
+	{ name: "owner", type: "address" },
+	{ name: "spender", type: "address" },
+	{ name: "value", type: "uint256" },
+	{ name: "nonce", type: "uint256" },
+	{ name: "deadline", type: "uint256" },
+  ];
+
+config.domainType = [
+	{ name: "name", type: "string" },
+	{ name: "version", type: "string" },
+	{ name: "chainId", type: "uint256" },
+	{ name: "verifyingContract", type: "address" },
+  ];
 
 const BICONOMY_RESPONSE_CODES = {
 	SUCCESS : 200,
@@ -65,6 +109,24 @@ const BICONOMY_RESPONSE_CODES = {
 	USER_CONTRACT_NOT_FOUND: 148,
 	ERROR_RESPONSE: 144
 };
+
+const HTTP_CODES = {
+	OK: 200,
+	INTERNAL_SERVER_ERROR: 500,
+	NOT_FOUND: 404,
+	CONFLICT: 409,
+	EXPECTATION_FAILED: 417
+}
+
+const RESPONSE_BODY_CODES = {
+	OK: 200,
+	DAPP_LIMIT_REACHED: 150,
+	USER_LIMIT_REACHED: 151,
+	API_LIMIT_REACHED: 152,
+	GAS_ESTIMATION_FAILED: 417,
+	INTERNAL_ERROR: 500,
+	NOT_FOUND: 404
+}
 
 const STATUS = {
 	INIT: 'init',
@@ -78,6 +140,8 @@ module.exports = {
 	config,
 	EVENTS,
 	RESPONSE_CODES,
+	HTTP_CODES,
+	RESPONSE_BODY_CODES,
 	BICONOMY_RESPONSE_CODES,
 	STATUS
 }
