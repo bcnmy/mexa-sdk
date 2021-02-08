@@ -125,14 +125,14 @@ function Biconomy(provider, options) {
     this.send = function (payload, cb) {
       if (payload.method == "eth_sendTransaction") {
         handleSendTransaction(this, payload, (error, result) => {
-          let response = _createJsonRpcResponse(payload, error, result);
+          let response = this._createJsonRpcResponse(payload, error, result);
           if (cb) {
             cb(error, response);
           }
         });
       } else if (payload.method == "eth_sendRawTransaction") {
         sendSignedTransaction(this, payload, (error, result) => {
-          let response = _createJsonRpcResponse(payload, error, result);
+          let response = this._createJsonRpcResponse(payload, error, result);
           if (cb) {
             cb(error, response);
           }
@@ -425,7 +425,7 @@ Biconomy.prototype.onEvent = function (type, callback) {
 /**
  * Create a JSON RPC response from the given error and result parameter.
  **/
-function _createJsonRpcResponse(payload, error, result) {
+Biconomy.prototype._createJsonRpcResponse = function (payload, error, result) {
   let response = {};
   response.id = payload.id;
   response.jsonrpc = JSON_RPC_VERSION;
@@ -1064,8 +1064,6 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
       const tokenGasPriceV1SupportedNetworks =
         engine.tokenGasPriceV1SupportedNetworks;
 
-      // removed dai domain data
-      // might add networkId
       engine.permitClient = new PermitClient(
         engine,
         erc20ForwarderAddress,
@@ -1089,6 +1087,11 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
 
       _logMessage(engine.permitClient);
       _logMessage(engine.erc20ForwarderClient);
+    }
+    else
+    {
+      _logMessage("ERC20 Forwarder is not supported for this network");
+      //Warning : you would not be able to use ERC20ForwarderClient and PermitClient 
     }
     engine.status = STATUS.BICONOMY_READY;
     eventEmitter.emit(STATUS.BICONOMY_READY);

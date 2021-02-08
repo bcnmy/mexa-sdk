@@ -96277,7 +96277,7 @@ function Biconomy(provider, options) {
     this.send = function (payload, cb) {
       if (payload.method == "eth_sendTransaction") {
         handleSendTransaction(this, payload, (error, result) => {
-          let response = _createJsonRpcResponse(payload, error, result);
+          let response = this._createJsonRpcResponse(payload, error, result);
 
           if (cb) {
             cb(error, response);
@@ -96285,7 +96285,7 @@ function Biconomy(provider, options) {
         });
       } else if (payload.method == "eth_sendRawTransaction") {
         sendSignedTransaction(this, payload, (error, result) => {
-          let response = _createJsonRpcResponse(payload, error, result);
+          let response = this._createJsonRpcResponse(payload, error, result);
 
           if (cb) {
             cb(error, response);
@@ -96527,7 +96527,7 @@ Biconomy.prototype.onEvent = function (type, callback) {
  **/
 
 
-function _createJsonRpcResponse(payload, error, result) {
+Biconomy.prototype._createJsonRpcResponse = function (payload, error, result) {
   let response = {};
   response.id = payload.id;
   response.jsonrpc = JSON_RPC_VERSION;
@@ -96548,7 +96548,7 @@ function _createJsonRpcResponse(payload, error, result) {
   }
 
   return response;
-}
+};
 
 function decodeMethod(to, data) {
   if (to && data && decoderMap[to]) {
@@ -97070,9 +97070,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async engine => {
       const feeManager = new ethers.Contract(feeManagerAddress, _abis.feeManagerAbi, signerOrProvider);
       const forwarder = new ethers.Contract(forwarderAddress, _abis.biconomyForwarderAbi, signerOrProvider);
       const transferHandler = new ethers.Contract(transferHandlerAddress, _abis.transferHandlerAbi, signerOrProvider);
-      const tokenGasPriceV1SupportedNetworks = engine.tokenGasPriceV1SupportedNetworks; // removed dai domain data
-      // might add networkId
-
+      const tokenGasPriceV1SupportedNetworks = engine.tokenGasPriceV1SupportedNetworks;
       engine.permitClient = new _PermitClient.default(engine, erc20ForwarderAddress, engine.daiTokenAddress);
       engine.erc20ForwarderClient = new _ERC20ForwarderClient.default({
         forwarderClientOptions: biconomyAttributes,
@@ -97093,6 +97091,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async engine => {
       _logMessage(engine.permitClient);
 
       _logMessage(engine.erc20ForwarderClient);
+    } else {
+      _logMessage("ERC20 Forwarder is not supported for this network"); //Warning : you would not be able to use ERC20ForwarderClient and PermitClient 
+
     }
 
     engine.status = STATUS.BICONOMY_READY;
