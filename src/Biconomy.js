@@ -1091,6 +1091,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
     else
     {
       _logMessage("ERC20 Forwarder is not supported for this network");
+      //Warning : you would not be able to use ERC20ForwarderClient and PermitClient 
     }
     engine.status = STATUS.BICONOMY_READY;
     eventEmitter.emit(STATUS.BICONOMY_READY);
