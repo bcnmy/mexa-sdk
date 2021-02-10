@@ -96842,7 +96842,13 @@ async function handleSendTransaction(engine, payload, end) {
 
       _logMessage("Getting user account");
 
-      let account = payload.params[0].from;
+      let account = payload.params[0].from; //value transfer is not supported in native meta transactions
+
+      /*let amount = payload.params[0].value;
+      if(!amount)
+      {
+        amount = 0;
+      }*/
 
       if (!account) {
         return end(`Not able to get user account`);
@@ -96879,7 +96885,8 @@ async function handleSendTransaction(engine, payload, end) {
 
           if (contractABI) {
             let web3 = getWeb3(engine);
-            let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
+            let contract = new web3.eth.Contract(JSON.parse(contractABI), to); // gas estimation will fail if value transfer is expected in the method call 
+
             gasLimitNum = await contract.methods[methodName].apply(null, paramArrayForGasCalculation).estimateGas({
               from: account
             });
@@ -97179,7 +97186,18 @@ function _getParamValue(paramObj, engine) {
     let type = paramObj.type;
 
     switch (type) {
-      case (type.match(/^uint/) || type.match(/^int/) || {}).input:
+      case (type.match(/^uint.*\[\]$/) || type.match(/^int.*\[\]$/) || {}).input:
+        let val = paramObj.value;
+        value = [];
+
+        for (let j = 0; j < val.length; j++) {
+          value[j] = scientificToDecimal(parseInt(val[j]));
+          value[j] = getWeb3(engine).utils.toHex(value[j]);
+        }
+
+        break;
+
+      case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {}).input:
         value = scientificToDecimal(parseInt(paramObj.value));
         value = getWeb3(engine).utils.toHex(value);
         break;
