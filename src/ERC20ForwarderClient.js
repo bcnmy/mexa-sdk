@@ -497,6 +497,95 @@ class ERC20ForwarderClient {
   }
 
   /**
+   * Method gets the user signature in EIP712 format and send the transaction
+   * via Biconomy meta transaction API .
+   * Check buildTx() method to see how to build the req object.
+   * Signature param and userAddress are optional if you have initialized biconomy
+   * with a provider that has user account information.
+   *
+   * @param {object} req Request object to be signed and sent
+   * @param {string} signature Signature string singed from user account
+   * @param {string} userAddress User blockchain address
+   */
+  async permitAndSendTxEIP712({ req, signature = null, userAddress, permitOptions }) {
+    try {
+      const domainSeparator = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "bytes32", "bytes32", "uint256", "address"],
+          [
+            ethers.utils.id(
+              "EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"
+            ),
+            ethers.utils.id(this.forwarderDomainData.name),
+            ethers.utils.id(this.forwarderDomainData.version),
+            this.forwarderDomainData.salt,
+            this.forwarderDomainData.verifyingContract,
+          ]
+        )
+      );
+
+      if (this.isSignerWithAccounts) {
+        userAddress = await this.provider.getSigner().getAddress();
+      }
+
+      if (!userAddress) {
+        throw new Error(
+          "Either pass userAddress param or pass a provider to Biconomy with user accounts information"
+        );
+      }
+
+      const dataToSign = {
+        types: {
+          EIP712Domain: this.forwarderDomainType,
+          ERC20ForwardRequest: erc20ForwardRequestType,
+        },
+        domain: this.forwarderDomainData,
+        primaryType: "ERC20ForwardRequest",
+        message: req,
+      };
+
+      const sig =
+        signature == null
+          ? await this.provider.send("eth_signTypedData_v3", [
+              req.from,
+              JSON.stringify(dataToSign),
+            ])
+          : signature;
+      const api = this.getApiId(req);
+      if (!api || !api.id)
+        throw new Error(
+          "Could not find the apiId for the given request. Contact Biconomy for resolution"
+        );
+
+      const apiId = api.id;
+      const metaTxBody = {
+        to: req.to,
+        from: userAddress,
+        apiId: apiId,
+        params: [req, domainSeparator, sig, permitOptions],
+        signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
+      };
+
+      const txResponse = await fetch(
+        `${config.baseURL}/api/v2/meta-tx/native`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": this.biconomyAttributes.apiKey,
+          },
+          body: JSON.stringify(metaTxBody),
+        }
+      );
+
+      return await txResponse.json();
+    } catch (error) {
+      _logMessage(error);
+      throw error;
+    }
+  }
+
+  /**
    * Method gets the user signature in personal_sign format and send the transaction
    * via Biconomy meta transaction API .
    * Check buildTx() method to see how to build the req object.
