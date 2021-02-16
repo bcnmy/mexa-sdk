@@ -1,10 +1,10 @@
-import {ethers} from 'ethers';
+let { ethers } = require("ethers");
 const {config} = require("./config");
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
 
 const buildForwardTxRequest = async (account, to, gasLimitNum, data, biconomyForwarder, newBatch = false) => {
-    const batchId = newBatch ? await biconomyForwarder.methods.getBatch(userAddress).call() : 0;
-    const batchNonce = await biconomyForwarder.methods.getNonce(account, batchId).call();
+    const batchId = newBatch ? await biconomyForwarder.getBatch(userAddress) : 0;
+    const batchNonce = await biconomyForwarder.getNonce(account, batchId);
     const req = {
         from: account,
         to: to,
@@ -37,7 +37,7 @@ const getDomainSeperator = (biconomyForwarderDomainData) => {
 };
 
 
-export {
+module.exports = {
     buildForwardTxRequest,
     getDomainSeperator
 };

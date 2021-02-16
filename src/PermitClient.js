@@ -1,5 +1,5 @@
-import { daiAbi, erc20Eip2612Abi } from "./abis";
-import { ethers } from "ethers";
+let { daiAbi, erc20Eip2612Abi } = require("./abis");
+let { ethers } = require("ethers");
 const { config } = require("./config");
 
 let daiDomainData = {
@@ -17,6 +17,11 @@ function _logMessage(message) {
     console.log(message);
   }
 }
+
+function isEtheresProvider(provider) {
+  return ethers.providers.Provider.isProvider(provider);
+}
+
 /**
  * Class to provide methods to give token transfer permissions to Biconomy's ERC20Forwarder smart contract
  * ERC20Forwarder contract is responsible to calculate gas cost in ERC20 tokens and making a transfer on user's behalf
@@ -26,8 +31,11 @@ function _logMessage(message) {
  */
 class PermitClient {
   constructor(provider, erc20ForwarderAddress, daiTokenAddress) {
-    const ethersProvider = new ethers.providers.Web3Provider(provider);
-    this.provider = ethersProvider;
+    if(isEtheresProvider(provider)) {
+      this.provider = provider;
+    } else {
+      this.provider = new ethers.providers.Web3Provider(provider);
+    }
     this.erc20ForwarderAddress = erc20ForwarderAddress;
     this.daiTokenAddress = daiTokenAddress;
     this.daiDomainData = daiDomainData;
@@ -165,4 +173,4 @@ class PermitClient {
   }
 }
 
-export default PermitClient;
+module.exports = PermitClient;
