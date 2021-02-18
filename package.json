@@ -2,10 +2,11 @@
   "name": "@biconomy/mexa",
   "version": "2.0.2",
   "description": "Mexa SDK to enable meta transaction in your DApps",
-  "main": "src/index.js",
+  "main": "common-js/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "browserify ./src/Biconomy.js -o ./dist/mexa.js -p esmify -s Biconomy"
+    "build": "browserify ./common-js/Biconomy.js -o ./dist/mexa.js -s Biconomy -d",
+    "build:babel": "babel src -d common-js && npm run build"
   },
   "repository": {
     "type": "git",
@@ -29,17 +30,22 @@
     "/dist/*.js"
   ],
   "dependencies": {
+    "@babel/core": "^7.12.13",
+    "@babel/runtime": "^7.12.13",
     "abi-decoder": "^2.2.2",
     "ethereum-tx-decoder": "^3.0.0",
     "ethereumjs-abi": "^0.6.8",
+    "ethers": "^5.0.24",
     "events": "^3.0.0",
     "node-fetch": "^2.6.0",
-    "ethers": "^5.0.24",
-    "promise": "^8.0.3",
-    "web3": "^1.3.0"
+    "promise": "^8.0.3"
   },
   "devDependencies": {
-    "browserify": "^16.5.0",
-    "esmify": "^2.1.1"
+    "@babel/cli": "^7.12.13",
+    "@babel/plugin-transform-classes": "^7.12.13",
+    "@babel/plugin-transform-runtime": "^7.12.15",
+    "@babel/preset-env": "^7.12.13",
+    "babel-preset-env": "^1.7.0",
+    "browserify": "^16.5.0"
   }
 }

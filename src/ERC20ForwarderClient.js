@@ -1,7 +1,7 @@
-import { ethers } from "ethers";
+let { ethers } = require("ethers");
 const { config } = require("./config");
 const abi = require("ethereumjs-abi");
-import { tokenAbi, erc20Eip2612Abi } from "./abis";
+let { tokenAbi, erc20Eip2612Abi } = require("./abis");
 
 const erc20ForwardRequestType = config.forwardRequestType;
 
@@ -677,4 +677,4 @@ class ERC20ForwarderClient {
   }
 }
 
-export default ERC20ForwarderClient;
+module.exports = ERC20ForwarderClient;
