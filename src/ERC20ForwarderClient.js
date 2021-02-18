@@ -506,8 +506,9 @@ class ERC20ForwarderClient {
    * @param {object} req Request object to be signed and sent
    * @param {string} signature Signature string singed from user account
    * @param {string} userAddress User blockchain address
+   * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options. 
    */
-  async permitAndSendTxEIP712({ req, signature = null, userAddress, permitOptions }) {
+  async permitAndSendTxEIP712({ req, signature = null, userAddress, metaInfo }) {
     try {
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
@@ -562,7 +563,8 @@ class ERC20ForwarderClient {
         to: req.to,
         from: userAddress,
         apiId: apiId,
-        params: [req, domainSeparator, sig, permitOptions],
+        params: [req, domainSeparator, sig], 
+        metaInfo: metaInfo, // just pass it on
         signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
       };
 
