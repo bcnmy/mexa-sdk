@@ -11,7 +11,6 @@ const {
   STATUS,
 } = require("./config");
 const DEFAULT_PAYLOAD_ID = "99999999";
-const Web3 = require("web3");
 const baseURL = config.baseURL;
 const userLoginPath = config.userLoginPath;
 const withdrawFundsUrl = config.withdrawFundsUrl;
@@ -21,16 +20,18 @@ const USER_ACCOUNT = config.USER_ACCOUNT;
 const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
-import PermitClient from "./PermitClient";
-import ERC20ForwarderClient from "./ERC20ForwarderClient";
-import { buildForwardTxRequest, getDomainSeperator } from "./biconomyforwarder";
-import {
+
+let PermitClient = require("./PermitClient");
+let ERC20ForwarderClient = require("./ERC20ForwarderClient");
+let { buildForwardTxRequest, getDomainSeperator } = require("./biconomyforwarder");
+let {
   erc20ForwarderAbi,
   oracleAggregatorAbi,
   feeManagerAbi,
   biconomyForwarderAbi,
   transferHandlerAbi,
-} from "./abis";
+} = require("./abis");
+
 
 let decoderMap = {},
   smartContractMap = {},
@@ -66,14 +67,6 @@ let forwarderDomainData;
 // EIP712 format data for login
 let loginDomainType, loginMessageType, loginDomainData;
 
-function getWeb3(context) {
-  let web3;
-  if (context) {
-    web3 = context.web3;
-  }
-  return web3;
-}
-
 function Biconomy(provider, options) {
   if (typeof fetch == "undefined") {
     fetch = require("node-fetch");
@@ -88,6 +81,7 @@ function Biconomy(provider, options) {
   this.strictMode = options.strictMode || false;
   this.providerId = options.providerId || 0;
   this.readViaContract = options.readViaContract || false;
+  
   this.READY = STATUS.BICONOMY_READY;
   this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
   this.ERROR = EVENTS.BICONOMY_ERROR;
@@ -96,18 +90,29 @@ function Biconomy(provider, options) {
     messageId: 0,
   };
   this.originalProvider = provider;
-
+  this.isEthersProviderPresent = false;
+  this.canSignMessages = false;
+  
   if (options.debug) {
     config.logsEnabled = true;
   }
-  _init(this.apiKey, this);
-
-  if (provider) {
-    this.web3 = new Web3(provider);
-    if (options.defaultAccount) {
-      getWeb3(this).eth.defaultAccount = options.defaultAccount;
+  
+  if(options.walletProvider) {
+    if(isEthersProvider(options.walletProvider)) {
+      throw new Error("Wallet Provider in options can't be an ethers provider. Please pass the provider you get from your wallet directly.")
     }
-
+    this.walletProvider = new ethers.providers.Web3Provider(options.walletProvider);
+  }
+  
+  if (provider) {
+    if(isEthersProvider(provider)) {
+      this.ethersProvider = provider;
+      this.isEthersProviderPresent = true;
+    } else {
+      this.ethersProvider = new ethers.providers.Web3Provider(provider);
+    }
+      
+    _init(this.apiKey, this);
     const proto = Object.getPrototypeOf(provider);
     const keys = Object.getOwnPropertyNames(proto);
 
@@ -123,6 +128,16 @@ function Biconomy(provider, options) {
 
     let self = this;
     this.send = function (payload, cb) {
+      if (typeof payload === "string") {
+        // Ethers provider is being used to call methods, so payload is actually method, and cb is params
+        payload = {
+          id: 1,
+          jsonrpc: "2.0",
+          method: payload,
+          params: cb
+        }
+      }
+
       if (payload.method == "eth_sendTransaction") {
         handleSendTransaction(this, payload, (error, result) => {
           let response = this._createJsonRpcResponse(payload, error, result);
@@ -138,7 +153,11 @@ function Biconomy(provider, options) {
           }
         });
       } else {
-        getWeb3(self).currentProvider.send(payload, cb);
+        if (self.isEthersProviderPresent) {
+          return self.originalProvider.send(payload.method, payload.params);
+        } else {
+          self.originalProvider.send(payload, cb);
+        }
       }
     };
     this.request = function (args, cb) {
@@ -186,28 +205,37 @@ function Biconomy(provider, options) {
           });
         });
       } else {
-        if (getWeb3(self).currentProvider.request) {
-          return getWeb3(self).currentProvider.request(args, cb);
-        } else if (getWeb3(self).currentProvider.send) {
-          return new Promise((resolve, reject) => {
+        if (self.originalProvider.request) {
+          return self.originalProvider.request(args, cb);
+        } else if (self.originalProvider.send) {
+          return new Promise(async (resolve, reject) => {
             let jsonRPCPaylod = toJSONRPCPayload(
               self,
               payload.method,
               payload.params
             );
-            getWeb3(self).currentProvider.send(
-              jsonRPCPaylod,
-              (err, response) => {
-                if (err) {
-                  return reject(err);
-                }
-                if (response.result) {
-                  resolve(response.result);
-                } else {
-                  resolve(response);
-                }
+            if(self.isEthersProviderPresent) {
+              try {
+                let localResult = await self.originalProvider.send(jsonRPCPaylod.method, jsonRPCPaylod.params);
+                resolve(localResult);
+              } catch(error) {
+                reject(error);
               }
-            );
+            } else {
+              self.originalProvider.send(
+                jsonRPCPaylod,
+                (err, response) => {
+                  if (err) {
+                    return reject(err);
+                  }
+                  if (response.result) {
+                    resolve(response.result);
+                  } else {
+                    resolve(response);
+                  }
+                }
+              );
+            }
           });
         } else {
           return Promise.reject(
@@ -271,9 +299,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           paramArray.push(_getParamValue(params[i], engine));
         }
 
-        let account = getWeb3(engine).eth.accounts.recoverTransaction(
-          rawTransaction
-        );
+        let parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
+        let account = parsedTransaction.from;
+
         _logMessage(`Signer is ${account}`);
         let contractAddr = api.contractAddress.toLowerCase();
         let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
@@ -283,11 +311,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         if (!gasLimit || parseInt(gasLimit) == 0) {
           let contractABI = smartContractMap[to];
           if (contractABI) {
-            let web3 = getWeb3(engine);
-            let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
-            gasLimit = await contract.methods[methodName]
-              .apply(null, paramArray)
-              .estimateGas({ from: account });
+            let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
+            gasLimit = await contract.estimateGas[methodName]
+              .apply(null, paramArray, { from: account });
 
             // Do not send this value in API call. only meant for txGas
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
@@ -327,7 +353,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
             data: decodedTx.data,
             token
           });
-          if(buildTxResponse) {
+          if (buildTxResponse) {
             request = buildTxResponse.request;
             cost = buildTxResponse.cost;
           } else {
@@ -439,7 +465,7 @@ Biconomy.prototype._createJsonRpcResponse = function (payload, error, result) {
     response.error = error;
   } else if (result && result.error) {
     response.error = result.error;
-  } else if (getWeb3(this).utils.isHex(result)) {
+  } else if (ethers.utils.isHexString(result)) {
     response.result = result;
   } else {
     response = result;
@@ -508,7 +534,7 @@ async function sendSignedTransaction(engine, payload, end) {
               if (typeof data == "object" && data.rawTransaction) {
                 payload.params = [data.rawTransaction];
               }
-              return getWeb3(engine).currentProvider.send(payload, end);
+              return engine.originalProvider.send(payload, end);
             }
           }
         }
@@ -537,7 +563,7 @@ async function sendSignedTransaction(engine, payload, end) {
             if (typeof data == "object" && data.rawTransaction) {
               payload.params = [data.rawTransaction];
             }
-            return getWeb3().currentProvider.send(payload, end);
+            return engine.originalProvider.send(payload, end);
           }
         }
         _logMessage("API found");
@@ -546,9 +572,11 @@ async function sendSignedTransaction(engine, payload, end) {
 
         let contractAddr = api.contractAddress.toLowerCase();
         let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-        let account = getWeb3(engine).eth.accounts.recoverTransaction(
+        let parsedTransaction = ethers.utils.parseTransaction(
           rawTransaction
         );
+        let account = parsedTransaction ? parsedTransaction.from : undefined;
+
         _logMessage(`signer is ${account}`);
         if (!account) {
           let error = formatMessage(
@@ -584,14 +612,9 @@ async function sendSignedTransaction(engine, payload, end) {
             if (!gasLimit || parseInt(gasLimit) == 0) {
               let contractABI = smartContractMap[to];
               if (contractABI) {
-                let web3 = getWeb3(engine);
-                let contract = new web3.eth.Contract(
-                  JSON.parse(contractABI),
-                  to
-                );
-                gasLimit = await contract.methods[methodName]
-                  .apply(null, paramArrayForGasCalculation)
-                  .estimateGas({ from: account });
+                let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
+                gasLimit = await contract.estimateGas[methodName]
+                .apply(null, paramArrayForGasCalculation, { from: account });
 
                 // do not send this value in API call. only meant for txGas
                 gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
@@ -653,7 +676,7 @@ async function sendSignedTransaction(engine, payload, end) {
             data.from = account;
             data.apiId = api.id;
             data.data = decodedTx.data;
-            data.value = getWeb3(engine).utils.toHex(decodedTx.value);
+            data.value = ethers.utils.hexValue(decodedTx.value);
             data.gasLimit = decodedTx.gasLimit.toString();
             data.nonceBatchId = config.NONCE_BATCH_ID;
             data.expiry = config.EXPIRY;
@@ -736,6 +759,7 @@ async function handleSendTransaction(engine, payload, end) {
 
       let gasLimit = payload.params[0].gas;
       let signatureType = payload.params[0].signatureType;
+
       _logMessage(payload.params[0]);
       _logMessage(api);
       _logMessage(`gas limit : ${gasLimit}`);
@@ -752,7 +776,7 @@ async function handleSendTransaction(engine, payload, end) {
           _logMessage(
             `Falling back to default provider as strict mode is false in biconomy`
           );
-          return getWeb3(engine).currentProvider.send(payload, end);
+          return engine.originalProvider.send(payload, end);
         }
       }
       _logMessage("API found");
@@ -760,12 +784,6 @@ async function handleSendTransaction(engine, payload, end) {
       _logMessage("Getting user account");
       let account = payload.params[0].from;
 
-      //value transfer is not supported in native meta transactions
-      /*let amount = payload.params[0].value;
-      if(!amount)
-      {
-        amount = 0;
-      }*/
       if (!account) {
         return end(`Not able to get user account`);
       }
@@ -776,14 +794,13 @@ async function handleSendTransaction(engine, payload, end) {
 
       let contractAddr = api.contractAddress.toLowerCase();
       let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-      if(metaTxApproach == engine.ERC20_FORWARDER)
-      {
+      if (metaTxApproach == engine.ERC20_FORWARDER) {
         let error = formatMessage(
           RESPONSE_CODES.INVALID_PAYLOAD,
           `This operation is not allowed for contracts registered on dashboard as "ERC20Forwarder". Use ERC20Forwarder client instead!`
         );
         eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        return end(error); 
+        return end(error);
       }
 
       let forwardedData, gasLimitNum;
@@ -793,6 +810,7 @@ async function handleSendTransaction(engine, payload, end) {
           _logMessage("Smart contract is configured to use Trusted Forwarder as meta transaction type");
           forwardedData = payload.params[0].data;
 
+          let signatureFromPayload = payload.params[0].signature;
           // Check if gas limit is present, it not calculate gas limit
 
           let paramArrayForGasCalculation = [];
@@ -801,24 +819,21 @@ async function handleSendTransaction(engine, payload, end) {
           }
 
           let contractABI = smartContractMap[to];
-            if (contractABI) {
-              let web3 = getWeb3(engine);
-              let contract = new web3.eth.Contract(JSON.parse(contractABI), to);
-              // gas estimation will fail if value transfer is expected in the method call 
-              gasLimitNum = await contract.methods[methodName]
-                .apply(null, paramArrayForGasCalculation)
-                .estimateGas({ from: account });
+          if (contractABI) {
+            let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
+            gasLimitNum = await contract.estimateGas[methodName]
+              .apply(null, paramArrayForGasCalculation, {from: account});
 
-              _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
-            }
-            else{
-              let error = formatMessage(
-                RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
-                `Smart contract ABI not found!`
-              );
-              eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-              end(error); 
-            }
+            _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
+          }
+          else {
+            let error = formatMessage(
+              RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
+              `Smart contract ABI not found!`
+            );
+            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+            end(error);
+          }
 
           const request = (
             await buildForwardTxRequest(
@@ -839,21 +854,37 @@ async function handleSendTransaction(engine, payload, end) {
             _logMessage("Domain separator to be used:")
             _logMessage(domainSeparator);
             paramArray.push(domainSeparator);
-            const signatureEIP712 = await getSignatureEIP712(
-              engine,
-              account,
-              request
-            );
-            _logMessage(`EIP712 signature is ${signatureEIP712}`);
+            let signatureEIP712;
+            if (signatureFromPayload) {
+              signatureEIP712 = signatureFromPayload;
+              _logMessage(`EIP712 signature from payload is ${signatureEIP712}`);
+            } else {
+              signatureEIP712 = await getSignatureEIP712(
+                engine,
+                account,
+                request
+              );
+              _logMessage(`EIP712 signature is ${signatureEIP712}`);
+            }
             paramArray.push(signatureEIP712);
           } else {
-            const signaturePersonal = await getSignaturePersonal(
-              engine,
-              account,
-              request
-            );
-            _logMessage(`Personal signature is ${signaturePersonal}`);
-            paramArray.push(signaturePersonal);
+            let signaturePersonal;
+            if (signatureFromPayload) {
+              signaturePersonal = signatureFromPayload;
+              _logMessage(`Personal signature from payload is ${signaturePersonal}`);
+            } else {
+              signaturePersonal = await getSignaturePersonal(
+                engine,
+                account,
+                request
+              );
+              _logMessage(`Personal signature is ${signaturePersonal}`);
+            }
+            if(signaturePersonal) {
+              paramArray.push(signaturePersonal);
+            } else {
+              throw new Error("Could not get personal signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy")
+            }
           }
 
           let data = {};
@@ -884,7 +915,7 @@ async function handleSendTransaction(engine, payload, end) {
           `Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with "native meta tx" checkbox selected.`
         );
         eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        return end(error); 
+        return end(error);
       }
     } else {
       if (engine.strictMode) {
@@ -898,7 +929,7 @@ async function handleSendTransaction(engine, payload, end) {
         _logMessage(
           "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
         );
-        return getWeb3(engine).currentProvider.send(payload, end);
+        return engine.originalProvider.send(payload, end);
       }
     }
   } else {
@@ -913,8 +944,12 @@ async function handleSendTransaction(engine, payload, end) {
   }
 }
 
-function getSignatureEIP712(engine, account, request) {
-  const dataToSign = JSON.stringify({
+function _getEIP712ForwardMessageToSign(request) {
+  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData) {
+    throw new Error("Biconomy is not properly initialized");
+  }
+
+  let dataToSign = JSON.stringify({
     types: {
       EIP712Domain: forwarderDomainType,
       ERC20ForwardRequest: forwardRequestType,
@@ -923,30 +958,11 @@ function getSignatureEIP712(engine, account, request) {
     primaryType: "ERC20ForwardRequest",
     message: request,
   });
-
-  const promi = new Promise(async function (resolve, reject) {
-    await getWeb3(engine).currentProvider.send(
-      {
-        jsonrpc: "2.0",
-        id: 999999999999,
-        method: "eth_signTypedData_v3",
-        params: [account, dataToSign],
-      },
-      function (error, res) {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(res.result);
-        }
-      }
-    );
-  });
-
-  return promi;
+  return dataToSign;
 }
 
-async function getSignaturePersonal(engine, account, req) {
-  const hashToSign = abi.soliditySHA3(
+function _getPersonalForwardMessageToSign(request) {
+  return abi.soliditySHA3(
     [
       "address",
       "address",
@@ -959,23 +975,78 @@ async function getSignaturePersonal(engine, account, req) {
       "bytes32",
     ],
     [
-      req.from,
-      req.to,
-      req.token,
-      req.txGas,
-      req.tokenGasPrice,
-      req.batchId,
-      req.batchNonce,
-      req.deadline,
-      ethers.utils.keccak256(req.data),
+      request.from,
+      request.to,
+      request.token,
+      request.txGas,
+      request.tokenGasPrice,
+      request.batchId,
+      request.batchNonce,
+      request.deadline,
+      ethers.utils.keccak256(request.data),
     ]
   );
+}
 
-  const signature = await getWeb3(engine).eth.personal.sign(
-    "0x" + hashToSign.toString("hex"),
-    account
-  );
+function getTargetProvider(engine) {
+  let provider;
+  if(engine) {
+    provider = engine.originalProvider;
+    if(!engine.canSignMessages) {
+      if(!engine.walletProvider) {
+        throw new Error(`Please pass a provider connected to a wallet that can sign messages in Biconomy options.`);
+      }
+      provider = engine.walletProvider;
+    }
+  }
+  return provider;
+}
 
+function getSignatureEIP712(engine, account, request) {
+  const dataToSign = _getEIP712ForwardMessageToSign(request);
+
+  let targetProvider = getTargetProvider(engine);
+  const promi = new Promise(async function (resolve, reject) {
+    if(targetProvider) {
+      await targetProvider.send(
+        {
+          jsonrpc: "2.0",
+          id: 999999999999,
+          method: "eth_signTypedData_v3",
+          params: [account, dataToSign],
+        },
+        function (error, res) {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(res.result);
+          }
+        }
+      );
+    } else {
+      reject(`Could not get signature from the provider passed to Biconomy. Check if you have passed a walletProvider in Biconomy Options.`);
+    }
+  });
+
+  return promi;
+}
+
+async function getSignaturePersonal(engine, account, req) {
+  const hashToSign = _getPersonalForwardMessageToSign(req);
+  if(!engine.signer && !engine.walletProvider) {
+    throw new Error(`Can't sign messages with current provider. Did you forget to pass walletProvider in Biconomy options?`);
+  }
+  let signature;
+  if(engine.canSignMessages) {
+    signature = await engine.signer.signMessage(ethers.utils.arrayify(hashToSign));
+  } else if(engine.walletProvider) {
+    let walletSigner = await engine.walletProvider.getSigner();
+    try {
+      signature = await walletSigner.signMessage(ethers.utils.arrayify(hashToSign));
+    } catch(error) {
+      throw new Error("Can't get signature from Wallet Provider passed to Biconomy options. Make sure wallet provider you have passed can sign messages.")
+    }
+  }
   return signature;
 }
 
@@ -1022,18 +1093,25 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         PERSONAL_SIGN: engine.PERSONAL_SIGN,
       },
     };
-    const ethersProvider = new ethers.providers.Web3Provider(
-      engine.originalProvider
-    );
+    let ethersProvider;
+    if (engine.isEthersProviderPresent) {
+      ethersProvider = engine.originalProvider;
+    } else {
+      ethersProvider = new ethers.providers.Web3Provider(
+        engine.originalProvider
+      );
+    }
     const signer = ethersProvider.getSigner();
     let signerOrProvider = signer;
     let isSignerWithAccounts = true;
     try {
       await signer.getAddress();
+      engine.canSignMessages = true;
     } catch (error) {
       _logMessage("Given provider does not have accounts information");
       signerOrProvider = ethersProvider;
       isSignerWithAccounts = false;
+      engine.canSignMessages = false;
     }
     const erc20ForwarderAddress =
       engine.options.erc20ForwarderAddress || engine.erc20ForwarderAddress;
@@ -1096,8 +1174,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
       _logMessage(engine.permitClient);
       _logMessage(engine.erc20ForwarderClient);
     }
-    else
-    {
+    else {
       _logMessage("ERC20 Forwarder is not supported for this network");
       //Warning : you would not be able to use ERC20ForwarderClient and PermitClient 
     }
@@ -1122,7 +1199,7 @@ function _getUserAccount(engine, payload, cb) {
       id = payload.id;
     }
     if (cb) {
-      getWeb3(engine).currentProvider.send(
+      engine.originalProvider.send(
         {
           jsonrpc: JSON_RPC_VERSION,
           id: id,
@@ -1130,23 +1207,12 @@ function _getUserAccount(engine, payload, cb) {
           params: [],
         },
         (error, response) => {
-          if (
-            response &&
-            response.result &&
-            response.result.length == 0 &&
-            getWeb3(engine).eth.defaultAccount &&
-            getWeb3(engine).eth.defaultAccount != ""
-          ) {
-            response.result.push(getWeb3(engine).eth.defaultAccount);
             cb(error, response);
-          } else {
-            cb(error, response);
-          }
         }
       );
     } else {
       return new Promise(function (resolve, reject) {
-        getWeb3(engine).currentProvider.send(
+        engine.originalProvider.send(
           {
             jsonrpc: JSON_RPC_VERSION,
             id: id,
@@ -1158,13 +1224,6 @@ function _getUserAccount(engine, payload, cb) {
               reject(error);
             } else if (!res.result) {
               reject(`Invalid response ${res}`);
-            } else if (
-              res.result &&
-              res.result.length == 0 &&
-              getWeb3(engine).eth.defaultAccount &&
-              getWeb3(engine).eth.defaultAccount != ""
-            ) {
-              resolve(getWeb3(engine).eth.defaultAccount);
             } else {
               resolve(res.result[0]);
             }
@@ -1205,13 +1264,13 @@ function _getParamValue(paramObj, engine) {
         value = [];
         for (let j = 0; j < val.length; j++) {
           value[j] = scientificToDecimal(parseInt(val[j]));
-          value[j] = getWeb3(engine).utils.toHex(value[j]);
+          value[j] = ethers.utils.hexValue(value[j]);
         }
         break;
       case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {})
         .input:
         value = scientificToDecimal(parseInt(paramObj.value));
-        value = getWeb3(engine).utils.toHex(value);
+        value = ethers.utils.hexValue(value);
         break;
       case "string":
         if (typeof paramObj.value === "object") {
@@ -1289,13 +1348,15 @@ async function _sendTransaction(engine, account, api, data, cb) {
  **/
 async function _init(apiKey, engine) {
   try {
+
+    engine.signer = await engine.ethersProvider.getSigner();
     // Check current network id and dapp network id registered on dashboard
     let getDappAPI = `${baseURL}/api/${config.version}/dapp`;
     fetch(getDappAPI, getFetchOptions("GET", apiKey))
       .then(function (response) {
         return response.json();
       })
-      .then(function (dappResponse) {
+      .then(async function (dappResponse) {
         _logMessage(dappResponse);
         if (dappResponse && dappResponse.dapp) {
           let dappNetworkId = dappResponse.dapp.networkId;
@@ -1303,168 +1364,45 @@ async function _init(apiKey, engine) {
           _logMessage(
             `Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`
           );
-          getWeb3(engine).currentProvider.send(
-            {
-              jsonrpc: JSON_RPC_VERSION,
-              id: "102",
-              method: "net_version",
-              params: [],
-            },
-            function (error, networkResponse) {
-              if (error || (networkResponse && networkResponse.error)) {
-                return eventEmitter.emit(
-                  EVENTS.BICONOMY_ERROR,
-                  formatMessage(
-                    RESPONSE_CODES.NETWORK_ID_NOT_FOUND,
-                    "Could not get network version"
-                  ),
-                  error || networkResponse.error
-                );
-              } else {
-                let providerNetworkId = networkResponse.result;
-                engine.networkId = providerNetworkId;
-                _logMessage(
-                  `Current provider network id: ${providerNetworkId}`
-                );
-                if (providerNetworkId != dappNetworkId) {
+          let getNetworkIdOption = {
+            jsonrpc: JSON_RPC_VERSION,
+            id: "102",
+            method: "net_version",
+            params: [],
+          };
+          if (isEthersProvider(engine.originalProvider)) {
+            let providerNetworkId = await engine.originalProvider.send("net_version", []);
+            if (providerNetworkId) {
+              onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
+            } else {
+              return eventEmitter.emit(
+                EVENTS.BICONOMY_ERROR,
+                formatMessage(
+                  RESPONSE_CODES.NETWORK_ID_NOT_FOUND,
+                  "Could not get network version"
+                ),
+                "Could not get network version"
+              );
+            }
+          } else {
+            engine.originalProvider.send(getNetworkIdOption,
+              function (error, networkResponse) {
+                if (error || (networkResponse && networkResponse.error)) {
                   return eventEmitter.emit(
                     EVENTS.BICONOMY_ERROR,
                     formatMessage(
-                      RESPONSE_CODES.NETWORK_ID_MISMATCH,
-                      `Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${dappNetworkId}`
-                    )
+                      RESPONSE_CODES.NETWORK_ID_NOT_FOUND,
+                      "Could not get network version"
+                    ),
+                    error || networkResponse.error
                   );
                 } else {
-                  domainData.chainId = providerNetworkId;
-                  daiDomainData.chainId = providerNetworkId;
-                  fetch(
-                    `${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`
-                  )
-                    .then((response) => response.json())
-                    .then((systemInfo) => {
-                      if (systemInfo) {
-                        domainType = systemInfo.domainType;
-                        forwarderDomainType = systemInfo.forwarderDomainType;
-                        metaInfoType = systemInfo.metaInfoType;
-                        relayerPaymentType = systemInfo.relayerPaymentType;
-                        metaTransactionType = systemInfo.metaTransactionType;
-                        loginDomainType = systemInfo.loginDomainType;
-                        loginMessageType = systemInfo.loginMessageType;
-                        loginDomainData = systemInfo.loginDomainData;
-                        forwardRequestType = systemInfo.forwardRequestType;
-                        forwarderDomainData = systemInfo.forwarderDomainData;
-                        trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
-                        engine.forwarderAddress =
-                          systemInfo.biconomyForwarderAddress;
-                        engine.erc20ForwarderAddress =
-                          systemInfo.erc20ForwarderAddress;
-                        engine.transferHandlerAddress =
-                          systemInfo.transferHandlerAddress;
-                        engine.daiTokenAddress = systemInfo.daiTokenAddress;
-                        engine.usdtTokenAddress = systemInfo.usdtTokenAddress;
-                        engine.usdcTokenAddress = systemInfo.usdcTokenAddress;
-                        engine.TRUSTED_FORWARDER =
-                          systemInfo.trustedForwarderMetaTransaction;
-                        engine.ERC20_FORWARDER =
-                          systemInfo.erc20ForwarderMetaTransaction;
-                        engine.DEFAULT = systemInfo.defaultMetaTransaction;
-                        engine.EIP712_SIGN = systemInfo.eip712Sign;
-                        engine.PERSONAL_SIGN = systemInfo.personalSign;
-                        engine.tokenGasPriceV1SupportedNetworks =
-                          systemInfo.tokenGasPriceV1SupportedNetworks;
-
-                       
-                        daiDomainData.verifyingContract =
-                          engine.daiTokenAddress;
-
-                        if (systemInfo.relayHubAddress) {
-                          domainData.verifyingContract =
-                            systemInfo.relayHubAddress;
-                        }
-                      } else {
-                        return eventEmitter.emit(
-                          EVENTS.BICONOMY_ERROR,
-                          formatMessage(
-                            RESPONSE_CODES.INVALID_DATA,
-                            "Could not get signature types from server. Contact Biconomy Team"
-                          )
-                        );
-                      }
-                      let web3 = getWeb3(engine);
-                      biconomyForwarder = new web3.eth.Contract(
-                        biconomyForwarderAbi,
-                        engine.forwarderAddress
-                      );
-                      // Get dapps smart contract data from biconomy servers
-                      let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
-                      fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey))
-                        .then((response) => response.json())
-                        .then(function (result) {
-                          if (!result && result.flag != 143) {
-                            return eventEmitter.emit(
-                              EVENTS.BICONOMY_ERROR,
-                              formatMessage(
-                                RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
-                                `Error getting smart contract for dappId ${dappId}`
-                              )
-                            );
-                          }
-                          let smartContractList = result.smartContracts;
-                          if (
-                            smartContractList &&
-                            smartContractList.length > 0
-                          ) {
-                            smartContractList.forEach((contract) => {
-                              let abiDecoder = require("abi-decoder");
-                              smartContractMetaTransactionMap[
-                                contract.address.toLowerCase()
-                              ] = contract.metaTransactionType;
-                              if (contract.type === config.SCW) {
-                                abiDecoder.addABI(JSON.parse(contract.abi));
-                                decoderMap[config.SCW] = abiDecoder;
-                                smartContractMap[config.SCW] = contract.abi;
-                              } else {
-                                abiDecoder.addABI(JSON.parse(contract.abi));
-                                decoderMap[
-                                  contract.address.toLowerCase()
-                                ] = abiDecoder;
-                                smartContractMap[
-                                  contract.address.toLowerCase()
-                                ] = contract.abi;
-                              }
-                            });
-                            _logMessage(smartContractMetaTransactionMap);
-                            _checkUserLogin(engine, dappId);
-                          } else {
-                            if (engine.strictMode) {
-                              engine.status = STATUS.NO_DATA;
-                              eventEmitter.emit(
-                                EVENTS.BICONOMY_ERROR,
-                                formatMessage(
-                                  RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
-                                  `No smart contract registered for dappId ${dappId} on Mexa Dashboard`
-                                )
-                              );
-                            } else {
-                              _checkUserLogin(engine, dappId);
-                            }
-                          }
-                        })
-                        .catch(function (error) {
-                          eventEmitter.emit(
-                            EVENTS.BICONOMY_ERROR,
-                            formatMessage(
-                              RESPONSE_CODES.ERROR_RESPONSE,
-                              "Error while initializing Biconomy"
-                            ),
-                            error
-                          );
-                        });
-                    });
+                  let providerNetworkId = networkResponse.result;
+                  onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
                 }
               }
-            }
-          );
+            );
+          }
         } else {
           if (dappResponse.log) {
             eventEmitter.emit(
@@ -1501,6 +1439,154 @@ async function _init(apiKey, engine) {
       ),
       error
     );
+  }
+}
+
+function isEthersProvider(provider) {
+  return ethers.providers.Provider.isProvider(provider);
+}
+
+async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId }) {
+  engine.networkId = providerNetworkId;
+  _logMessage(
+    `Current provider network id: ${providerNetworkId}`
+  );
+  if (providerNetworkId != dappNetworkId) {
+    return eventEmitter.emit(
+      EVENTS.BICONOMY_ERROR,
+      formatMessage(
+        RESPONSE_CODES.NETWORK_ID_MISMATCH,
+        `Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${dappNetworkId}`
+      )
+    );
+  } else {
+    domainData.chainId = providerNetworkId;
+    daiDomainData.chainId = providerNetworkId;
+    fetch(
+      `${baseURL}/api/${config.version2}/meta-tx/systemInfo?networkId=${providerNetworkId}`
+    )
+      .then((response) => response.json())
+      .then((systemInfo) => {
+        if (systemInfo) {
+          domainType = systemInfo.domainType;
+          forwarderDomainType = systemInfo.forwarderDomainType;
+          metaInfoType = systemInfo.metaInfoType;
+          relayerPaymentType = systemInfo.relayerPaymentType;
+          metaTransactionType = systemInfo.metaTransactionType;
+          loginDomainType = systemInfo.loginDomainType;
+          loginMessageType = systemInfo.loginMessageType;
+          loginDomainData = systemInfo.loginDomainData;
+          forwardRequestType = systemInfo.forwardRequestType;
+          forwarderDomainData = systemInfo.forwarderDomainData;
+          trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
+          engine.forwarderAddress =
+            systemInfo.biconomyForwarderAddress;
+          engine.erc20ForwarderAddress =
+            systemInfo.erc20ForwarderAddress;
+          engine.transferHandlerAddress =
+            systemInfo.transferHandlerAddress;
+          engine.daiTokenAddress = systemInfo.daiTokenAddress;
+          engine.usdtTokenAddress = systemInfo.usdtTokenAddress;
+          engine.usdcTokenAddress = systemInfo.usdcTokenAddress;
+          engine.TRUSTED_FORWARDER =
+            systemInfo.trustedForwarderMetaTransaction;
+          engine.ERC20_FORWARDER =
+            systemInfo.erc20ForwarderMetaTransaction;
+          engine.DEFAULT = systemInfo.defaultMetaTransaction;
+          engine.EIP712_SIGN = systemInfo.eip712Sign;
+          engine.PERSONAL_SIGN = systemInfo.personalSign;
+          engine.tokenGasPriceV1SupportedNetworks =
+            systemInfo.tokenGasPriceV1SupportedNetworks;
+
+
+          daiDomainData.verifyingContract =
+            engine.daiTokenAddress;
+
+          if (systemInfo.relayHubAddress) {
+            domainData.verifyingContract =
+              systemInfo.relayHubAddress;
+          }
+        } else {
+          return eventEmitter.emit(
+            EVENTS.BICONOMY_ERROR,
+            formatMessage(
+              RESPONSE_CODES.INVALID_DATA,
+              "Could not get signature types from server. Contact Biconomy Team"
+            )
+          );
+        }
+
+        biconomyForwarder = new ethers.Contract(
+          engine.forwarderAddress,
+          biconomyForwarderAbi,
+          engine.ethersProvider
+        );
+        // Get dapps smart contract data from biconomy servers
+        let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
+        fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey))
+          .then((response) => response.json())
+          .then(function (result) {
+            if (!result && result.flag != 143) {
+              return eventEmitter.emit(
+                EVENTS.BICONOMY_ERROR,
+                formatMessage(
+                  RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
+                  `Error getting smart contract for dappId ${dappId}`
+                )
+              );
+            }
+            let smartContractList = result.smartContracts;
+            if (
+              smartContractList &&
+              smartContractList.length > 0
+            ) {
+              smartContractList.forEach((contract) => {
+                let abiDecoder = require("abi-decoder");
+                smartContractMetaTransactionMap[
+                  contract.address.toLowerCase()
+                ] = contract.metaTransactionType;
+                if (contract.type === config.SCW) {
+                  abiDecoder.addABI(JSON.parse(contract.abi));
+                  decoderMap[config.SCW] = abiDecoder;
+                  smartContractMap[config.SCW] = contract.abi;
+                } else {
+                  abiDecoder.addABI(JSON.parse(contract.abi));
+                  decoderMap[
+                    contract.address.toLowerCase()
+                  ] = abiDecoder;
+                  smartContractMap[
+                    contract.address.toLowerCase()
+                  ] = contract.abi;
+                }
+              });
+              _logMessage(smartContractMetaTransactionMap);
+              _checkUserLogin(engine, dappId);
+            } else {
+              if (engine.strictMode) {
+                engine.status = STATUS.NO_DATA;
+                eventEmitter.emit(
+                  EVENTS.BICONOMY_ERROR,
+                  formatMessage(
+                    RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
+                    `No smart contract registered for dappId ${dappId} on Mexa Dashboard`
+                  )
+                );
+              } else {
+                _checkUserLogin(engine, dappId);
+              }
+            }
+          })
+          .catch(function (error) {
+            eventEmitter.emit(
+              EVENTS.BICONOMY_ERROR,
+              formatMessage(
+                RESPONSE_CODES.ERROR_RESPONSE,
+                "Error while initializing Biconomy"
+              ),
+              error
+            );
+          });
+      });
   }
 }
 
@@ -1594,4 +1680,4 @@ var scientificToDecimal = function (num) {
   return nsign < 0 ? "-" + num : num;
 };
 
-export default Biconomy;
+module.exports = Biconomy;
