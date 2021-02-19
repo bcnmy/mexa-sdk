@@ -139,18 +139,32 @@ function Biconomy(provider, options) {
       }
 
       if (payload.method == "eth_sendTransaction") {
-        handleSendTransaction(this, payload, (error, result) => {
-          let response = this._createJsonRpcResponse(payload, error, result);
-          if (cb) {
-            cb(error, response);
-          }
+        return new Promise((resolve, reject)=>{
+          handleSendTransaction(this, payload, (error, result) => {
+            let response = this._createJsonRpcResponse(payload, error, result);
+            if (cb && !self.isEthersProviderPresent) {
+              cb(error, response);
+            }
+            if(response.error) {
+              reject(response.error);
+            } else {
+              resolve(response.result);
+            }
+          });
         });
       } else if (payload.method == "eth_sendRawTransaction") {
-        sendSignedTransaction(this, payload, (error, result) => {
-          let response = this._createJsonRpcResponse(payload, error, result);
-          if (cb) {
-            cb(error, response);
-          }
+        return new Promise((resolve, reject)=>{
+          sendSignedTransaction(this, payload, (error, result) => {
+            let response = this._createJsonRpcResponse(payload, error, result);
+            if (cb && !self.isEthersProviderPresent) {
+              cb(error, response);
+            }
+            if(response.error) {
+              reject(response.error);
+            } else {
+              resolve(response.result);
+            }
+          });
         });
       } else {
         if (self.isEthersProviderPresent) {
@@ -248,6 +262,19 @@ function Biconomy(provider, options) {
   } else {
     throw new Error("Please pass a provider to Biconomy.");
   }
+}
+
+Biconomy.prototype.getSigner = function(userAddress) {
+  let signer = this.getEthersProvider().getSigner();
+  signer.getAddress = async () => {
+    // This should be updated if user changes address in wallet.
+    return userAddress
+  }
+  return signer;
+}
+
+Biconomy.prototype.getEthersProvider = function() {
+  return new ethers.providers.Web3Provider(this);
 }
 
 Biconomy.prototype.getForwardRequestAndMessageToSign = function (
@@ -534,7 +561,11 @@ async function sendSignedTransaction(engine, payload, end) {
               if (typeof data == "object" && data.rawTransaction) {
                 payload.params = [data.rawTransaction];
               }
-              return engine.originalProvider.send(payload, end);
+              if(engine.isEthersProviderPresent) {
+                return engine.originalProvider.send(payload.method, payload.params);
+              } else {
+                return engine.originalProvider.send(payload, end);
+              }
             }
           }
         }
@@ -563,7 +594,11 @@ async function sendSignedTransaction(engine, payload, end) {
             if (typeof data == "object" && data.rawTransaction) {
               payload.params = [data.rawTransaction];
             }
-            return engine.originalProvider.send(payload, end);
+            if(engine.isEthersProviderPresent) {
+              return engine.originalProvider.send(payload.method, payload.params);
+            } else {
+              return engine.originalProvider.send(payload, end);
+            }
           }
         }
         _logMessage("API found");
