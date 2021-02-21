@@ -845,11 +845,6 @@ const erc20ForwarderAbi = [
         "type": "bytes"
       },
       {
-        "internalType": "uint256",
-        "name": "gasTokensBurned",
-        "type": "uint256"
-      },
-      {
         "components": [
           {
             "internalType": "address",
@@ -900,6 +895,11 @@ const erc20ForwarderAbi = [
         "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
         "name": "permitOptions",
         "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "gasTokensBurned",
+        "type": "uint256"
       }
     ],
     "name": "permitAndExecuteEIP712WithGasTokens",
@@ -1116,11 +1116,6 @@ const erc20ForwarderAbi = [
         "type": "bytes"
       },
       {
-        "internalType": "uint256",
-        "name": "gasTokensBurned",
-        "type": "uint256"
-      },
-      {
         "components": [
           {
             "internalType": "address",
@@ -1171,6 +1166,11 @@ const erc20ForwarderAbi = [
         "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
         "name": "permitOptions",
         "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "gasTokensBurned",
+        "type": "uint256"
       }
     ],
     "name": "permitEIP2612AndExecuteEIP712WithGasTokens",
