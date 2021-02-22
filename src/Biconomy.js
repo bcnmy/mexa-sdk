@@ -264,10 +264,11 @@ function Biconomy(provider, options) {
   }
 }
 
-Biconomy.prototype.getSigner = function(userAddress) {
-  let signer = this.getEthersProvider().getSigner();
+Biconomy.prototype.getProvider = function(userAddress) {
+  let provider = this.getEthersProvider();
+  let signer = provider.getSigner();
+  signer = signer.connectUnchecked();
   signer.getAddress = async () => {
-    // This should be updated if user changes address in wallet.
     return userAddress
   }
   return signer;
@@ -561,11 +562,8 @@ async function sendSignedTransaction(engine, payload, end) {
               if (typeof data == "object" && data.rawTransaction) {
                 payload.params = [data.rawTransaction];
               }
-              if(engine.isEthersProviderPresent) {
-                return engine.originalProvider.send(payload.method, payload.params);
-              } else {
-                return engine.originalProvider.send(payload, end);
-              }
+
+              return callDefaultProvider(engine, payload, end, `No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
             }
           }
         }
@@ -594,11 +592,7 @@ async function sendSignedTransaction(engine, payload, end) {
             if (typeof data == "object" && data.rawTransaction) {
               payload.params = [data.rawTransaction];
             }
-            if(engine.isEthersProviderPresent) {
-              return engine.originalProvider.send(payload.method, payload.params);
-            } else {
-              return engine.originalProvider.send(payload, end);
-            }
+            return callDefaultProvider(engine, payload, end, `Current provider can not sign transactions. Make sure to register method ${methodName} on Biconomy Dashboard`);
           }
         }
         _logMessage("API found");
@@ -781,6 +775,12 @@ async function handleSendTransaction(engine, payload, end) {
       if (!methodInfo) {
         methodInfo = decodeMethod(config.SCW, payload.params[0].data);
       }
+      if(!methodInfo) {
+        let error = {};
+        error.code = RESPONSE_CODES.WRONG_ABI;
+        error.message = `Can't decode method information from payload. Make sure you have uploaded correct ABI on Biconomy Dashboard`;
+        return end(error, null);
+      }
       let methodName = methodInfo.name;
       let api = engine.dappAPIMap[to]
         ? engine.dappAPIMap[to][methodName]
@@ -811,7 +811,7 @@ async function handleSendTransaction(engine, payload, end) {
           _logMessage(
             `Falling back to default provider as strict mode is false in biconomy`
           );
-          return engine.originalProvider.send(payload, end);
+          return callDefaultProvider(engine, payload, end, `No registered API found for method ${methodName}. Please register API from developer dashboard.`);
         }
       }
       _logMessage("API found");
@@ -964,7 +964,7 @@ async function handleSendTransaction(engine, payload, end) {
         _logMessage(
           "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
         );
-        return engine.originalProvider.send(payload, end);
+        return callDefaultProvider(engine, payload, end, `Current provider can't send transactions and smart contract ${to} not found on Biconomy Dashbaord`);
       }
     }
   } else {
@@ -976,6 +976,23 @@ async function handleSendTransaction(engine, payload, end) {
     );
     eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
     end(error);
+  }
+}
+
+function callDefaultProvider(engine, payload, callback, errorMessage) {
+  let targetProvider = engine.originalProvider;
+  if(targetProvider) {
+    if(!engine.canSignMessages) {
+      throw new Error(errorMessage);
+    } else {
+      if(engine.isEthersProviderPresent) {
+        return engine.originalProvider.send(payload.method, payload.params);
+      } else {
+        return engine.originalProvider.send(payload, callback);
+      }
+    }
+  } else {
+    throw new Error("Original provider not present in Biconomy");
   }
 }
 
