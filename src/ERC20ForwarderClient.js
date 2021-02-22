@@ -69,7 +69,7 @@ class ERC20ForwarderClient {
     tokenGasPriceV1SupportedNetworks,
     trustedForwarderOverhead,
     daiPermitOverhead,
-    eip2612PermitOverhead
+    eip2612PermitOverhead,
   }) {
     this.biconomyAttributes = forwarderClientOptions;
     this.networkId = networkId;
@@ -267,7 +267,16 @@ class ERC20ForwarderClient {
    */
   //todo
   //needs changes in checking token approval and cost calculation to be moved elsewhere
-  async buildTx({to, token, txGas, data, batchId = 0, deadlineInSec = 3600, userAddress, permitType}) {
+  async buildTx({
+    to,
+    token,
+    txGas,
+    data,
+    batchId = 0,
+    deadlineInSec = 3600,
+    userAddress,
+    permitType,
+  }) {
     try {
       if (!this.forwarder)
         throw new Error(
@@ -354,13 +363,15 @@ class ERC20ForwarderClient {
       // if intended for permit chained execution then should add gas usage cost of each type of permit
 
       let permitFees;
-      if(permitType)
-      {
-        let overHead = (permitType == config.DAI) ? this.daiPermitOverhead : this.eip2612PermitOverhead;
-        let permitCost =  ethers.BigNumber.from(overHead.toString())
-        .mul(ethers.BigNumber.from(req.tokenGasPrice))
-        .mul(ethers.BigNumber.from(feeMultiplier.toString()))
-        .div(ethers.BigNumber.from(10000));
+      if (permitType) {
+        let overHead =
+          permitType == config.DAI
+            ? this.daiPermitOverhead
+            : this.eip2612PermitOverhead;
+        let permitCost = ethers.BigNumber.from(overHead.toString())
+          .mul(ethers.BigNumber.from(req.tokenGasPrice))
+          .mul(ethers.BigNumber.from(feeMultiplier.toString()))
+          .div(ethers.BigNumber.from(10000));
 
         let tokenSpendValue = parseFloat(permitCost).toString();
         permitCost = (
@@ -373,7 +384,7 @@ class ERC20ForwarderClient {
           `Estimated Permit Transaction Fee in token address ${token} is ${permitFees}`
         );
       }
-      
+
       let cost = ethers.BigNumber.from(req.txGas.toString())
         .add(ethers.BigNumber.from(this.trustedForwarderOverhead.toString())) // Estimate on the higher end
         .add(transferHandlerGas)
@@ -391,9 +402,8 @@ class ERC20ForwarderClient {
       );
 
       let totalFees = fee;
-      if(permitFees)
-      {
-        totalFees = fee + permitFees;
+      if (permitFees) {
+        totalFees = parseFloat(fee + permitFees).toFixed(3);
       }
 
       // if intended for permit chained execution then should not check allowance
@@ -468,7 +478,6 @@ class ERC20ForwarderClient {
    */
   async sendTxEIP712({ req, signature = null, userAddress }) {
     try {
-
       //possibly check allowance here
 
       const domainSeparator = ethers.utils.keccak256(
@@ -557,9 +566,14 @@ class ERC20ForwarderClient {
    * @param {object} req Request object to be signed and sent
    * @param {string} signature Signature string singed from user account
    * @param {string} userAddress User blockchain address
-   * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options. 
+   * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options.
    */
-  async permitAndSendTxEIP712({ req, signature = null, userAddress, metaInfo }) {
+  async permitAndSendTxEIP712({
+    req,
+    signature = null,
+    userAddress,
+    metaInfo,
+  }) {
     try {
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
@@ -614,7 +628,7 @@ class ERC20ForwarderClient {
         to: req.to,
         from: userAddress,
         apiId: apiId,
-        params: [req, domainSeparator, sig], 
+        params: [req, domainSeparator, sig],
         metaInfo: metaInfo, // just pass it on
         signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
       };
@@ -651,8 +665,8 @@ class ERC20ForwarderClient {
    */
   async sendTxPersonalSign({ req, signature = null, userAddress }) {
     try {
-
-      // check allowance at each final call 
+      // should we?
+      // check allowance at each final call
       // needs spendValue that is cost
 
       /*if(!userAddress)
