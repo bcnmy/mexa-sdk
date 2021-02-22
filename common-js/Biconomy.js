@@ -64,6 +64,8 @@ var events = require("events");
 var eventEmitter = new events.EventEmitter();
 var loginInterval;
 var trustedForwarderOverhead;
+var daiPermitOverhead;
+var eip2612PermitOverhead;
 var domainType, forwarderDomainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType;
 var domainData = {
   name: config.eip712DomainName,
@@ -1489,7 +1491,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               feeManager: feeManager,
               isSignerWithAccounts: isSignerWithAccounts,
               tokenGasPriceV1SupportedNetworks: tokenGasPriceV1SupportedNetworks,
-              trustedForwarderOverhead: trustedForwarderOverhead
+              trustedForwarderOverhead: trustedForwarderOverhead,
+              daiPermitOverhead: daiPermitOverhead,
+              eip2612PermitOverhead: eip2612PermitOverhead
             });
 
             _logMessage(engine.permitClient);
@@ -1886,6 +1890,8 @@ function _onNetworkId() {
                 forwardRequestType = systemInfo.forwardRequestType;
                 forwarderDomainData = systemInfo.forwarderDomainData;
                 trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
+                daiPermitOverhead = systemInfo.overHeadDaiPermit;
+                eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
                 engine.forwarderAddress = systemInfo.biconomyForwarderAddress;
                 engine.erc20ForwarderAddress = systemInfo.erc20ForwarderAddress;
                 engine.transferHandlerAddress = systemInfo.transferHandlerAddress;

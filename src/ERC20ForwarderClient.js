@@ -67,7 +67,9 @@ class ERC20ForwarderClient {
     feeManager,
     isSignerWithAccounts,
     tokenGasPriceV1SupportedNetworks,
-    trustedForwarderOverhead
+    trustedForwarderOverhead,
+    daiPermitOverhead,
+    eip2612PermitOverhead
   }) {
     this.biconomyAttributes = forwarderClientOptions;
     this.networkId = networkId;
@@ -82,6 +84,8 @@ class ERC20ForwarderClient {
     this.isSignerWithAccounts = isSignerWithAccounts;
     this.tokenGasPriceV1SupportedNetworks = tokenGasPriceV1SupportedNetworks;
     this.trustedForwarderOverhead = trustedForwarderOverhead;
+    this.daiPermitOverhead = daiPermitOverhead;
+    this.eip2612PermitOverhead = eip2612PermitOverhead;
   }
 
   /**
@@ -258,8 +262,12 @@ class ERC20ForwarderClient {
    * @param {string} data Encoded target method data to be called
    * @param {number} batchId Batch id used to determine user nonce on Biconomy Forwarder contract
    * @param {number} deadlineInSec Deadline in seconds after which transaction will fail
+   * @param {string} userAddress <Optional> If provider is not signer with accounts userAddress must be passed
+   * @param {string} permitType <Optional> only to be passed if intended for permit chained execution.
    */
-  async buildTx({to, token, txGas, data, batchId = 0, deadlineInSec = 3600, userAddress}) {
+  //todo
+  //needs changes in checking token approval and cost calculation to be moved elsewhere
+  async buildTx({to, token, txGas, data, batchId = 0, deadlineInSec = 3600, userAddress, permitType}) {
     try {
       if (!this.forwarder)
         throw new Error(
@@ -278,6 +286,14 @@ class ERC20ForwarderClient {
           "Biconomy Fee Proxy contract is not initialized properly."
         );
 
+      if (permitType) {
+        if (!permitType == config.DAI || !permitType == config.EIP2612) {
+          throw new Error(
+            "permit type passed is not matching expected possible values"
+          );
+        }
+      }
+
       if (!ethers.utils.isAddress(to))
         throw new Error(`"to" address ${to} is not a valid ethereum address`);
       if (!ethers.utils.isAddress(token))
@@ -293,10 +309,10 @@ class ERC20ForwarderClient {
         );
 
       await this.checkTokenSupport(token);
-      
-      if(!userAddress)
+
+      if (!userAddress)
         userAddress = await this.provider.getSigner().getAddress();
-      
+
       let nonce = await this.forwarder.getNonce(userAddress, batchId);
       const tokenGasPrice = await this.getTokenGasPrice(token);
 
@@ -335,6 +351,29 @@ class ERC20ForwarderClient {
           `One of the values is undefined. feeMultiplier: ${feeMultiplier} tokenOracleDecimals: ${tokenOracleDecimals} transferHandlerGas: ${transferHandlerGas}`
         );
 
+      // if intended for permit chained execution then should add gas usage cost of each type of permit
+
+      let permitFees;
+      if(permitType)
+      {
+        let overHead = (permitType == config.DAI) ? this.daiPermitOverhead : this.eip2612PermitOverhead;
+        let permitCost =  ethers.BigNumber.from(overHead.toString())
+        .mul(ethers.BigNumber.from(req.tokenGasPrice))
+        .mul(ethers.BigNumber.from(feeMultiplier.toString()))
+        .div(ethers.BigNumber.from(10000));
+
+        let tokenSpendValue = parseFloat(permitCost).toString();
+        permitCost = (
+          parseFloat(permitCost) /
+          parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))
+        ).toFixed(3);
+
+        permitFees = parseFloat(permitCost.toString()); // Exact amount in tokens
+        _logMessage(
+          `Estimated Permit Transaction Fee in token address ${token} is ${permitFees}`
+        );
+      }
+      
       let cost = ethers.BigNumber.from(req.txGas.toString())
         .add(ethers.BigNumber.from(this.trustedForwarderOverhead.toString())) // Estimate on the higher end
         .add(transferHandlerGas)
@@ -351,22 +390,31 @@ class ERC20ForwarderClient {
         `Estimated Transaction Fee in token address ${token} is ${fee}`
       );
 
-      const allowedToSpend = await this.erc20ForwarderApproved(
-        req.token,
-        userAddress,
-        spendValue
-      );
-      if (!allowedToSpend) {
-        throw new Error(
-          "You have not given approval to ERC Forwarder contract to spend tokens"
-        );
-      } else {
-        _logMessage(
-          `${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`
-        );
+      let totalFees = fee;
+      if(permitFees)
+      {
+        totalFees = fee + permitFees;
       }
 
-      return { request: req, cost: fee };
+      // if intended for permit chained execution then should not check allowance
+      if (!permitType) {
+        const allowedToSpend = await this.erc20ForwarderApproved(
+          req.token,
+          userAddress,
+          spendValue
+        );
+        if (!allowedToSpend) {
+          throw new Error(
+            "You have not given approval to ERC Forwarder contract to spend tokens"
+          );
+        } else {
+          _logMessage(
+            `${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`
+          );
+        }
+      }
+
+      return { request: req, cost: totalFees };
     } catch (error) {
       _logMessage(error);
       throw error;
@@ -420,6 +468,9 @@ class ERC20ForwarderClient {
    */
   async sendTxEIP712({ req, signature = null, userAddress }) {
     try {
+
+      //possibly check allowance here
+
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "bytes32", "bytes32", "uint256", "address"],
@@ -600,6 +651,28 @@ class ERC20ForwarderClient {
    */
   async sendTxPersonalSign({ req, signature = null, userAddress }) {
     try {
+
+      // check allowance at each final call 
+      // needs spendValue that is cost
+
+      /*if(!userAddress)
+        userAddress = await this.provider.getSigner().getAddress();
+
+      const allowedToSpend = await this.erc20ForwarderApproved(
+        req.token,
+        userAddress,
+        spendValue
+      );
+      if (!allowedToSpend) {
+        throw new Error(
+          "You have not given approval to ERC Forwarder contract to spend tokens"
+        );
+      } else {
+        _logMessage(
+          `${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`
+        );
+      }*/
+
       const hashToSign = abi.soliditySHA3(
         [
           "address",

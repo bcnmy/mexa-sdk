@@ -43,6 +43,8 @@ const events = require("events");
 var eventEmitter = new events.EventEmitter();
 let loginInterval;
 let trustedForwarderOverhead;
+let daiPermitOverhead;
+let eip2612PermitOverhead;
 
 let domainType,
   forwarderDomainType,
@@ -1168,7 +1170,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         feeManager,
         isSignerWithAccounts,
         tokenGasPriceV1SupportedNetworks,
-        trustedForwarderOverhead
+        trustedForwarderOverhead,
+        daiPermitOverhead,
+        eip2612PermitOverhead
       });
 
       _logMessage(engine.permitClient);
@@ -1479,6 +1483,8 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           forwardRequestType = systemInfo.forwardRequestType;
           forwarderDomainData = systemInfo.forwarderDomainData;
           trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
+          daiPermitOverhead = systemInfo.overHeadDaiPermit;
+          eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
           engine.forwarderAddress =
             systemInfo.biconomyForwarderAddress;
           engine.erc20ForwarderAddress =
