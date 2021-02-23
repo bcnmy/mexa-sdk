@@ -12,14 +12,8 @@ const {
 } = require("./config");
 const DEFAULT_PAYLOAD_ID = "99999999";
 const baseURL = config.baseURL;
-const userLoginPath = config.userLoginPath;
-const withdrawFundsUrl = config.withdrawFundsUrl;
-const getUserContractPath = config.getUserContractPath;
 const JSON_RPC_VERSION = config.JSON_RPC_VERSION;
-const USER_ACCOUNT = config.USER_ACCOUNT;
-const USER_CONTRACT = config.USER_CONTRACT;
 const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
-const ZERO_ADDRESS = config.ZERO_ADDRESS;
 
 let PermitClient = require("./PermitClient");
 let ERC20ForwarderClient = require("./ERC20ForwarderClient");
@@ -41,7 +35,6 @@ let decoderMap = {},
 let biconomyForwarder;
 const events = require("events");
 var eventEmitter = new events.EventEmitter();
-let loginInterval;
 let trustedForwarderOverhead;
 
 let domainType,
@@ -264,7 +257,7 @@ function Biconomy(provider, options) {
   }
 }
 
-Biconomy.prototype.getProvider = function(userAddress) {
+Biconomy.prototype.getSignerByAddress = function(userAddress) {
   let provider = this.getEthersProvider();
   let signer = provider.getSigner();
   signer = signer.connectUnchecked();
@@ -324,7 +317,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         let params = methodInfo.params;
         let paramArray = [];
         for (let i = 0; i < params.length; i++) {
-          paramArray.push(_getParamValue(params[i], engine));
+          paramArray.push(_getParamValue(params[i]));
         }
 
         let parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
@@ -634,7 +627,7 @@ async function sendSignedTransaction(engine, payload, end) {
             let paramArrayForGasCalculation = [];
             for (let i = 0; i < params.length; i++) {
               paramArrayForGasCalculation.push(
-                _getParamValue(params[i], engine)
+                _getParamValue(params[i])
               );
             }
 
@@ -681,7 +674,7 @@ async function sendSignedTransaction(engine, payload, end) {
             await _sendTransaction(engine, account, api, data, end);
           } else {
             for (let i = 0; i < params.length; i++) {
-              paramArray.push(_getParamValue(params[i], engine));
+              paramArray.push(_getParamValue(params[i]));
             }
 
             let data = {};
@@ -850,7 +843,7 @@ async function handleSendTransaction(engine, payload, end) {
 
           let paramArrayForGasCalculation = [];
           for (let i = 0; i < params.length; i++) {
-            paramArrayForGasCalculation.push(_getParamValue(params[i], engine));
+            paramArrayForGasCalculation.push(_getParamValue(params[i]));
           }
 
           let contractABI = smartContractMap[to];
@@ -910,7 +903,6 @@ async function handleSendTransaction(engine, payload, end) {
             } else {
               signaturePersonal = await getSignaturePersonal(
                 engine,
-                account,
                 request
               );
               _logMessage(`Personal signature is ${signaturePersonal}`);
@@ -934,7 +926,7 @@ async function handleSendTransaction(engine, payload, end) {
           await _sendTransaction(engine, account, api, data, end);
         } else {
           for (let i = 0; i < params.length; i++) {
-            paramArray.push(_getParamValue(params[i], engine));
+            paramArray.push(_getParamValue(params[i]));
           }
           let data = {};
           data.from = account;
@@ -1060,21 +1052,26 @@ function getSignatureEIP712(engine, account, request) {
   let targetProvider = getTargetProvider(engine);
   const promi = new Promise(async function (resolve, reject) {
     if(targetProvider) {
-      await targetProvider.send(
-        {
-          jsonrpc: "2.0",
-          id: 999999999999,
-          method: "eth_signTypedData_v3",
-          params: [account, dataToSign],
-        },
-        function (error, res) {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(res.result);
+      if(isEthersProvider(targetProvider)) {
+        let signature = await targetProvider.send("eth_signTypedData_v3", [account, dataToSign]);
+        resolve(signature);
+      } else {
+        await targetProvider.send(
+          {
+            jsonrpc: "2.0",
+            id: 999999999999,
+            method: "eth_signTypedData_v3",
+            params: [account, dataToSign],
+          },
+          function (error, res) {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(res.result);
+            }
           }
-        }
-      );
+        );
+      }
     } else {
       reject(`Could not get signature from the provider passed to Biconomy. Check if you have passed a walletProvider in Biconomy Options.`);
     }
@@ -1083,7 +1080,7 @@ function getSignatureEIP712(engine, account, request) {
   return promi;
 }
 
-async function getSignaturePersonal(engine, account, req) {
+async function getSignaturePersonal(engine, req) {
   const hashToSign = _getPersonalForwardMessageToSign(req);
   if(!engine.signer && !engine.walletProvider) {
     throw new Error(`Can't sign messages with current provider. Did you forget to pass walletProvider in Biconomy options?`);
@@ -1305,7 +1302,7 @@ function _validate(options) {
 /**
  * Get paramter value from param object based on its type.
  **/
-function _getParamValue(paramObj, engine) {
+function _getParamValue(paramObj) {
   let value;
   if (paramObj) {
     let type = paramObj.type;
@@ -1668,21 +1665,7 @@ function formatMessage(code, message) {
   return { code: code, message: message };
 }
 
-function removeFromStorage(key) {
-  if (typeof localStorage != "undefined") {
-    localStorage.removeItem(key);
-  } else {
-    this[key] = null;
-  }
-}
 
-function getFromStorage(key) {
-  if (typeof localStorage != "undefined") {
-    return localStorage.getItem(key);
-  } else {
-    return this[key];
-  }
-}
 
 /**
  * Single method to be used for logging purpose.

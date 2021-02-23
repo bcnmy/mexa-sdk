@@ -28,14 +28,8 @@ var _require2 = require("./config"),
 
 var DEFAULT_PAYLOAD_ID = "99999999";
 var baseURL = config.baseURL;
-var userLoginPath = config.userLoginPath;
-var withdrawFundsUrl = config.withdrawFundsUrl;
-var getUserContractPath = config.getUserContractPath;
 var JSON_RPC_VERSION = config.JSON_RPC_VERSION;
-var USER_ACCOUNT = config.USER_ACCOUNT;
-var USER_CONTRACT = config.USER_CONTRACT;
 var NATIVE_META_TX_URL = config.nativeMetaTxUrl;
-var ZERO_ADDRESS = config.ZERO_ADDRESS;
 
 var PermitClient = require("./PermitClient");
 
@@ -62,7 +56,6 @@ var biconomyForwarder;
 var events = require("events");
 
 var eventEmitter = new events.EventEmitter();
-var loginInterval;
 var trustedForwarderOverhead;
 var domainType, forwarderDomainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType;
 var domainData = {
@@ -320,7 +313,7 @@ function Biconomy(provider, options) {
   }
 }
 
-Biconomy.prototype.getProvider = function (userAddress) {
+Biconomy.prototype.getSignerByAddress = function (userAddress) {
   var provider = this.getEthersProvider();
   var signer = provider.getSigner();
   signer = signer.connectUnchecked();
@@ -410,7 +403,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
               paramArray = [];
 
               for (i = 0; i < params.length; i++) {
-                paramArray.push(_getParamValue(params[i], engine));
+                paramArray.push(_getParamValue(params[i]));
               }
 
               parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
@@ -772,7 +765,7 @@ function _sendSignedTransaction() {
             paramArrayForGasCalculation = [];
 
             for (i = 0; i < params.length; i++) {
-              paramArrayForGasCalculation.push(_getParamValue(params[i], engine));
+              paramArrayForGasCalculation.push(_getParamValue(params[i]));
             }
 
             if (!(!gasLimit || parseInt(gasLimit) == 0)) {
@@ -840,7 +833,7 @@ function _sendSignedTransaction() {
 
           case 76:
             for (_i = 0; _i < params.length; _i++) {
-              paramArray.push(_getParamValue(params[_i], engine));
+              paramArray.push(_getParamValue(params[_i]));
             }
 
             _data2 = {};
@@ -1058,7 +1051,7 @@ function _handleSendTransaction() {
             paramArrayForGasCalculation = [];
 
             for (i = 0; i < params.length; i++) {
-              paramArrayForGasCalculation.push(_getParamValue(params[i], engine));
+              paramArrayForGasCalculation.push(_getParamValue(params[i]));
             }
 
             contractABI = smartContractMap[to];
@@ -1153,7 +1146,7 @@ function _handleSendTransaction() {
 
           case 92:
             _context8.next = 94;
-            return getSignaturePersonal(engine, account, request);
+            return getSignaturePersonal(engine, request);
 
           case 94:
             signaturePersonal = _context8.sent;
@@ -1194,7 +1187,7 @@ function _handleSendTransaction() {
 
           case 112:
             for (_i2 = 0; _i2 < params.length; _i2++) {
-              paramArray.push(_getParamValue(params[_i2], engine));
+              paramArray.push(_getParamValue(params[_i2]));
             }
 
             _data4 = {};
@@ -1318,16 +1311,32 @@ function getSignatureEIP712(engine, account, request) {
   var targetProvider = getTargetProvider(engine);
   var promi = new Promise( /*#__PURE__*/function () {
     var _ref4 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(resolve, reject) {
+      var signature;
       return _regenerator["default"].wrap(function _callee4$(_context4) {
         while (1) {
           switch (_context4.prev = _context4.next) {
             case 0:
               if (!targetProvider) {
-                _context4.next = 5;
+                _context4.next = 12;
                 break;
               }
 
-              _context4.next = 3;
+              if (!isEthersProvider(targetProvider)) {
+                _context4.next = 8;
+                break;
+              }
+
+              _context4.next = 4;
+              return targetProvider.send("eth_signTypedData_v3", [account, dataToSign]);
+
+            case 4:
+              signature = _context4.sent;
+              resolve(signature);
+              _context4.next = 10;
+              break;
+
+            case 8:
+              _context4.next = 10;
               return targetProvider.send({
                 jsonrpc: "2.0",
                 id: 999999999999,
@@ -1341,14 +1350,14 @@ function getSignatureEIP712(engine, account, request) {
                 }
               });
 
-            case 3:
-              _context4.next = 6;
+            case 10:
+              _context4.next = 13;
               break;
 
-            case 5:
+            case 12:
               reject("Could not get signature from the provider passed to Biconomy. Check if you have passed a walletProvider in Biconomy Options.");
 
-            case 6:
+            case 13:
             case "end":
               return _context4.stop();
           }
@@ -1363,13 +1372,13 @@ function getSignatureEIP712(engine, account, request) {
   return promi;
 }
 
-function getSignaturePersonal(_x13, _x14, _x15) {
+function getSignaturePersonal(_x13, _x14) {
   return _getSignaturePersonal.apply(this, arguments);
 } // On getting smart contract data get the API data also
 
 
 function _getSignaturePersonal() {
-  _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(engine, account, req) {
+  _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(engine, req) {
     var hashToSign, signature, walletSigner;
     return _regenerator["default"].wrap(function _callee9$(_context9) {
       while (1) {
@@ -1593,7 +1602,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
     }, _callee5, null, [[0, 47], [6, 12]]);
   }));
 
-  return function (_x16) {
+  return function (_x15) {
     return _ref5.apply(this, arguments);
   };
 }());
@@ -1660,7 +1669,7 @@ function _validate(options) {
  **/
 
 
-function _getParamValue(paramObj, engine) {
+function _getParamValue(paramObj) {
   var value;
 
   if (paramObj) {
@@ -1711,7 +1720,7 @@ function _getParamValue(paramObj, engine) {
  **/
 
 
-function _sendTransaction(_x17, _x18, _x19, _x20, _x21) {
+function _sendTransaction(_x16, _x17, _x18, _x19, _x20) {
   return _sendTransaction2.apply(this, arguments);
 }
 /**
@@ -1774,7 +1783,7 @@ function _sendTransaction2() {
   return _sendTransaction2.apply(this, arguments);
 }
 
-function _init(_x22, _x23) {
+function _init(_x21, _x22) {
   return _init2.apply(this, arguments);
 }
 
@@ -1887,7 +1896,7 @@ function _init2() {
                 }, _callee11);
               }));
 
-              return function (_x28) {
+              return function (_x27) {
                 return _ref8.apply(this, arguments);
               };
             }())["catch"](function (error) {
@@ -1915,7 +1924,7 @@ function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
 
-function onNetworkId(_x24, _x25) {
+function onNetworkId(_x23, _x24) {
   return _onNetworkId.apply(this, arguments);
 }
 
@@ -2032,7 +2041,7 @@ function _onNetworkId() {
   return _onNetworkId.apply(this, arguments);
 }
 
-function _checkUserLogin(_x26, _x27) {
+function _checkUserLogin(_x25, _x26) {
   return _checkUserLogin2.apply(this, arguments);
 }
 
@@ -2092,22 +2101,6 @@ function formatMessage(code, message) {
     code: code,
     message: message
   };
-}
-
-function removeFromStorage(key) {
-  if (typeof localStorage != "undefined") {
-    localStorage.removeItem(key);
-  } else {
-    this[key] = null;
-  }
-}
-
-function getFromStorage(key) {
-  if (typeof localStorage != "undefined") {
-    return localStorage.getItem(key);
-  } else {
-    return this[key];
-  }
 }
 /**
  * Single method to be used for logging purpose.
