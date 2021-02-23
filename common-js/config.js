@@ -61,7 +61,8 @@ var RESPONSE_CODES = {
   USER_CONTRACT_CREATION_FAILED: 'B512',
   EVENT_NOT_SUPPORTED: 'B513',
   INVALID_DATA: 'B514',
-  INVALID_OPERATION: 'B515'
+  INVALID_OPERATION: 'B515',
+  WRONG_ABI: 'B516'
 }; // could get these from sys info call
 
 config.forwardRequestType = [{
