@@ -1019,26 +1019,6 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
               case 0:
                 req = _ref6.req, _ref6$signature = _ref6.signature, signature = _ref6$signature === void 0 ? null : _ref6$signature, userAddress = _ref6.userAddress;
                 _context9.prev = 1;
-                // should we?
-                // check allowance at each final call
-                // needs spendValue that is cost
-
-                /*if(!userAddress)
-                  userAddress = await this.provider.getSigner().getAddress();
-                 const allowedToSpend = await this.erc20ForwarderApproved(
-                  req.token,
-                  userAddress,
-                  spendValue
-                );
-                if (!allowedToSpend) {
-                  throw new Error(
-                    "You have not given approval to ERC Forwarder contract to spend tokens"
-                  );
-                } else {
-                  _logMessage(
-                    `${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`
-                  );
-                }*/
                 hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [req.from, req.to, req.token, req.txGas, req.tokenGasPrice, req.batchId, req.batchNonce, req.deadline, ethers.utils.keccak256(req.data)]);
                 signer = this.provider.getSigner();
 
