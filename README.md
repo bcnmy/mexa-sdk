@@ -24,7 +24,7 @@ npm install @biconomy/mexa
 #### Import and initialize mexa and web3
 
 ```javascript
-import Biconomy from "@biconomy/mexa";
+import { Biconomy } from "@biconomy/mexa";
 const biconomy = new Biconomy(<web3 provider>,{apiKey: <API Key>});
 web3 = new Web3(biconomy);
 ```
