@@ -608,6 +608,21 @@ var erc20ForwarderAbi = [{
 }, {
   "anonymous": false,
   "inputs": [{
+    "indexed": false,
+    "internalType": "uint128",
+    "name": "newGasTokenForwarderBaseGas",
+    "type": "uint128"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "actor",
+    "type": "address"
+  }],
+  "name": "GasTokenForwarderBaseGasChanged",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
     "indexed": true,
     "internalType": "address",
     "name": "previousOwner",
@@ -639,6 +654,21 @@ var erc20ForwarderAbi = [{
     "type": "uint256"
   }],
   "name": "TransferHandlerGasChanged",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "newForwarderAddress",
+    "type": "address"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "actor",
+    "type": "address"
+  }],
+  "name": "TrustedForwarderChanged",
   "type": "event"
 }, {
   "inputs": [],
@@ -689,7 +719,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -752,7 +782,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -819,7 +849,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -878,7 +908,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -926,7 +956,7 @@ var erc20ForwarderAbi = [{
   "inputs": [],
   "name": "forwarder",
   "outputs": [{
-    "internalType": "addresspayable",
+    "internalType": "address payable",
     "name": "",
     "type": "address"
   }],
@@ -935,6 +965,16 @@ var erc20ForwarderAbi = [{
 }, {
   "inputs": [],
   "name": "gasRefund",
+  "outputs": [{
+    "internalType": "uint128",
+    "name": "",
+    "type": "uint128"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "gasTokenForwarderBaseGas",
   "outputs": [{
     "internalType": "uint128",
     "name": "",
@@ -970,7 +1010,7 @@ var erc20ForwarderAbi = [{
     "name": "_feeManager",
     "type": "address"
   }, {
-    "internalType": "addresspayable",
+    "internalType": "address payable",
     "name": "_forwarder",
     "type": "address"
   }],
@@ -1007,6 +1047,430 @@ var erc20ForwarderAbi = [{
     "type": "address"
   }],
   "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "from",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "to",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "token",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "txGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "tokenGasPrice",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchId",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchNonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "deadline",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "data",
+      "type": "bytes"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "name": "req",
+    "type": "tuple"
+  }, {
+    "internalType": "bytes32",
+    "name": "domainSeparator",
+    "type": "bytes32"
+  }, {
+    "internalType": "bytes",
+    "name": "sig",
+    "type": "bytes"
+  }, {
+    "components": [{
+      "internalType": "address",
+      "name": "holder",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "spender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "value",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "expiry",
+      "type": "uint256"
+    }, {
+      "internalType": "bool",
+      "name": "allowed",
+      "type": "bool"
+    }, {
+      "internalType": "uint8",
+      "name": "v",
+      "type": "uint8"
+    }, {
+      "internalType": "bytes32",
+      "name": "r",
+      "type": "bytes32"
+    }, {
+      "internalType": "bytes32",
+      "name": "s",
+      "type": "bytes32"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
+    "name": "permitOptions",
+    "type": "tuple"
+  }],
+  "name": "permitAndExecuteEIP712",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }, {
+    "internalType": "bytes",
+    "name": "ret",
+    "type": "bytes"
+  }],
+  "stateMutability": "payable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "from",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "to",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "token",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "txGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "tokenGasPrice",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchId",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchNonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "deadline",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "data",
+      "type": "bytes"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "name": "req",
+    "type": "tuple"
+  }, {
+    "internalType": "bytes32",
+    "name": "domainSeparator",
+    "type": "bytes32"
+  }, {
+    "internalType": "bytes",
+    "name": "sig",
+    "type": "bytes"
+  }, {
+    "components": [{
+      "internalType": "address",
+      "name": "holder",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "spender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "value",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "expiry",
+      "type": "uint256"
+    }, {
+      "internalType": "bool",
+      "name": "allowed",
+      "type": "bool"
+    }, {
+      "internalType": "uint8",
+      "name": "v",
+      "type": "uint8"
+    }, {
+      "internalType": "bytes32",
+      "name": "r",
+      "type": "bytes32"
+    }, {
+      "internalType": "bytes32",
+      "name": "s",
+      "type": "bytes32"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
+    "name": "permitOptions",
+    "type": "tuple"
+  }, {
+    "internalType": "uint256",
+    "name": "gasTokensBurned",
+    "type": "uint256"
+  }],
+  "name": "permitAndExecuteEIP712WithGasTokens",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }, {
+    "internalType": "bytes",
+    "name": "ret",
+    "type": "bytes"
+  }],
+  "stateMutability": "payable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "from",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "to",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "token",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "txGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "tokenGasPrice",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchId",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchNonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "deadline",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "data",
+      "type": "bytes"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "name": "req",
+    "type": "tuple"
+  }, {
+    "internalType": "bytes32",
+    "name": "domainSeparator",
+    "type": "bytes32"
+  }, {
+    "internalType": "bytes",
+    "name": "sig",
+    "type": "bytes"
+  }, {
+    "components": [{
+      "internalType": "address",
+      "name": "holder",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "spender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "value",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "expiry",
+      "type": "uint256"
+    }, {
+      "internalType": "bool",
+      "name": "allowed",
+      "type": "bool"
+    }, {
+      "internalType": "uint8",
+      "name": "v",
+      "type": "uint8"
+    }, {
+      "internalType": "bytes32",
+      "name": "r",
+      "type": "bytes32"
+    }, {
+      "internalType": "bytes32",
+      "name": "s",
+      "type": "bytes32"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
+    "name": "permitOptions",
+    "type": "tuple"
+  }],
+  "name": "permitEIP2612AndExecuteEIP712",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }, {
+    "internalType": "bytes",
+    "name": "ret",
+    "type": "bytes"
+  }],
+  "stateMutability": "payable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "from",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "to",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "token",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "txGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "tokenGasPrice",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchId",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "batchNonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "deadline",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "data",
+      "type": "bytes"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "name": "req",
+    "type": "tuple"
+  }, {
+    "internalType": "bytes32",
+    "name": "domainSeparator",
+    "type": "bytes32"
+  }, {
+    "internalType": "bytes",
+    "name": "sig",
+    "type": "bytes"
+  }, {
+    "components": [{
+      "internalType": "address",
+      "name": "holder",
+      "type": "address"
+    }, {
+      "internalType": "address",
+      "name": "spender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "value",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "expiry",
+      "type": "uint256"
+    }, {
+      "internalType": "bool",
+      "name": "allowed",
+      "type": "bool"
+    }, {
+      "internalType": "uint8",
+      "name": "v",
+      "type": "uint8"
+    }, {
+      "internalType": "bytes32",
+      "name": "r",
+      "type": "bytes32"
+    }, {
+      "internalType": "bytes32",
+      "name": "s",
+      "type": "bytes32"
+    }],
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
+    "name": "permitOptions",
+    "type": "tuple"
+  }, {
+    "internalType": "uint256",
+    "name": "gasTokensBurned",
+    "type": "uint256"
+  }],
+  "name": "permitEIP2612AndExecuteEIP712WithGasTokens",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }, {
+    "internalType": "bytes",
+    "name": "ret",
+    "type": "bytes"
+  }],
+  "stateMutability": "payable",
   "type": "function"
 }, {
   "inputs": [],
@@ -1070,6 +1534,16 @@ var erc20ForwarderAbi = [{
   "type": "function"
 }, {
   "inputs": [{
+    "internalType": "uint128",
+    "name": "gas",
+    "type": "uint128"
+  }],
+  "name": "setGasTokenForwarderBaseGas",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
     "internalType": "address",
     "name": "oa",
     "type": "address"
@@ -1103,6 +1577,16 @@ var erc20ForwarderAbi = [{
     "type": "uint256"
   }],
   "name": "setTransferHandlerGas",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address payable",
+    "name": "_forwarder",
+    "type": "address"
+  }],
+  "name": "setTrustedForwarder",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"

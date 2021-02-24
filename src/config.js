@@ -33,6 +33,8 @@ config.TOKEN_CONTRACT_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
+config.DAI = "DAI_Permit";
+config.EIP2612 = "EIP2612_Permit";
 
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
