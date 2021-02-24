@@ -590,7 +590,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 totalFees = fee;
 
                 if (permitFees) {
-                  totalFees = fee + permitFees;
+                  totalFees = parseFloat(fee + permitFees).toFixed(3);
                 } // if intended for permit chained execution then should not check allowance
 
 
@@ -870,7 +870,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
      * @param {object} req Request object to be signed and sent
      * @param {string} signature Signature string singed from user account
      * @param {string} userAddress User blockchain address
-     * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options. 
+     * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options.
      */
 
   }, {
@@ -1019,7 +1019,8 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
               case 0:
                 req = _ref6.req, _ref6$signature = _ref6.signature, signature = _ref6$signature === void 0 ? null : _ref6$signature, userAddress = _ref6.userAddress;
                 _context9.prev = 1;
-                // check allowance at each final call 
+                // should we?
+                // check allowance at each final call
                 // needs spendValue that is cost
 
                 /*if(!userAddress)
