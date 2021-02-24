@@ -809,7 +809,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   break;
                 }
 
-                throw new Error("Could not find the apiId for the given request. Contact Biconomy for resolution");
+                throw new Error("Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard.");
 
               case 21:
                 apiId = api.id;
@@ -942,7 +942,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   break;
                 }
 
-                throw new Error("Could not find the apiId for the given request. Contact Biconomy for resolution");
+                throw new Error("Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard.");
 
               case 21:
                 apiId = api.id;
@@ -1096,7 +1096,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   break;
                 }
 
-                throw new Error("Could not find the apiId for the given request. Contact Biconomy for resolution");
+                throw new Error("Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard.");
 
               case 23:
                 apiId = api.id;
