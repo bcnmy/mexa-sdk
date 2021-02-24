@@ -525,7 +525,7 @@ class ERC20ForwarderClient {
       const api = this.getApiId(req);
       if (!api || !api.id)
         throw new Error(
-          "Could not find the apiId for the given request. Contact Biconomy for resolution"
+          "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
         );
 
       const apiId = api.id;
@@ -620,7 +620,7 @@ class ERC20ForwarderClient {
       const api = this.getApiId(req);
       if (!api || !api.id)
         throw new Error(
-          "Could not find the apiId for the given request. Contact Biconomy for resolution"
+          "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
         );
 
       const apiId = api.id;
@@ -734,7 +734,7 @@ class ERC20ForwarderClient {
       const api = this.getApiId(req);
       if (!api || !api.id)
         throw new Error(
-          "Could not find the apiId for the given request. Contact Biconomy for resolution"
+          "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
         );
 
       const apiId = api.id;
