@@ -342,7 +342,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
   var engine = this;
   return new Promise( /*#__PURE__*/function () {
     var _ref3 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(resolve, reject) {
-      var decodedTx, to, methodInfo, error, methodName, token, api, _error, params, paramArray, i, parsedTransaction, account, contractAddr, metaTxApproach, gasLimit, gasLimitNum, contractABI, contract, _error2, request, cost, buildTxResponse, _error3, eip712DataToSign, hashToSign, dataToSign, _error4;
+      var decodedTx, to, methodInfo, error, methodName, token, api, _error, params, paramArray, i, parsedTransaction, account, contractAddr, metaTxApproach, gasLimit, gasLimitNum, contractABI, _contract$estimateGas, contract, _error2, request, cost, buildTxResponse, _error3, eip712DataToSign, hashToSign, dataToSign, _error4;
 
       return _regenerator["default"].wrap(function _callee3$(_context3) {
         while (1) {
@@ -429,9 +429,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
 
               contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
               _context3.next = 35;
-              return contract.estimateGas[methodName].apply(null, paramArray, {
+              return (_contract$estimateGas = contract.estimateGas)[methodName].apply(_contract$estimateGas, paramArray.concat([{
                 from: account
-              });
+              }]));
 
             case 35:
               gasLimit = _context3.sent;
@@ -621,7 +621,7 @@ function sendSignedTransaction(_x5, _x6, _x7) {
 
 function _sendSignedTransaction() {
   _sendSignedTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(engine, payload, end) {
-    var data, rawTransaction, signature, request, signatureType, decodedTx, to, methodInfo, error, methodName, api, _error5, params, paramArray, contractAddr, metaTxApproach, parsedTransaction, account, _error6, forwardedData, gasLimitNum, gasLimit, paramArrayForGasCalculation, i, contractABI, contract, domainSeparator, _data, _i, _data2, relayerPayment, _data3, _error7, _error8, _error9, _error10;
+    var data, rawTransaction, signature, request, signatureType, decodedTx, to, methodInfo, error, methodName, api, _error5, params, paramArray, contractAddr, metaTxApproach, parsedTransaction, account, _error6, forwardedData, gasLimitNum, gasLimit, paramArrayForGasCalculation, i, contractABI, _contract$estimateGas2, contract, domainSeparator, _data, _i, _data2, relayerPayment, _data3, _error7, _error8, _error9, _error10;
 
     return _regenerator["default"].wrap(function _callee7$(_context7) {
       while (1) {
@@ -782,9 +782,9 @@ function _sendSignedTransaction() {
 
             contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
             _context7.next = 56;
-            return contract.estimateGas[methodName].apply(null, paramArrayForGasCalculation, {
+            return (_contract$estimateGas2 = contract.estimateGas)[methodName].apply(_contract$estimateGas2, paramArrayForGasCalculation.concat([{
               from: account
-            });
+            }]));
 
           case 56:
             gasLimit = _context7.sent;
@@ -922,7 +922,7 @@ function handleSendTransaction(_x8, _x9, _x10) {
 
 function _handleSendTransaction() {
   _handleSendTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee8(engine, payload, end) {
-    var to, methodInfo, error, methodName, api, gasLimit, signatureType, _error11, account, params, paramArray, contractAddr, metaTxApproach, _error12, forwardedData, gasLimitNum, signatureFromPayload, paramArrayForGasCalculation, i, contractABI, contract, _error13, request, domainSeparator, signatureEIP712, signaturePersonal, data, _i2, _data4, _error14, _error15, _error16;
+    var to, methodInfo, error, methodName, api, gasLimit, signatureType, _error11, account, params, paramArray, contractAddr, metaTxApproach, _error12, forwardedData, gasLimitNum, signatureFromPayload, paramArrayForGasCalculation, i, contractABI, _contract$estimateGas3, contract, _error13, request, domainSeparator, signatureEIP712, signaturePersonal, data, _i2, _data4, _error14, _error15, _error16;
 
     return _regenerator["default"].wrap(function _callee8$(_context8) {
       while (1) {
@@ -1063,9 +1063,9 @@ function _handleSendTransaction() {
 
             contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
             _context8.next = 58;
-            return contract.estimateGas[methodName].apply(null, paramArrayForGasCalculation, {
+            return (_contract$estimateGas3 = contract.estimateGas)[methodName].apply(_contract$estimateGas3, paramArrayForGasCalculation.concat([{
               from: account
-            });
+            }]));
 
           case 58:
             gasLimitNum = _context8.sent;
