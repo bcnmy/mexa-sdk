@@ -1588,14 +1588,14 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
             ) {
               smartContractList.forEach((contract) => {
                 let abiDecoder = require("abi-decoder");
-                smartContractMetaTransactionMap[
-                  contract.address.toLowerCase()
-                ] = contract.metaTransactionType;
                 if (contract.type === config.SCW) {
                   abiDecoder.addABI(JSON.parse(contract.abi));
                   decoderMap[config.SCW] = abiDecoder;
                   smartContractMap[config.SCW] = contract.abi;
                 } else {
+                  smartContractMetaTransactionMap[
+                    contract.address.toLowerCase()
+                  ] = contract.metaTransactionType;
                   abiDecoder.addABI(JSON.parse(contract.abi));
                   decoderMap[
                     contract.address.toLowerCase()
