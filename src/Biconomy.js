@@ -299,10 +299,15 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         let api = engine.dappAPIMap[to]
           ? engine.dappAPIMap[to][methodName]
           : undefined;
+        let metaTxApproach
         if (!api) {
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
             : undefined;
+          metaTxApproach[config.SCW]
+        } else {
+          let contractAddr = api.contractAddress.toLowerCase();
+          metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         }
         if (!api) {
           _logMessage(`API not found for method ${methodName}`);
@@ -324,8 +329,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         let account = parsedTransaction.from;
 
         _logMessage(`Signer is ${account}`);
-        let contractAddr = api.contractAddress.toLowerCase();
-        let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+
         let gasLimit = decodedTx.gasLimit;
         let gasLimitNum;
 
@@ -563,10 +567,15 @@ async function sendSignedTransaction(engine, payload, end) {
         let api = engine.dappAPIMap[to]
           ? engine.dappAPIMap[to][methodName]
           : undefined;
+        let metaTxApproach
         if (!api) {
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
             : undefined;
+          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+        } else {
+          let contractAddr = api.contractAddress.toLowerCase();
+          metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         }
         if (!api) {
           _logMessage(`API not found for method ${methodName}`);
@@ -591,8 +600,6 @@ async function sendSignedTransaction(engine, payload, end) {
         let params = methodInfo.params;
         let paramArray = [];
 
-        let contractAddr = api.contractAddress.toLowerCase();
-        let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         let parsedTransaction = ethers.utils.parseTransaction(
           rawTransaction
         );
@@ -777,10 +784,15 @@ async function handleSendTransaction(engine, payload, end) {
         ? engine.dappAPIMap[to][methodName]
         : undefined;
       // Information we get here is contractAddress, methodName, methodType, ApiId
+      let metaTxApproach
       if (!api) {
         api = engine.dappAPIMap[config.SCW]
           ? engine.dappAPIMap[config.SCW][methodName]
           : undefined;
+        metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+      } else {
+        let contractAddr = api.contractAddress.toLowerCase();
+        metaTxApproach = smartContractMetaTransactionMap[contractAddr];
       }
 
       let gasLimit = payload.params[0].gas;
@@ -818,8 +830,6 @@ async function handleSendTransaction(engine, payload, end) {
       let params = methodInfo.params;
       let paramArray = [];
 
-      let contractAddr = api.contractAddress.toLowerCase();
-      let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
       if (metaTxApproach == engine.ERC20_FORWARDER) {
         let error = formatMessage(
           RESPONSE_CODES.INVALID_PAYLOAD,
@@ -1589,6 +1599,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
               smartContractList.forEach((contract) => {
                 let abiDecoder = require("abi-decoder");
                 if (contract.type === config.SCW) {
+                  smartContractMetaTransactionMap[config.SCW] = contract.metaTransactionType;
                   abiDecoder.addABI(JSON.parse(contract.abi));
                   decoderMap[config.SCW] = abiDecoder;
                   smartContractMap[config.SCW] = contract.abi;
