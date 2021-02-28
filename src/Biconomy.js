@@ -304,7 +304,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
             : undefined;
-          metaTxApproach[config.SCW]
+          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
         } else {
           let contractAddr = api.contractAddress.toLowerCase();
           metaTxApproach = smartContractMetaTransactionMap[contractAddr];
