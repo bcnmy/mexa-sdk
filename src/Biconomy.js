@@ -361,6 +361,8 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
 
         let request, cost;
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+          //todo
+          //check if biconomyForwarder is defined
           request = (
             await buildForwardTxRequest(
               account,
@@ -871,6 +873,8 @@ async function handleSendTransaction(engine, payload, end) {
             end(error);
           }
 
+          //todo
+          //check if biconomyForwarder is defined
           const request = (
             await buildForwardTxRequest(
               account,
@@ -1194,6 +1198,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         feeManagerAbi,
         signerOrProvider
       );
+
+      //If ERC20 Forwarder Address exits then it would have configured Forwarder 
       const forwarder = new ethers.Contract(
         forwarderAddress,
         biconomyForwarderAbi,
@@ -1576,12 +1582,15 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
             )
           );
         }
-
-        biconomyForwarder = new ethers.Contract(
-          engine.forwarderAddress,
-          biconomyForwarderAbi,
-          engine.ethersProvider
-        );
+        
+        // check if Valid trusted forwarder address is present from system info
+        if (engine.forwarderAddress && engine.forwarderAddress != "") {
+          biconomyForwarder = new ethers.Contract(
+            engine.forwarderAddress,
+            biconomyForwarderAbi,
+            engine.ethersProvider
+          );
+        }
         // Get dapps smart contract data from biconomy servers
         let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
         fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey))
