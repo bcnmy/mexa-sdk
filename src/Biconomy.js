@@ -361,8 +361,6 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
 
         let request, cost;
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
-          //todo
-          //check if biconomyForwarder is defined
           request = (
             await buildForwardTxRequest(
               account,
@@ -873,8 +871,6 @@ async function handleSendTransaction(engine, payload, end) {
             end(error);
           }
 
-          //todo
-          //check if biconomyForwarder is defined
           const request = (
             await buildForwardTxRequest(
               account,
@@ -1328,14 +1324,14 @@ function _getParamValue(paramObj) {
         let val = paramObj.value;
         value = [];
         for (let j = 0; j < val.length; j++) {
-          value[j] = scientificToDecimal(parseInt(val[j]));
-          value[j] = ethers.utils.hexValue(value[j]);
+          value[j] = scientificToDecimal(val[j]);
+          value[j] = ethers.BigNumber.from(value[j]).toHexString();
         }
         break;
       case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {})
         .input:
-        value = scientificToDecimal(parseInt(paramObj.value));
-        value = ethers.utils.hexValue(value);
+        value = scientificToDecimal(paramObj.value);
+        value = ethers.BigNumber.from(value).toHexString();
         break;
       case "string":
         if (typeof paramObj.value === "object") {

@@ -1558,7 +1558,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
           case 30:
             forwarderAddress = _context5.sent;
             oracleAggregator = new ethers.Contract(oracleAggregatorAddress, oracleAggregatorAbi, signerOrProvider);
-            feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider);
+            feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider); //If ERC20 Forwarder Address exits then it would have configured Forwarder 
+
             forwarder = new ethers.Contract(forwarderAddress, biconomyForwarderAbi, signerOrProvider);
             transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signerOrProvider);
             tokenGasPriceV1SupportedNetworks = engine.tokenGasPriceV1SupportedNetworks;
@@ -1691,15 +1692,15 @@ function _getParamValue(paramObj) {
         value = [];
 
         for (var j = 0; j < val.length; j++) {
-          value[j] = scientificToDecimal(parseInt(val[j]));
-          value[j] = ethers.utils.hexValue(value[j]);
+          value[j] = scientificToDecimal(val[j]);
+          value[j] = ethers.BigNumber.from(value[j]).toHexString();
         }
 
         break;
 
       case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {}).input:
-        value = scientificToDecimal(parseInt(paramObj.value));
-        value = ethers.utils.hexValue(value);
+        value = scientificToDecimal(paramObj.value);
+        value = ethers.BigNumber.from(value).toHexString();
         break;
 
       case "string":
@@ -1996,9 +1997,13 @@ function _onNetworkId() {
                 }
               } else {
                 return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.INVALID_DATA, "Could not get signature types from server. Contact Biconomy Team"));
-              }
+              } // check if Valid trusted forwarder address is present from system info
 
-              biconomyForwarder = new ethers.Contract(engine.forwarderAddress, biconomyForwarderAbi, engine.ethersProvider); // Get dapps smart contract data from biconomy servers
+
+              if (engine.forwarderAddress && engine.forwarderAddress != "") {
+                biconomyForwarder = new ethers.Contract(engine.forwarderAddress, biconomyForwarderAbi, engine.ethersProvider);
+              } // Get dapps smart contract data from biconomy servers
+
 
               var getDAppInfoAPI = "".concat(baseURL, "/api/").concat(config.version, "/smart-contract");
               fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey)).then(function (response) {

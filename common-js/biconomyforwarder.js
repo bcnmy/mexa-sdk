@@ -27,28 +27,36 @@ var buildForwardTxRequest = /*#__PURE__*/function () {
           case 0:
             newBatch = _args.length > 5 && _args[5] !== undefined ? _args[5] : false;
 
-            if (!newBatch) {
-              _context.next = 7;
+            if (biconomyForwarder) {
+              _context.next = 3;
               break;
             }
 
-            _context.next = 4;
+            throw new Error("Biconomy Forwarder is not defined for current network");
+
+          case 3:
+            if (!newBatch) {
+              _context.next = 9;
+              break;
+            }
+
+            _context.next = 6;
             return biconomyForwarder.getBatch(userAddress);
 
-          case 4:
+          case 6:
             _context.t0 = _context.sent;
-            _context.next = 8;
+            _context.next = 10;
             break;
 
-          case 7:
+          case 9:
             _context.t0 = 0;
 
-          case 8:
+          case 10:
             batchId = _context.t0;
-            _context.next = 11;
+            _context.next = 13;
             return biconomyForwarder.getNonce(account, batchId);
 
-          case 11:
+          case 13:
             batchNonce = _context.sent;
             req = {
               from: account,
@@ -65,7 +73,7 @@ var buildForwardTxRequest = /*#__PURE__*/function () {
               request: req
             });
 
-          case 14:
+          case 16:
           case "end":
             return _context.stop();
         }
