@@ -40,6 +40,9 @@
     "node-fetch": "^2.6.0",
     "promise": "^8.0.3"
   },
+  "engines": {
+    "node": ">=10.22.0"
+  },
   "devDependencies": {
     "@babel/cli": "^7.12.13",
     "@babel/plugin-transform-classes": "^7.12.13",

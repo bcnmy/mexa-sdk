@@ -3,6 +3,9 @@ const {config} = require("./config");
 const ZERO_ADDRESS = config.ZERO_ADDRESS;
 
 const buildForwardTxRequest = async (account, to, gasLimitNum, data, biconomyForwarder, newBatch = false) => {
+    if(!biconomyForwarder) {
+        throw new Error(`Biconomy Forwarder is not defined for current network`);
+    }
     const batchId = newBatch ? await biconomyForwarder.getBatch(userAddress) : 0;
     const batchNonce = await biconomyForwarder.getNonce(account, batchId);
     const req = {

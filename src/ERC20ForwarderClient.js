@@ -665,28 +665,6 @@ class ERC20ForwarderClient {
    */
   async sendTxPersonalSign({ req, signature = null, userAddress }) {
     try {
-      // should we?
-      // check allowance at each final call
-      // needs spendValue that is cost
-
-      /*if(!userAddress)
-        userAddress = await this.provider.getSigner().getAddress();
-
-      const allowedToSpend = await this.erc20ForwarderApproved(
-        req.token,
-        userAddress,
-        spendValue
-      );
-      if (!allowedToSpend) {
-        throw new Error(
-          "You have not given approval to ERC Forwarder contract to spend tokens"
-        );
-      } else {
-        _logMessage(
-          `${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`
-        );
-      }*/
-
       const hashToSign = abi.soliditySHA3(
         [
           "address",
