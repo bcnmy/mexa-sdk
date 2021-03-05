@@ -625,6 +625,21 @@ var erc20ForwarderAbi = [{
   "inputs": [{
     "indexed": true,
     "internalType": "address",
+    "name": "newOracleAggregatorAddress",
+    "type": "address"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "actor",
+    "type": "address"
+  }],
+  "name": "OracleAggregatorChanged",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
     "name": "previousOwner",
     "type": "address"
   }, {
@@ -741,7 +756,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -808,7 +823,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -867,7 +882,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -930,7 +945,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [],
@@ -956,7 +971,7 @@ var erc20ForwarderAbi = [{
   "inputs": [],
   "name": "forwarder",
   "outputs": [{
-    "internalType": "address payable",
+    "internalType": "address",
     "name": "",
     "type": "address"
   }],
@@ -995,7 +1010,7 @@ var erc20ForwarderAbi = [{
   "name": "getNonce",
   "outputs": [{
     "internalType": "uint256",
-    "name": "",
+    "name": "nonce",
     "type": "uint256"
   }],
   "stateMutability": "view",
@@ -1150,7 +1165,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -1258,7 +1273,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -1362,7 +1377,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -1470,7 +1485,7 @@ var erc20ForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [],
@@ -1726,7 +1741,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1748,7 +1763,7 @@ var biconomyForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -1789,7 +1804,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1807,7 +1822,7 @@ var biconomyForwarderAbi = [{
     "name": "ret",
     "type": "bytes"
   }],
-  "stateMutability": "payable",
+  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -1916,7 +1931,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1971,7 +1986,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1983,9 +1998,6 @@ var biconomyForwarderAbi = [{
   "outputs": [],
   "stateMutability": "view",
   "type": "function"
-}, {
-  "stateMutability": "payable",
-  "type": "receive"
 }];
 var daiAbi = [{
   "inputs": [{
@@ -3539,7 +3551,7 @@ var usdcAbi = [{
   }],
   "name": "authorizationState",
   "outputs": [{
-    "internalType": "enum GasAbstraction.AuthorizationState",
+    "internalType": "enumGasAbstraction.AuthorizationState",
     "name": "",
     "type": "uint8"
   }],
@@ -4001,7 +4013,7 @@ var usdcAbi = [{
   "type": "function"
 }, {
   "inputs": [{
-    "internalType": "contract IERC20",
+    "internalType": "contractIERC20",
     "name": "tokenContract",
     "type": "address"
   }, {

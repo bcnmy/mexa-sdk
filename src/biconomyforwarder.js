@@ -27,14 +27,14 @@ const getDomainSeperator = (biconomyForwarderDomainData) => {
         "bytes32",
         "bytes32",
         "bytes32",
-        "uint256",
-        "address"
+        "address",
+        "bytes32",
     ], [
-        ethers.utils.id("EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"),
+        ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"),
         ethers.utils.id(biconomyForwarderDomainData.name),
         ethers.utils.id(biconomyForwarderDomainData.version),
-        biconomyForwarderDomainData.salt,
         biconomyForwarderDomainData.verifyingContract,
+        biconomyForwarderDomainData.salt,
     ]));
     return domainSeparator;
 };
