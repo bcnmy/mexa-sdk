@@ -1741,7 +1741,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1804,7 +1804,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1931,7 +1931,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1986,7 +1986,7 @@ var biconomyForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
