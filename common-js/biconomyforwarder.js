@@ -87,7 +87,7 @@ var buildForwardTxRequest = /*#__PURE__*/function () {
 }();
 
 var getDomainSeperator = function getDomainSeperator(biconomyForwarderDomainData) {
-  var domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "uint256", "address"], [ethers.utils.id("EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"), ethers.utils.id(biconomyForwarderDomainData.name), ethers.utils.id(biconomyForwarderDomainData.version), biconomyForwarderDomainData.salt, biconomyForwarderDomainData.verifyingContract]));
+  var domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(biconomyForwarderDomainData.name), ethers.utils.id(biconomyForwarderDomainData.version), biconomyForwarderDomainData.verifyingContract, biconomyForwarderDomainData.salt]));
   return domainSeparator;
 };
 
