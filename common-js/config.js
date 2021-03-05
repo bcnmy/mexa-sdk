@@ -126,7 +126,8 @@ config.eip2612PermitType = [{
 }, {
   name: "deadline",
   type: "uint256"
-}];
+}]; // This domain type is used in Permit Client where chainId needs to be preserved
+
 config.domainType = [{
   name: "name",
   type: "string"
