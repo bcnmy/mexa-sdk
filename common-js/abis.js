@@ -734,7 +734,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -797,7 +797,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -864,7 +864,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -923,7 +923,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1025,7 +1025,7 @@ var erc20ForwarderAbi = [{
     "name": "_feeManager",
     "type": "address"
   }, {
-    "internalType": "addresspayable",
+    "internalType": "address payable",
     "name": "_forwarder",
     "type": "address"
   }],
@@ -1102,7 +1102,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1151,7 +1151,7 @@ var erc20ForwarderAbi = [{
       "name": "s",
       "type": "bytes32"
     }],
-    "internalType": "structERC20ForwardRequestTypes.PermitRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
     "name": "permitOptions",
     "type": "tuple"
   }],
@@ -1206,7 +1206,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1255,7 +1255,7 @@ var erc20ForwarderAbi = [{
       "name": "s",
       "type": "bytes32"
     }],
-    "internalType": "structERC20ForwardRequestTypes.PermitRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
     "name": "permitOptions",
     "type": "tuple"
   }, {
@@ -1314,7 +1314,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1363,7 +1363,7 @@ var erc20ForwarderAbi = [{
       "name": "s",
       "type": "bytes32"
     }],
-    "internalType": "structERC20ForwardRequestTypes.PermitRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
     "name": "permitOptions",
     "type": "tuple"
   }],
@@ -1418,7 +1418,7 @@ var erc20ForwarderAbi = [{
       "name": "data",
       "type": "bytes"
     }],
-    "internalType": "structERC20ForwardRequestTypes.ERC20ForwardRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.ERC20ForwardRequest",
     "name": "req",
     "type": "tuple"
   }, {
@@ -1467,7 +1467,7 @@ var erc20ForwarderAbi = [{
       "name": "s",
       "type": "bytes32"
     }],
-    "internalType": "structERC20ForwardRequestTypes.PermitRequest",
+    "internalType": "struct ERC20ForwardRequestTypes.PermitRequest",
     "name": "permitOptions",
     "type": "tuple"
   }, {
@@ -1597,7 +1597,7 @@ var erc20ForwarderAbi = [{
   "type": "function"
 }, {
   "inputs": [{
-    "internalType": "addresspayable",
+    "internalType": "address payable",
     "name": "_forwarder",
     "type": "address"
   }],
