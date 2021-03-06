@@ -752,7 +752,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 req = _ref4.req, _ref4$signature = _ref4.signature, signature = _ref4$signature === void 0 ? null : _ref4$signature, userAddress = _ref4.userAddress;
                 _context7.prev = 1;
                 //possibly check allowance here
-                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "uint256", "address"], [ethers.utils.id("EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.salt, this.forwarderDomainData.verifyingContract]));
+                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.verifyingContract, this.forwarderDomainData.salt]));
 
                 if (!this.isSignerWithAccounts) {
                   _context7.next = 7;
@@ -885,7 +885,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
               case 0:
                 req = _ref5.req, _ref5$signature = _ref5.signature, signature = _ref5$signature === void 0 ? null : _ref5$signature, userAddress = _ref5.userAddress, metaInfo = _ref5.metaInfo;
                 _context8.prev = 1;
-                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "uint256", "address"], [ethers.utils.id("EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.salt, this.forwarderDomainData.verifyingContract]));
+                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.verifyingContract, this.forwarderDomainData.salt]));
 
                 if (!this.isSignerWithAccounts) {
                   _context8.next = 7;

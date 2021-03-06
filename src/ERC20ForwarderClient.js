@@ -482,15 +482,15 @@ class ERC20ForwarderClient {
 
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "bytes32", "bytes32", "uint256", "address"],
+          ["bytes32", "bytes32", "bytes32", "address", "bytes32"],
           [
             ethers.utils.id(
-              "EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"
+              "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
             ),
             ethers.utils.id(this.forwarderDomainData.name),
             ethers.utils.id(this.forwarderDomainData.version),
-            this.forwarderDomainData.salt,
             this.forwarderDomainData.verifyingContract,
+            this.forwarderDomainData.salt,
           ]
         )
       );
@@ -577,15 +577,15 @@ class ERC20ForwarderClient {
     try {
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "bytes32", "bytes32", "uint256", "address"],
+          ["bytes32", "bytes32", "bytes32", "address", "bytes32"],
           [
             ethers.utils.id(
-              "EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"
+              "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
             ),
             ethers.utils.id(this.forwarderDomainData.name),
             ethers.utils.id(this.forwarderDomainData.version),
-            this.forwarderDomainData.salt,
             this.forwarderDomainData.verifyingContract,
+            this.forwarderDomainData.salt,
           ]
         )
       );
