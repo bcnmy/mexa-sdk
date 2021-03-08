@@ -31,7 +31,7 @@ function isEtheresProvider(provider) {
  */
 class PermitClient {
   constructor(provider, erc20ForwarderAddress, daiTokenAddress) {
-    if (isEtheresProvider(provider)) {
+    if(isEtheresProvider(provider)) {
       this.provider = provider;
     } else {
       this.provider = new ethers.providers.Web3Provider(provider);
