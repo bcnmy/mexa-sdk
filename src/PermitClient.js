@@ -31,7 +31,7 @@ function isEtheresProvider(provider) {
  */
 class PermitClient {
   constructor(provider, erc20ForwarderAddress, daiTokenAddress) {
-    if(isEtheresProvider(provider)) {
+    if (isEtheresProvider(provider)) {
       this.provider = provider;
     } else {
       this.provider = new ethers.providers.Web3Provider(provider);
@@ -54,9 +54,20 @@ class PermitClient {
       const expiry =
         daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
       const allowed = daiPermitOptions.allowed || true;
-      const userAddress =
-        daiPermitOptions.userAddress ||
-        (await this.provider.getSigner().getAddress());
+
+      let userAddress = daiPermitOptions.userAddress;
+      let isSignerWithAccounts = true;
+      try {
+        userAddress = await this.provider.getSigner().getAddress();
+      } catch (error) {
+        _logMessage("Given provider does not have accounts information");
+        isSignerWithAccounts = false;
+      }
+      if (!userAddress) {
+        throw new Error(
+          "Either pass userAddress param or pass a provider to Biconomy with user accounts information"
+        );
+      }
 
       let network = await this.provider.getNetwork();
       daiDomainData.chainId = network.chainId;
@@ -123,9 +134,20 @@ class PermitClient {
       const value = permitOptions.value;
       const deadline =
         permitOptions.deadline || Math.floor(Date.now() / 1000 + 3600);
-      const userAddress =
-        permitOptions.userAddress ||
-        (await this.provider.getSigner().getAddress());
+
+      let userAddress = permitOptions.userAddress;
+      let isSignerWithAccounts = true;
+      try {
+        userAddress = await this.provider.getSigner().getAddress();
+      } catch (error) {
+        _logMessage("Given provider does not have accounts information");
+        isSignerWithAccounts = false;
+      }
+      if (!userAddress) {
+        throw new Error(
+          "Either pass userAddress param or pass a provider to Biconomy with user accounts information"
+        );
+      }
       const token = new ethers.Contract(
         tokenDomainData.verifyingContract,
         erc20Eip2612Abi,
