@@ -497,6 +497,12 @@ class ERC20ForwarderClient {
 
       if (this.isSignerWithAccounts) {
         userAddress = await this.provider.getSigner().getAddress();
+      } else {
+        if (!signature) {
+          throw new Error(
+            "Either pass signature param or pass a provider to Biconomy with user accounts information"
+          );
+        }
       }
 
       if (!userAddress) {
@@ -592,6 +598,12 @@ class ERC20ForwarderClient {
 
       if (this.isSignerWithAccounts) {
         userAddress = await this.provider.getSigner().getAddress();
+      } else {
+        if (!signature) {
+          throw new Error(
+            "Either pass signature param or pass a provider to Biconomy with user accounts information"
+          );
+        }
       }
 
       if (!userAddress) {
@@ -692,6 +704,12 @@ class ERC20ForwarderClient {
       const signer = this.provider.getSigner();
       if (this.isSignerWithAccounts) {
         userAddress = await signer.getAddress();
+      } else {
+        if (!signature) {
+          throw new Error(
+            "Either pass signature param or pass a provider to Biconomy with user accounts information"
+          );
+        }
       }
 
       if (!userAddress) {

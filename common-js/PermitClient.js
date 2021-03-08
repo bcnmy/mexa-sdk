@@ -84,44 +84,33 @@ var PermitClient = /*#__PURE__*/function () {
                 spender = daiPermitOptions.spender || this.erc20ForwarderAddress;
                 expiry = daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
                 allowed = daiPermitOptions.allowed || true;
-                _context.prev = 4;
-                _context.next = 7;
-                return this.provider.getSigner().getAddress();
+                _context.t0 = daiPermitOptions.userAddress;
 
-              case 7:
-                userAddress = _context.sent;
-                _context.next = 14;
-                break;
-
-              case 10:
-                _context.prev = 10;
-                _context.t0 = _context["catch"](4);
-
-                _logMessage("Given provider does not have accounts information");
-
-                userAddress = daiPermitOptions.userAddress;
-
-              case 14:
-                if (userAddress) {
-                  _context.next = 16;
+                if (_context.t0) {
+                  _context.next = 9;
                   break;
                 }
 
-                throw new Error("Either pass userAddress in permit options or pass a provider to Biconomy with user accounts information");
+                _context.next = 8;
+                return this.provider.getSigner().getAddress();
 
-              case 16:
-                _context.next = 18;
+              case 8:
+                _context.t0 = _context.sent;
+
+              case 9:
+                userAddress = _context.t0;
+                _context.next = 12;
                 return this.provider.getNetwork();
 
-              case 18:
+              case 12:
                 network = _context.sent;
                 daiDomainData.chainId = network.chainId;
                 daiDomainData.verifyingContract = this.daiTokenAddress;
                 dai = new ethers.Contract(this.daiDomainData.verifyingContract, daiAbi, this.provider.getSigner());
-                _context.next = 24;
+                _context.next = 18;
                 return dai.nonces(userAddress);
 
-              case 24:
+              case 18:
                 nonce = _context.sent;
                 permitDataToSign = {
                   types: {
@@ -138,10 +127,10 @@ var PermitClient = /*#__PURE__*/function () {
                     allowed: true
                   }
                 };
-                _context.next = 28;
+                _context.next = 22;
                 return this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign)]);
 
-              case 28:
+              case 22:
                 result = _context.sent;
 
                 _logMessage("success", result);
@@ -150,27 +139,27 @@ var PermitClient = /*#__PURE__*/function () {
                 r = "0x" + signature.substring(0, 64);
                 s = "0x" + signature.substring(64, 128);
                 v = parseInt(signature.substring(128, 130), 16);
-                _context.next = 36;
+                _context.next = 30;
                 return dai.permit(userAddress, spender, parseInt(nonce), parseInt(expiry.toString()), allowed, v, r, s);
 
-              case 36:
+              case 30:
                 tx = _context.sent;
                 return _context.abrupt("return", tx);
 
-              case 40:
-                _context.prev = 40;
+              case 34:
+                _context.prev = 34;
                 _context.t1 = _context["catch"](0);
 
                 _logMessage(_context.t1);
 
                 throw _context.t1;
 
-              case 44:
+              case 38:
               case "end":
                 return _context.stop();
             }
           }
-        }, _callee, this, [[0, 40], [4, 10]]);
+        }, _callee, this, [[0, 34]]);
       }));
 
       function daiPermit(_x) {
@@ -201,37 +190,26 @@ var PermitClient = /*#__PURE__*/function () {
                 spender = permitOptions.spender || this.erc20ForwarderAddress;
                 value = permitOptions.value;
                 deadline = permitOptions.deadline || Math.floor(Date.now() / 1000 + 3600);
-                _context2.prev = 5;
-                _context2.next = 8;
-                return this.provider.getSigner().getAddress();
+                _context2.t0 = permitOptions.userAddress;
 
-              case 8:
-                userAddress = _context2.sent;
-                _context2.next = 15;
-                break;
-
-              case 11:
-                _context2.prev = 11;
-                _context2.t0 = _context2["catch"](5);
-
-                _logMessage("Given provider does not have accounts information");
-
-                userAddress = permitOptions.userAddress;
-
-              case 15:
-                if (userAddress) {
-                  _context2.next = 17;
+                if (_context2.t0) {
+                  _context2.next = 10;
                   break;
                 }
 
-                throw new Error("Either pass userAddress in permit options or pass a provider to Biconomy with user accounts information");
+                _context2.next = 9;
+                return this.provider.getSigner().getAddress();
 
-              case 17:
+              case 9:
+                _context2.t0 = _context2.sent;
+
+              case 10:
+                userAddress = _context2.t0;
                 token = new ethers.Contract(tokenDomainData.verifyingContract, erc20Eip2612Abi, this.provider.getSigner());
-                _context2.next = 20;
+                _context2.next = 14;
                 return token.nonces(userAddress);
 
-              case 20:
+              case 14:
                 nonce = _context2.sent;
                 permitDataToSign = {
                   types: {
@@ -248,10 +226,10 @@ var PermitClient = /*#__PURE__*/function () {
                     deadline: parseInt(deadline)
                   }
                 };
-                _context2.next = 24;
+                _context2.next = 18;
                 return this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign)]);
 
-              case 24:
+              case 18:
                 result = _context2.sent;
 
                 _logMessage("success", result);
@@ -260,27 +238,27 @@ var PermitClient = /*#__PURE__*/function () {
                 r = "0x" + signature.substring(0, 64);
                 s = "0x" + signature.substring(64, 128);
                 v = parseInt(signature.substring(128, 130), 16);
-                _context2.next = 32;
+                _context2.next = 26;
                 return token.permit(userAddress, spender, value, parseInt(deadline.toString()), v, r, s);
 
-              case 32:
+              case 26:
                 tx = _context2.sent;
                 return _context2.abrupt("return", tx);
 
-              case 36:
-                _context2.prev = 36;
+              case 30:
+                _context2.prev = 30;
                 _context2.t1 = _context2["catch"](0);
 
                 _logMessage(_context2.t1);
 
                 throw _context2.t1;
 
-              case 40:
+              case 34:
               case "end":
                 return _context2.stop();
             }
           }
-        }, _callee2, this, [[0, 36], [5, 11]]);
+        }, _callee2, this, [[0, 30]]);
       }));
 
       function eip2612Permit(_x2) {
