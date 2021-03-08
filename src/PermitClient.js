@@ -55,17 +55,16 @@ class PermitClient {
         daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
       const allowed = daiPermitOptions.allowed || true;
 
-      let userAddress = daiPermitOptions.userAddress;
-      let isSignerWithAccounts = true;
+      let userAddress;
       try {
         userAddress = await this.provider.getSigner().getAddress();
       } catch (error) {
         _logMessage("Given provider does not have accounts information");
-        isSignerWithAccounts = false;
+        userAddress = daiPermitOptions.userAddress;
       }
       if (!userAddress) {
         throw new Error(
-          "Either pass userAddress param or pass a provider to Biconomy with user accounts information"
+          "Either pass userAddress in permit options or pass a provider to Biconomy with user accounts information"
         );
       }
 
@@ -135,17 +134,16 @@ class PermitClient {
       const deadline =
         permitOptions.deadline || Math.floor(Date.now() / 1000 + 3600);
 
-      let userAddress = permitOptions.userAddress;
-      let isSignerWithAccounts = true;
+      let userAddress;
       try {
         userAddress = await this.provider.getSigner().getAddress();
       } catch (error) {
         _logMessage("Given provider does not have accounts information");
-        isSignerWithAccounts = false;
+        userAddress = permitOptions.userAddress;
       }
       if (!userAddress) {
         throw new Error(
-          "Either pass userAddress param or pass a provider to Biconomy with user accounts information"
+          "Either pass userAddress in permit options or pass a provider to Biconomy with user accounts information"
         );
       }
       const token = new ethers.Contract(
