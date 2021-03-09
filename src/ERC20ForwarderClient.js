@@ -67,7 +67,9 @@ class ERC20ForwarderClient {
     feeManager,
     isSignerWithAccounts,
     tokenGasPriceV1SupportedNetworks,
-    trustedForwarderOverhead
+    trustedForwarderOverhead,
+    daiPermitOverhead,
+    eip2612PermitOverhead,
   }) {
     this.biconomyAttributes = forwarderClientOptions;
     this.networkId = networkId;
@@ -82,6 +84,8 @@ class ERC20ForwarderClient {
     this.isSignerWithAccounts = isSignerWithAccounts;
     this.tokenGasPriceV1SupportedNetworks = tokenGasPriceV1SupportedNetworks;
     this.trustedForwarderOverhead = trustedForwarderOverhead;
+    this.daiPermitOverhead = daiPermitOverhead;
+    this.eip2612PermitOverhead = eip2612PermitOverhead;
   }
 
   /**
@@ -258,8 +262,21 @@ class ERC20ForwarderClient {
    * @param {string} data Encoded target method data to be called
    * @param {number} batchId Batch id used to determine user nonce on Biconomy Forwarder contract
    * @param {number} deadlineInSec Deadline in seconds after which transaction will fail
+   * @param {string} userAddress <Optional> If provider is not signer with accounts userAddress must be passed
+   * @param {string} permitType <Optional> only to be passed if intended for permit chained execution.
    */
-  async buildTx({to, token, txGas, data, batchId = 0, deadlineInSec = 3600, userAddress}) {
+  //todo
+  //needs changes in checking token approval and cost calculation to be moved elsewhere
+  async buildTx({
+    to,
+    token,
+    txGas,
+    data,
+    batchId = 0,
+    deadlineInSec = 3600,
+    userAddress,
+    permitType,
+  }) {
     try {
       if (!this.forwarder)
         throw new Error(
@@ -278,6 +295,14 @@ class ERC20ForwarderClient {
           "Biconomy Fee Proxy contract is not initialized properly."
         );
 
+      if (permitType) {
+        if (!permitType == config.DAI || !permitType == config.EIP2612) {
+          throw new Error(
+            "permit type passed is not matching expected possible values"
+          );
+        }
+      }
+
       if (!ethers.utils.isAddress(to))
         throw new Error(`"to" address ${to} is not a valid ethereum address`);
       if (!ethers.utils.isAddress(token))
@@ -293,10 +318,10 @@ class ERC20ForwarderClient {
         );
 
       await this.checkTokenSupport(token);
-      
-      if(!userAddress)
+
+      if (!userAddress)
         userAddress = await this.provider.getSigner().getAddress();
-      
+
       let nonce = await this.forwarder.getNonce(userAddress, batchId);
       const tokenGasPrice = await this.getTokenGasPrice(token);
 
@@ -335,6 +360,31 @@ class ERC20ForwarderClient {
           `One of the values is undefined. feeMultiplier: ${feeMultiplier} tokenOracleDecimals: ${tokenOracleDecimals} transferHandlerGas: ${transferHandlerGas}`
         );
 
+      // if intended for permit chained execution then should add gas usage cost of each type of permit
+
+      let permitFees;
+      if (permitType) {
+        let overHead =
+          permitType == config.DAI
+            ? this.daiPermitOverhead
+            : this.eip2612PermitOverhead;
+        let permitCost = ethers.BigNumber.from(overHead.toString())
+          .mul(ethers.BigNumber.from(req.tokenGasPrice))
+          .mul(ethers.BigNumber.from(feeMultiplier.toString()))
+          .div(ethers.BigNumber.from(10000));
+
+        let tokenSpendValue = parseFloat(permitCost).toString();
+        permitCost = (
+          parseFloat(permitCost) /
+          parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))
+        ).toFixed(3);
+
+        permitFees = parseFloat(permitCost.toString()); // Exact amount in tokens
+        _logMessage(
+          `Estimated Permit Transaction Fee in token address ${token} is ${permitFees}`
+        );
+      }
+
       let cost = ethers.BigNumber.from(req.txGas.toString())
         .add(ethers.BigNumber.from(this.trustedForwarderOverhead.toString())) // Estimate on the higher end
         .add(transferHandlerGas)
@@ -351,22 +401,30 @@ class ERC20ForwarderClient {
         `Estimated Transaction Fee in token address ${token} is ${fee}`
       );
 
-      const allowedToSpend = await this.erc20ForwarderApproved(
-        req.token,
-        userAddress,
-        spendValue
-      );
-      if (!allowedToSpend) {
-        throw new Error(
-          "You have not given approval to ERC Forwarder contract to spend tokens"
-        );
-      } else {
-        _logMessage(
-          `${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`
-        );
+      let totalFees = fee;
+      if (permitFees) {
+        totalFees = parseFloat(fee + permitFees).toFixed(3);
       }
 
-      return { request: req, cost: fee };
+      // if intended for permit chained execution then should not check allowance
+      if (!permitType) {
+        const allowedToSpend = await this.erc20ForwarderApproved(
+          req.token,
+          userAddress,
+          spendValue
+        );
+        if (!allowedToSpend) {
+          throw new Error(
+            "You have not given approval to ERC Forwarder contract to spend tokens"
+          );
+        } else {
+          _logMessage(
+            `${userAddress} has given permission ${this.erc20Forwarder.address} to spend required amount of tokens`
+          );
+        }
+      }
+
+      return { request: req, cost: totalFees };
     } catch (error) {
       _logMessage(error);
       throw error;
@@ -420,23 +478,31 @@ class ERC20ForwarderClient {
    */
   async sendTxEIP712({ req, signature = null, userAddress }) {
     try {
+      //possibly check allowance here
+
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "bytes32", "bytes32", "uint256", "address"],
+          ["bytes32", "bytes32", "bytes32", "address", "bytes32"],
           [
             ethers.utils.id(
-              "EIP712Domain(string name,string version,uint256 salt,address verifyingContract)"
+              "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
             ),
             ethers.utils.id(this.forwarderDomainData.name),
             ethers.utils.id(this.forwarderDomainData.version),
-            this.forwarderDomainData.salt,
             this.forwarderDomainData.verifyingContract,
+            this.forwarderDomainData.salt,
           ]
         )
       );
 
       if (this.isSignerWithAccounts) {
         userAddress = await this.provider.getSigner().getAddress();
+      } else {
+        if (!signature) {
+          throw new Error(
+            "Either pass signature param or pass a provider to Biconomy with user accounts information"
+          );
+        }
       }
 
       if (!userAddress) {
@@ -465,7 +531,7 @@ class ERC20ForwarderClient {
       const api = this.getApiId(req);
       if (!api || !api.id)
         throw new Error(
-          "Could not find the apiId for the given request. Contact Biconomy for resolution"
+          "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
         );
 
       const apiId = api.id;
@@ -474,6 +540,108 @@ class ERC20ForwarderClient {
         from: userAddress,
         apiId: apiId,
         params: [req, domainSeparator, sig],
+        signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
+      };
+
+      const txResponse = await fetch(
+        `${config.baseURL}/api/v2/meta-tx/native`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": this.biconomyAttributes.apiKey,
+          },
+          body: JSON.stringify(metaTxBody),
+        }
+      );
+
+      return await txResponse.json();
+    } catch (error) {
+      _logMessage(error);
+      throw error;
+    }
+  }
+
+  /**
+   * Method gets the user signature in EIP712 format and send the transaction
+   * via Biconomy meta transaction API .
+   * Check buildTx() method to see how to build the req object.
+   * Signature param and userAddress are optional if you have initialized biconomy
+   * with a provider that has user account information.
+   *
+   * @param {object} req Request object to be signed and sent
+   * @param {string} signature Signature string singed from user account
+   * @param {string} userAddress User blockchain address
+   * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options.
+   */
+  async permitAndSendTxEIP712({
+    req,
+    signature = null,
+    userAddress,
+    metaInfo,
+  }) {
+    try {
+      const domainSeparator = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "bytes32", "bytes32", "address", "bytes32"],
+          [
+            ethers.utils.id(
+              "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
+            ),
+            ethers.utils.id(this.forwarderDomainData.name),
+            ethers.utils.id(this.forwarderDomainData.version),
+            this.forwarderDomainData.verifyingContract,
+            this.forwarderDomainData.salt,
+          ]
+        )
+      );
+
+      if (this.isSignerWithAccounts) {
+        userAddress = await this.provider.getSigner().getAddress();
+      } else {
+        if (!signature) {
+          throw new Error(
+            "Either pass signature param or pass a provider to Biconomy with user accounts information"
+          );
+        }
+      }
+
+      if (!userAddress) {
+        throw new Error(
+          "Either pass userAddress param or pass a provider to Biconomy with user accounts information"
+        );
+      }
+
+      const dataToSign = {
+        types: {
+          EIP712Domain: this.forwarderDomainType,
+          ERC20ForwardRequest: erc20ForwardRequestType,
+        },
+        domain: this.forwarderDomainData,
+        primaryType: "ERC20ForwardRequest",
+        message: req,
+      };
+
+      const sig =
+        signature == null
+          ? await this.provider.send("eth_signTypedData_v3", [
+              req.from,
+              JSON.stringify(dataToSign),
+            ])
+          : signature;
+      const api = this.getApiId(req);
+      if (!api || !api.id)
+        throw new Error(
+          "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
+        );
+
+      const apiId = api.id;
+      const metaTxBody = {
+        to: req.to,
+        from: userAddress,
+        apiId: apiId,
+        params: [req, domainSeparator, sig],
+        metaInfo: metaInfo, // just pass it on
         signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
       };
 
@@ -536,6 +704,12 @@ class ERC20ForwarderClient {
       const signer = this.provider.getSigner();
       if (this.isSignerWithAccounts) {
         userAddress = await signer.getAddress();
+      } else {
+        if (!signature) {
+          throw new Error(
+            "Either pass signature param or pass a provider to Biconomy with user accounts information"
+          );
+        }
       }
 
       if (!userAddress) {
@@ -556,7 +730,7 @@ class ERC20ForwarderClient {
       const api = this.getApiId(req);
       if (!api || !api.id)
         throw new Error(
-          "Could not find the apiId for the given request. Contact Biconomy for resolution"
+          "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
         );
 
       const apiId = api.id;

@@ -57,6 +57,8 @@ var events = require("events");
 
 var eventEmitter = new events.EventEmitter();
 var trustedForwarderOverhead;
+var daiPermitOverhead;
+var eip2612PermitOverhead;
 var domainType, forwarderDomainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType;
 var domainData = {
   name: config.eip712DomainName,
@@ -342,21 +344,21 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
   var engine = this;
   return new Promise( /*#__PURE__*/function () {
     var _ref3 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(resolve, reject) {
-      var decodedTx, to, methodInfo, error, methodName, token, api, _error, params, paramArray, i, parsedTransaction, account, contractAddr, metaTxApproach, gasLimit, gasLimitNum, contractABI, _contract$estimateGas, contract, _error2, request, cost, buildTxResponse, _error3, eip712DataToSign, hashToSign, dataToSign, _error4;
+      var decodedTx, to, methodInfo, error, methodName, token, api, metaTxApproach, contractAddr, _error, params, paramArray, i, parsedTransaction, account, gasLimit, gasLimitNum, contractABI, _contract$estimateGas, contract, _error2, request, cost, buildTxResponse, _error3, eip712DataToSign, hashToSign, dataToSign, _error4;
 
       return _regenerator["default"].wrap(function _callee3$(_context3) {
         while (1) {
           switch (_context3.prev = _context3.next) {
             case 0:
               if (!rawTransaction) {
-                _context3.next = 72;
+                _context3.next = 70;
                 break;
               }
 
               decodedTx = txDecoder.decodeTx(rawTransaction);
 
               if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-                _context3.next = 69;
+                _context3.next = 67;
                 break;
               }
 
@@ -383,6 +385,10 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
 
               if (!api) {
                 api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
+                metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+              } else {
+                contractAddr = api.contractAddress.toLowerCase();
+                metaTxApproach = smartContractMetaTransactionMap[contractAddr];
               }
 
               if (api) {
@@ -411,72 +417,70 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
 
               _logMessage("Signer is ".concat(account));
 
-              contractAddr = api.contractAddress.toLowerCase();
-              metaTxApproach = smartContractMetaTransactionMap[contractAddr];
               gasLimit = decodedTx.gasLimit;
 
               if (!(!gasLimit || parseInt(gasLimit) == 0)) {
-                _context3.next = 40;
+                _context3.next = 38;
                 break;
               }
 
               contractABI = smartContractMap[to];
 
               if (!contractABI) {
-                _context3.next = 38;
+                _context3.next = 36;
                 break;
               }
 
               contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-              _context3.next = 35;
+              _context3.next = 33;
               return (_contract$estimateGas = contract.estimateGas)[methodName].apply(_contract$estimateGas, paramArray.concat([{
                 from: account
               }]));
 
-            case 35:
+            case 33:
               gasLimit = _context3.sent;
               // Do not send this value in API call. only meant for txGas
               gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
 
               _logMessage("Gas limit number ".concat(gasLimitNum));
 
-            case 38:
-              _context3.next = 41;
+            case 36:
+              _context3.next = 39;
               break;
 
-            case 40:
+            case 38:
               gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
 
-            case 41:
+            case 39:
               if (account) {
-                _context3.next = 44;
+                _context3.next = 42;
                 break;
               }
 
               _error2 = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Not able to get user account from signed transaction");
               return _context3.abrupt("return", end(_error2));
 
-            case 44:
+            case 42:
               if (!(metaTxApproach == engine.TRUSTED_FORWARDER)) {
-                _context3.next = 50;
+                _context3.next = 48;
                 break;
               }
 
-              _context3.next = 47;
+              _context3.next = 45;
               return buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder);
 
-            case 47:
+            case 45:
               request = _context3.sent.request;
-              _context3.next = 60;
+              _context3.next = 58;
               break;
 
-            case 50:
+            case 48:
               if (!(metaTxApproach == engine.ERC20_FORWARDER)) {
-                _context3.next = 57;
+                _context3.next = 55;
                 break;
               }
 
-              _context3.next = 53;
+              _context3.next = 51;
               return engine.erc20ForwarderClient.buildTx({
                 userAddress: account,
                 to: to,
@@ -485,7 +489,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 token: token
               });
 
-            case 53:
+            case 51:
               buildTxResponse = _context3.sent;
 
               if (buildTxResponse) {
@@ -495,15 +499,15 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Unable to build forwarder request"));
               }
 
-              _context3.next = 60;
+              _context3.next = 58;
               break;
 
-            case 57:
+            case 55:
               _error3 = formatMessage(RESPONSE_CODES.INVALID_OPERATION, "Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign");
               if (cb) cb(_error3);
               return _context3.abrupt("return", reject(_error3));
 
-            case 60:
+            case 58:
               _logMessage("Forward Request is: ");
 
               _logMessage(request);
@@ -527,12 +531,12 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
               if (cb) cb(null, dataToSign);
               return _context3.abrupt("return", resolve(dataToSign));
 
-            case 69:
+            case 67:
               _error4 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
               if (cb) cb(_error4);
               return _context3.abrupt("return", reject(_error4));
 
-            case 72:
+            case 70:
             case "end":
               return _context3.stop();
           }
@@ -621,14 +625,14 @@ function sendSignedTransaction(_x5, _x6, _x7) {
 
 function _sendSignedTransaction() {
   _sendSignedTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(engine, payload, end) {
-    var data, rawTransaction, signature, request, signatureType, decodedTx, to, methodInfo, error, methodName, api, _error5, params, paramArray, contractAddr, metaTxApproach, parsedTransaction, account, _error6, forwardedData, gasLimitNum, gasLimit, paramArrayForGasCalculation, i, contractABI, _contract$estimateGas2, contract, domainSeparator, _data, _i, _data2, relayerPayment, _data3, _error7, _error8, _error9, _error10;
+    var data, rawTransaction, signature, request, signatureType, decodedTx, to, methodInfo, error, methodName, api, metaTxApproach, contractAddr, _error5, params, paramArray, parsedTransaction, account, _error6, forwardedData, gasLimitNum, gasLimit, paramArrayForGasCalculation, i, contractABI, _contract$estimateGas2, contract, domainSeparator, _data, _i, _data2, relayerPayment, _data3, _error7, _error8, _error9, _error10;
 
     return _regenerator["default"].wrap(function _callee7$(_context7) {
       while (1) {
         switch (_context7.prev = _context7.next) {
           case 0:
             if (!(payload && payload.params[0])) {
-              _context7.next = 100;
+              _context7.next = 98;
               break;
             }
 
@@ -650,14 +654,14 @@ function _sendSignedTransaction() {
             }
 
             if (!rawTransaction) {
-              _context7.next = 95;
+              _context7.next = 93;
               break;
             }
 
             decodedTx = txDecoder.decodeTx(rawTransaction);
 
             if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-              _context7.next = 90;
+              _context7.next = 88;
               break;
             }
 
@@ -699,6 +703,10 @@ function _sendSignedTransaction() {
 
             if (!api) {
               api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
+              metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+            } else {
+              contractAddr = api.contractAddress.toLowerCase();
+              metaTxApproach = smartContractMetaTransactionMap[contractAddr];
             }
 
             if (api) {
@@ -732,31 +740,29 @@ function _sendSignedTransaction() {
 
             params = methodInfo.params;
             paramArray = [];
-            contractAddr = api.contractAddress.toLowerCase();
-            metaTxApproach = smartContractMetaTransactionMap[contractAddr];
             parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
             account = parsedTransaction ? parsedTransaction.from : undefined;
 
             _logMessage("signer is ".concat(account));
 
             if (account) {
-              _context7.next = 44;
+              _context7.next = 42;
               break;
             }
 
             _error6 = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Not able to get user account from signed transaction");
             return _context7.abrupt("return", end(_error6));
 
-          case 44:
+          case 42:
             gasLimit = decodedTx.gasLimit;
 
             if (!(api.url == NATIVE_META_TX_URL)) {
-              _context7.next = 87;
+              _context7.next = 85;
               break;
             }
 
             if (!(metaTxApproach != engine.DEFAULT)) {
-              _context7.next = 76;
+              _context7.next = 74;
               break;
             }
 
@@ -769,38 +775,38 @@ function _sendSignedTransaction() {
             }
 
             if (!(!gasLimit || parseInt(gasLimit) == 0)) {
-              _context7.next = 61;
+              _context7.next = 59;
               break;
             }
 
             contractABI = smartContractMap[to];
 
             if (!contractABI) {
-              _context7.next = 59;
+              _context7.next = 57;
               break;
             }
 
             contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-            _context7.next = 56;
+            _context7.next = 54;
             return (_contract$estimateGas2 = contract.estimateGas)[methodName].apply(_contract$estimateGas2, paramArrayForGasCalculation.concat([{
               from: account
             }]));
 
-          case 56:
+          case 54:
             gasLimit = _context7.sent;
             // do not send this value in API call. only meant for txGas
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
 
             _logMessage("gas limit number" + gasLimitNum);
 
-          case 59:
-            _context7.next = 62;
+          case 57:
+            _context7.next = 60;
             break;
 
-          case 61:
+          case 59:
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
 
-          case 62:
+          case 60:
             _logMessage(request);
 
             paramArray.push(request);
@@ -824,14 +830,14 @@ function _sendSignedTransaction() {
               _data.signatureType = engine.EIP712_SIGN;
             }
 
-            _context7.next = 74;
+            _context7.next = 72;
             return _sendTransaction(engine, account, api, _data, end);
 
-          case 74:
-            _context7.next = 85;
+          case 72:
+            _context7.next = 83;
             break;
 
-          case 76:
+          case 74:
             for (_i = 0; _i < params.length; _i++) {
               paramArray.push(_getParamValue(params[_i]));
             }
@@ -843,14 +849,14 @@ function _sendSignedTransaction() {
             _data2.gasLimit = decodedTx.gasLimit.toString(); //verify
 
             _data2.to = decodedTx.to.toLowerCase();
-            _context7.next = 85;
+            _context7.next = 83;
             return _sendTransaction(engine, account, api, _data2, end);
 
-          case 85:
-            _context7.next = 88;
+          case 83:
+            _context7.next = 86;
             break;
 
-          case 87:
+          case 85:
             if (signature) {
               relayerPayment = {};
               relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
@@ -879,34 +885,34 @@ function _sendSignedTransaction() {
               end(_error7);
             }
 
-          case 88:
-            _context7.next = 93;
+          case 86:
+            _context7.next = 91;
             break;
 
-          case 90:
+          case 88:
             _error8 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Not able to deode the data in rawTransaction using ethereum-tx-decoder. Please check the data sent.");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error8);
             end(_error8);
 
-          case 93:
-            _context7.next = 98;
+          case 91:
+            _context7.next = 96;
             break;
 
-          case 95:
+          case 93:
             _error9 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload.params[0]), ".rawTransaction is required in param object"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error9);
             end(_error9);
 
-          case 98:
-            _context7.next = 103;
+          case 96:
+            _context7.next = 101;
             break;
 
-          case 100:
+          case 98:
             _error10 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload.params[0]), ". Non empty Array expected in params key"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error10);
             end(_error10);
 
-          case 103:
+          case 101:
           case "end":
             return _context7.stop();
         }
@@ -922,7 +928,7 @@ function handleSendTransaction(_x8, _x9, _x10) {
 
 function _handleSendTransaction() {
   _handleSendTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee8(engine, payload, end) {
-    var to, methodInfo, error, methodName, api, gasLimit, signatureType, _error11, account, params, paramArray, contractAddr, metaTxApproach, _error12, forwardedData, gasLimitNum, signatureFromPayload, paramArrayForGasCalculation, i, contractABI, _contract$estimateGas3, contract, _error13, request, domainSeparator, signatureEIP712, signaturePersonal, data, _i2, _data4, _error14, _error15, _error16;
+    var to, methodInfo, error, methodName, api, metaTxApproach, contractAddr, gasLimit, signatureType, _error11, account, params, paramArray, _error12, forwardedData, gasLimitNum, signatureFromPayload, paramArrayForGasCalculation, i, contractABI, _contract$estimateGas3, contract, _error13, request, domainSeparator, signatureEIP712, signaturePersonal, data, _i2, _data4, _error14, _error15, _error16;
 
     return _regenerator["default"].wrap(function _callee8$(_context8) {
       while (1) {
@@ -933,14 +939,14 @@ function _handleSendTransaction() {
             _logMessage(payload);
 
             if (!(payload.params && payload.params[0] && payload.params[0].to)) {
-              _context8.next = 137;
+              _context8.next = 135;
               break;
             }
 
             to = payload.params[0].to.toLowerCase();
 
             if (!(decoderMap[to] || decoderMap[config.SCW])) {
-              _context8.next = 127;
+              _context8.next = 125;
               break;
             }
 
@@ -966,6 +972,10 @@ function _handleSendTransaction() {
 
             if (!api) {
               api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
+              metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+            } else {
+              contractAddr = api.contractAddress.toLowerCase();
+              metaTxApproach = smartContractMetaTransactionMap[contractAddr];
             }
 
             gasLimit = payload.params[0].gas;
@@ -1020,11 +1030,9 @@ function _handleSendTransaction() {
 
             params = methodInfo.params;
             paramArray = [];
-            contractAddr = api.contractAddress.toLowerCase();
-            metaTxApproach = smartContractMetaTransactionMap[contractAddr];
 
             if (!(metaTxApproach == engine.ERC20_FORWARDER)) {
-              _context8.next = 46;
+              _context8.next = 44;
               break;
             }
 
@@ -1032,14 +1040,14 @@ function _handleSendTransaction() {
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error12);
             return _context8.abrupt("return", end(_error12));
 
-          case 46:
+          case 44:
             if (!(api.url == NATIVE_META_TX_URL)) {
-              _context8.next = 122;
+              _context8.next = 120;
               break;
             }
 
             if (!(metaTxApproach == engine.TRUSTED_FORWARDER)) {
-              _context8.next = 112;
+              _context8.next = 110;
               break;
             }
 
@@ -1057,35 +1065,35 @@ function _handleSendTransaction() {
             contractABI = smartContractMap[to];
 
             if (!contractABI) {
-              _context8.next = 62;
+              _context8.next = 60;
               break;
             }
 
             contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-            _context8.next = 58;
+            _context8.next = 56;
             return (_contract$estimateGas3 = contract.estimateGas)[methodName].apply(_contract$estimateGas3, paramArrayForGasCalculation.concat([{
               from: account
             }]));
 
-          case 58:
+          case 56:
             gasLimitNum = _context8.sent;
 
             _logMessage("Gas limit calculated for method ".concat(methodName, " in SDK: ").concat(gasLimitNum));
 
-            _context8.next = 65;
+            _context8.next = 63;
             break;
 
-          case 62:
+          case 60:
             _error13 = formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND, "Smart contract ABI not found!");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error13);
             end(_error13);
 
-          case 65:
-            _context8.next = 67;
+          case 63:
+            _context8.next = 65;
             return buildForwardTxRequest(account, to, parseInt(gasLimitNum), //txGas
             forwardedData, biconomyForwarder);
 
-          case 67:
+          case 65:
             request = _context8.sent.request;
 
             _logMessage(request);
@@ -1093,7 +1101,7 @@ function _handleSendTransaction() {
             paramArray.push(request);
 
             if (!(signatureType && signatureType == engine.EIP712_SIGN)) {
-              _context8.next = 87;
+              _context8.next = 85;
               break;
             }
 
@@ -1106,7 +1114,7 @@ function _handleSendTransaction() {
             paramArray.push(domainSeparator);
 
             if (!signatureFromPayload) {
-              _context8.next = 80;
+              _context8.next = 78;
               break;
             }
 
@@ -1114,26 +1122,26 @@ function _handleSendTransaction() {
 
             _logMessage("EIP712 signature from payload is ".concat(signatureEIP712));
 
-            _context8.next = 84;
+            _context8.next = 82;
             break;
 
-          case 80:
-            _context8.next = 82;
+          case 78:
+            _context8.next = 80;
             return getSignatureEIP712(engine, account, request);
 
-          case 82:
+          case 80:
             signatureEIP712 = _context8.sent;
 
             _logMessage("EIP712 signature is ".concat(signatureEIP712));
 
-          case 84:
+          case 82:
             paramArray.push(signatureEIP712);
-            _context8.next = 101;
+            _context8.next = 99;
             break;
 
-          case 87:
+          case 85:
             if (!signatureFromPayload) {
-              _context8.next = 92;
+              _context8.next = 90;
               break;
             }
 
@@ -1141,32 +1149,32 @@ function _handleSendTransaction() {
 
             _logMessage("Personal signature from payload is ".concat(signaturePersonal));
 
-            _context8.next = 96;
+            _context8.next = 94;
             break;
 
-          case 92:
-            _context8.next = 94;
+          case 90:
+            _context8.next = 92;
             return getSignaturePersonal(engine, request);
 
-          case 94:
+          case 92:
             signaturePersonal = _context8.sent;
 
             _logMessage("Personal signature is ".concat(signaturePersonal));
 
-          case 96:
+          case 94:
             if (!signaturePersonal) {
-              _context8.next = 100;
+              _context8.next = 98;
               break;
             }
 
             paramArray.push(signaturePersonal);
-            _context8.next = 101;
+            _context8.next = 99;
             break;
 
-          case 100:
+          case 98:
             throw new Error("Could not get personal signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy");
 
-          case 101:
+          case 99:
             data = {};
             data.from = account;
             data.apiId = api.id;
@@ -1178,14 +1186,14 @@ function _handleSendTransaction() {
               data.signatureType = engine.EIP712_SIGN;
             }
 
-            _context8.next = 110;
+            _context8.next = 108;
             return _sendTransaction(engine, account, api, data, end);
 
-          case 110:
-            _context8.next = 120;
+          case 108:
+            _context8.next = 118;
             break;
 
-          case 112:
+          case 110:
             for (_i2 = 0; _i2 < params.length; _i2++) {
               paramArray.push(_getParamValue(params[_i2]));
             }
@@ -1199,46 +1207,46 @@ function _handleSendTransaction() {
 
             _sendTransaction(engine, account, api, _data4, end);
 
-          case 120:
-            _context8.next = 125;
+          case 118:
+            _context8.next = 123;
             break;
 
-          case 122:
+          case 120:
             _error14 = formatMessage(RESPONSE_CODES.INVALID_OPERATION, "Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with \"native meta tx\" checkbox selected.");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error14);
             return _context8.abrupt("return", end(_error14));
 
-          case 125:
-            _context8.next = 135;
+          case 123:
+            _context8.next = 133;
             break;
 
-          case 127:
+          case 125:
             if (!engine.strictMode) {
-              _context8.next = 133;
+              _context8.next = 131;
               break;
             }
 
             _error15 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error15);
             end(_error15);
-            _context8.next = 135;
+            _context8.next = 133;
             break;
 
-          case 133:
+          case 131:
             _logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
 
             return _context8.abrupt("return", callDefaultProvider(engine, payload, end, "Current provider can't send transactions and smart contract ".concat(to, " not found on Biconomy Dashbaord")));
 
-          case 135:
-            _context8.next = 140;
+          case 133:
+            _context8.next = 138;
             break;
 
-          case 137:
+          case 135:
             _error16 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload), ". Expecting params key to be an array with first element having a 'to' property"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error16);
             end(_error16);
 
-          case 140:
+          case 138:
           case "end":
             return _context8.stop();
         }
@@ -1550,7 +1558,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
           case 30:
             forwarderAddress = _context5.sent;
             oracleAggregator = new ethers.Contract(oracleAggregatorAddress, oracleAggregatorAbi, signerOrProvider);
-            feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider);
+            feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider); //If ERC20 Forwarder Address exits then it would have configured Forwarder 
+
             forwarder = new ethers.Contract(forwarderAddress, biconomyForwarderAbi, signerOrProvider);
             transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signerOrProvider);
             tokenGasPriceV1SupportedNetworks = engine.tokenGasPriceV1SupportedNetworks;
@@ -1568,7 +1577,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               feeManager: feeManager,
               isSignerWithAccounts: isSignerWithAccounts,
               tokenGasPriceV1SupportedNetworks: tokenGasPriceV1SupportedNetworks,
-              trustedForwarderOverhead: trustedForwarderOverhead
+              trustedForwarderOverhead: trustedForwarderOverhead,
+              daiPermitOverhead: daiPermitOverhead,
+              eip2612PermitOverhead: eip2612PermitOverhead
             });
 
             _logMessage(engine.permitClient);
@@ -1681,15 +1692,15 @@ function _getParamValue(paramObj) {
         value = [];
 
         for (var j = 0; j < val.length; j++) {
-          value[j] = scientificToDecimal(parseInt(val[j]));
-          value[j] = ethers.utils.hexValue(value[j]);
+          value[j] = scientificToDecimal(val[j]);
+          value[j] = ethers.BigNumber.from(value[j]).toHexString();
         }
 
         break;
 
       case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {}).input:
-        value = scientificToDecimal(parseInt(paramObj.value));
-        value = ethers.utils.hexValue(value);
+        value = scientificToDecimal(paramObj.value);
+        value = ethers.BigNumber.from(value).toHexString();
         break;
 
       case "string":
@@ -1965,6 +1976,8 @@ function _onNetworkId() {
                 forwardRequestType = systemInfo.forwardRequestType;
                 forwarderDomainData = systemInfo.forwarderDomainData;
                 trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
+                daiPermitOverhead = systemInfo.overHeadDaiPermit;
+                eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
                 engine.forwarderAddress = systemInfo.biconomyForwarderAddress;
                 engine.erc20ForwarderAddress = systemInfo.erc20ForwarderAddress;
                 engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
@@ -1984,9 +1997,13 @@ function _onNetworkId() {
                 }
               } else {
                 return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.INVALID_DATA, "Could not get signature types from server. Contact Biconomy Team"));
-              }
+              } // check if Valid trusted forwarder address is present from system info
 
-              biconomyForwarder = new ethers.Contract(engine.forwarderAddress, biconomyForwarderAbi, engine.ethersProvider); // Get dapps smart contract data from biconomy servers
+
+              if (engine.forwarderAddress && engine.forwarderAddress != "") {
+                biconomyForwarder = new ethers.Contract(engine.forwarderAddress, biconomyForwarderAbi, engine.ethersProvider);
+              } // Get dapps smart contract data from biconomy servers
+
 
               var getDAppInfoAPI = "".concat(baseURL, "/api/").concat(config.version, "/smart-contract");
               fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey)).then(function (response) {
@@ -2002,13 +2019,13 @@ function _onNetworkId() {
                   smartContractList.forEach(function (contract) {
                     var abiDecoder = require("abi-decoder");
 
-                    smartContractMetaTransactionMap[contract.address.toLowerCase()] = contract.metaTransactionType;
-
                     if (contract.type === config.SCW) {
+                      smartContractMetaTransactionMap[config.SCW] = contract.metaTransactionType;
                       abiDecoder.addABI(JSON.parse(contract.abi));
                       decoderMap[config.SCW] = abiDecoder;
                       smartContractMap[config.SCW] = contract.abi;
                     } else {
+                      smartContractMetaTransactionMap[contract.address.toLowerCase()] = contract.metaTransactionType;
                       abiDecoder.addABI(JSON.parse(contract.abi));
                       decoderMap[contract.address.toLowerCase()] = abiDecoder;
                       smartContractMap[contract.address.toLowerCase()] = contract.abi;

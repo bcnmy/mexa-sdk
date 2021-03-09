@@ -35,6 +35,8 @@ config.TOKEN_CONTRACT_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS = config.ZERO_ADDRESS;
 config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
+config.DAI = "DAI_Permit";
+config.EIP2612 = "EIP2612_Permit";
 config.handleSignedTxUrl = "/api/".concat(config.version2, "/meta-tx/sendSignedTx");
 config.logsEnabled = false;
 var EVENTS = {
@@ -124,7 +126,8 @@ config.eip2612PermitType = [{
 }, {
   name: "deadline",
   type: "uint256"
-}];
+}]; // This domain type is used in Permit Client where chainId needs to be preserved
+
 config.domainType = [{
   name: "name",
   type: "string"

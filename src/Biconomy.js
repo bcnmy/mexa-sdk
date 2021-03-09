@@ -36,6 +36,8 @@ let biconomyForwarder;
 const events = require("events");
 var eventEmitter = new events.EventEmitter();
 let trustedForwarderOverhead;
+let daiPermitOverhead;
+let eip2612PermitOverhead;
 
 let domainType,
   forwarderDomainType,
@@ -299,11 +301,17 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         let api = engine.dappAPIMap[to]
           ? engine.dappAPIMap[to][methodName]
           : undefined;
+        let metaTxApproach;
         if (!api) {
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
             : undefined;
+          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+        } else {
+          let contractAddr = api.contractAddress.toLowerCase();
+          metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         }
+
         if (!api) {
           _logMessage(`API not found for method ${methodName}`);
           let error = formatMessage(
@@ -324,8 +332,6 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         let account = parsedTransaction.from;
 
         _logMessage(`Signer is ${account}`);
-        let contractAddr = api.contractAddress.toLowerCase();
-        let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         let gasLimit = decodedTx.gasLimit;
         let gasLimitNum;
 
@@ -563,10 +569,15 @@ async function sendSignedTransaction(engine, payload, end) {
         let api = engine.dappAPIMap[to]
           ? engine.dappAPIMap[to][methodName]
           : undefined;
+        let metaTxApproach;
         if (!api) {
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
             : undefined;
+          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+        } else {
+          let contractAddr = api.contractAddress.toLowerCase();
+          metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         }
         if (!api) {
           _logMessage(`API not found for method ${methodName}`);
@@ -590,9 +601,6 @@ async function sendSignedTransaction(engine, payload, end) {
         _logMessage("API found");
         let params = methodInfo.params;
         let paramArray = [];
-
-        let contractAddr = api.contractAddress.toLowerCase();
-        let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         let parsedTransaction = ethers.utils.parseTransaction(
           rawTransaction
         );
@@ -777,10 +785,15 @@ async function handleSendTransaction(engine, payload, end) {
         ? engine.dappAPIMap[to][methodName]
         : undefined;
       // Information we get here is contractAddress, methodName, methodType, ApiId
+      let metaTxApproach;
       if (!api) {
         api = engine.dappAPIMap[config.SCW]
           ? engine.dappAPIMap[config.SCW][methodName]
           : undefined;
+          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+      } else {
+        let contractAddr = api.contractAddress.toLowerCase();
+        metaTxApproach = smartContractMetaTransactionMap[contractAddr];
       }
 
       let gasLimit = payload.params[0].gas;
@@ -818,8 +831,6 @@ async function handleSendTransaction(engine, payload, end) {
       let params = methodInfo.params;
       let paramArray = [];
 
-      let contractAddr = api.contractAddress.toLowerCase();
-      let metaTxApproach = smartContractMetaTransactionMap[contractAddr];
       if (metaTxApproach == engine.ERC20_FORWARDER) {
         let error = formatMessage(
           RESPONSE_CODES.INVALID_PAYLOAD,
@@ -1183,6 +1194,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         feeManagerAbi,
         signerOrProvider
       );
+
+      //If ERC20 Forwarder Address exits then it would have configured Forwarder 
       const forwarder = new ethers.Contract(
         forwarderAddress,
         biconomyForwarderAbi,
@@ -1214,7 +1227,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         feeManager,
         isSignerWithAccounts,
         tokenGasPriceV1SupportedNetworks,
-        trustedForwarderOverhead
+        trustedForwarderOverhead,
+        daiPermitOverhead,
+        eip2612PermitOverhead
       });
 
       _logMessage(engine.permitClient);
@@ -1309,14 +1324,14 @@ function _getParamValue(paramObj) {
         let val = paramObj.value;
         value = [];
         for (let j = 0; j < val.length; j++) {
-          value[j] = scientificToDecimal(parseInt(val[j]));
-          value[j] = ethers.utils.hexValue(value[j]);
+          value[j] = scientificToDecimal(val[j]);
+          value[j] = ethers.BigNumber.from(value[j]).toHexString();
         }
         break;
       case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {})
         .input:
-        value = scientificToDecimal(parseInt(paramObj.value));
-        value = ethers.utils.hexValue(value);
+        value = scientificToDecimal(paramObj.value);
+        value = ethers.BigNumber.from(value).toHexString();
         break;
       case "string":
         if (typeof paramObj.value === "object") {
@@ -1525,6 +1540,8 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           forwardRequestType = systemInfo.forwardRequestType;
           forwarderDomainData = systemInfo.forwarderDomainData;
           trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
+          daiPermitOverhead = systemInfo.overHeadDaiPermit;
+          eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
           engine.forwarderAddress =
             systemInfo.biconomyForwarderAddress;
           engine.erc20ForwarderAddress =
@@ -1561,12 +1578,15 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
             )
           );
         }
-
-        biconomyForwarder = new ethers.Contract(
-          engine.forwarderAddress,
-          biconomyForwarderAbi,
-          engine.ethersProvider
-        );
+        
+        // check if Valid trusted forwarder address is present from system info
+        if (engine.forwarderAddress && engine.forwarderAddress != "") {
+          biconomyForwarder = new ethers.Contract(
+            engine.forwarderAddress,
+            biconomyForwarderAbi,
+            engine.ethersProvider
+          );
+        }
         // Get dapps smart contract data from biconomy servers
         let getDAppInfoAPI = `${baseURL}/api/${config.version}/smart-contract`;
         fetch(getDAppInfoAPI, getFetchOptions("GET", apiKey))
@@ -1588,14 +1608,15 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
             ) {
               smartContractList.forEach((contract) => {
                 let abiDecoder = require("abi-decoder");
-                smartContractMetaTransactionMap[
-                  contract.address.toLowerCase()
-                ] = contract.metaTransactionType;
                 if (contract.type === config.SCW) {
+                  smartContractMetaTransactionMap[config.SCW] = contract.metaTransactionType;
                   abiDecoder.addABI(JSON.parse(contract.abi));
                   decoderMap[config.SCW] = abiDecoder;
                   smartContractMap[config.SCW] = contract.abi;
                 } else {
+                  smartContractMetaTransactionMap[
+                    contract.address.toLowerCase()
+                  ] = contract.metaTransactionType;
                   abiDecoder.addABI(JSON.parse(contract.abi));
                   decoderMap[
                     contract.address.toLowerCase()
