@@ -1697,7 +1697,7 @@ function _getParamValue(paramObj) {
 
           for (var j = 0; j < val.length; j++) {
             value[j] = scientificToDecimal(val[j]);
-            value[j] = ethers.BigNumber.from(value[j]).toHexString();
+            if (value[j]) value[j] = ethers.BigNumber.from(value[j]).toHexString();
           }
 
           break;
@@ -1705,7 +1705,7 @@ function _getParamValue(paramObj) {
         case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {}).input:
           value = scientificToDecimal(paramObj.value); //https://docs.ethers.io/v5/api/utils/bignumber/#BigNumber--notes
 
-          if (value && value.toString()) value = ethers.BigNumber.from(value.toString()).toHexString();
+          if (value) value = ethers.BigNumber.from(value).toHexString();
           break;
 
         case "string":
@@ -2143,6 +2143,7 @@ function _logMessage(message) {
 }
 
 var scientificToDecimal = function scientificToDecimal(num) {
+  var result;
   var nsign = Math.sign(num); // remove the sign
 
   num = Math.abs(num); // if the number is in scientific notation remove it
@@ -2178,7 +2179,8 @@ var scientificToDecimal = function scientificToDecimal(num) {
     }
   }
 
-  return nsign < 0 ? "-" + num : num;
+  result = nsign < 0 ? "-" + num : num;
+  return result.toString();
 };
 
 module.exports = Biconomy;
