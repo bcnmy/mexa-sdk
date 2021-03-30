@@ -46,6 +46,8 @@ var _require4 = require("./abis"),
     biconomyForwarderAbi = _require4.biconomyForwarderAbi,
     transferHandlerAbi = _require4.transferHandlerAbi;
 
+var fetch = require("node-fetch");
+
 var decoderMap = {},
     smartContractMap = {},
     // contract addresss -> contract attributes(metaTransactionType)
@@ -74,10 +76,6 @@ var forwarderDomainData; // EIP712 format data for login
 var loginDomainType, loginMessageType, loginDomainData;
 
 function Biconomy(provider, options) {
-  if (typeof fetch == "undefined") {
-    fetch = require("node-fetch");
-  }
-
   _validate(options);
 
   this.isBiconomy = true;
