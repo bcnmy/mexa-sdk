@@ -1,5 +1,4 @@
 ---
-description: >-
   Enable meta transactions or gasless transactions in your DApp by integrating
   Mexa SDK in your DApp
 ---

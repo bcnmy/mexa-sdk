@@ -26,6 +26,7 @@ let {
   transferHandlerAbi,
 } = require("./abis");
 
+let fetch = require("node-fetch");
 
 let decoderMap = {},
   smartContractMap = {},
@@ -63,9 +64,6 @@ let forwarderDomainData;
 let loginDomainType, loginMessageType, loginDomainData;
 
 function Biconomy(provider, options) {
-  if (typeof fetch == "undefined") {
-    fetch = require("node-fetch");
-  }
   _validate(options);
   this.isBiconomy = true;
   this.status = STATUS.INIT;
