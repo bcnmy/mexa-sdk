@@ -373,10 +373,18 @@ class ERC20ForwarderClient {
           .mul(ethers.BigNumber.from(feeMultiplier.toString()))
           .div(ethers.BigNumber.from(10000));
 
+        let tokenContract = new ethers.Contract(
+          token,
+          tokenAbi,
+          this.provider
+        );
+
+        let tokenDecimals = await tokenContract.decimals();
+
         let tokenSpendValue = parseFloat(permitCost).toString();
         permitCost = (
           parseFloat(permitCost) /
-          parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))
+          parseFloat(ethers.BigNumber.from(10).pow(tokenDecimals))
         ).toFixed(3);
 
         permitFees = parseFloat(permitCost.toString()); // Exact amount in tokens
@@ -394,7 +402,7 @@ class ERC20ForwarderClient {
       let spendValue = parseFloat(cost).toString();
       cost = (
         parseFloat(cost) /
-        parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))
+        parseFloat(ethers.BigNumber.from(10).pow(tokenDecimals))
       ).toFixed(3);
       let fee = parseFloat(cost.toString()); // Exact amount in tokens
       _logMessage(

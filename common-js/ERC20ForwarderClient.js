@@ -420,7 +420,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     key: "buildTx",
     value: function () {
       var _buildTx = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(_ref3) {
-        var to, token, txGas, data, _ref3$batchId, batchId, _ref3$deadlineInSec, deadlineInSec, userAddress, permitType, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, permitFees, overHead, permitCost, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend;
+        var to, token, txGas, data, _ref3$batchId, batchId, _ref3$deadlineInSec, deadlineInSec, userAddress, permitType, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, permitFees, overHead, permitCost, tokenContract, _tokenDecimals, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend;
 
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
@@ -569,20 +569,30 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 throw new Error("One of the values is undefined. feeMultiplier: ".concat(feeMultiplier, " tokenOracleDecimals: ").concat(tokenOracleDecimals, " transferHandlerGas: ").concat(transferHandlerGas));
 
               case 46:
-                if (permitType) {
-                  overHead = permitType == config.DAI ? this.daiPermitOverhead : this.eip2612PermitOverhead;
-                  permitCost = ethers.BigNumber.from(overHead.toString()).mul(ethers.BigNumber.from(req.tokenGasPrice)).mul(ethers.BigNumber.from(feeMultiplier.toString())).div(ethers.BigNumber.from(10000));
-                  tokenSpendValue = parseFloat(permitCost).toString();
-                  permitCost = (parseFloat(permitCost) / parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))).toFixed(3);
-                  permitFees = parseFloat(permitCost.toString()); // Exact amount in tokens
-
-                  _logMessage("Estimated Permit Transaction Fee in token address ".concat(token, " is ").concat(permitFees));
+                if (!permitType) {
+                  _context4.next = 57;
+                  break;
                 }
 
+                overHead = permitType == config.DAI ? this.daiPermitOverhead : this.eip2612PermitOverhead;
+                permitCost = ethers.BigNumber.from(overHead.toString()).mul(ethers.BigNumber.from(req.tokenGasPrice)).mul(ethers.BigNumber.from(feeMultiplier.toString())).div(ethers.BigNumber.from(10000));
+                tokenContract = new ethers.Contract(token, tokenAbi, this.provider);
+                _context4.next = 52;
+                return tokenContract.decimals();
+
+              case 52:
+                _tokenDecimals = _context4.sent;
+                tokenSpendValue = parseFloat(permitCost).toString();
+                permitCost = (parseFloat(permitCost) / parseFloat(ethers.BigNumber.from(10).pow(_tokenDecimals))).toFixed(3);
+                permitFees = parseFloat(permitCost.toString()); // Exact amount in tokens
+
+                _logMessage("Estimated Permit Transaction Fee in token address ".concat(token, " is ").concat(permitFees));
+
+              case 57:
                 cost = ethers.BigNumber.from(req.txGas.toString()).add(ethers.BigNumber.from(this.trustedForwarderOverhead.toString())) // Estimate on the higher end
                 .add(transferHandlerGas).mul(ethers.BigNumber.from(req.tokenGasPrice)).mul(ethers.BigNumber.from(feeMultiplier.toString())).div(ethers.BigNumber.from(10000));
                 spendValue = parseFloat(cost).toString();
-                cost = (parseFloat(cost) / parseFloat(ethers.BigNumber.from(10).pow(tokenOracleDecimals))).toFixed(3);
+                cost = (parseFloat(cost) / parseFloat(ethers.BigNumber.from(10).pow(tokenDecimals))).toFixed(3);
                 fee = parseFloat(cost.toString()); // Exact amount in tokens
 
                 _logMessage("Estimated Transaction Fee in token address ".concat(token, " is ").concat(fee));
@@ -595,46 +605,46 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
 
 
                 if (permitType) {
-                  _context4.next = 63;
+                  _context4.next = 73;
                   break;
                 }
 
-                _context4.next = 57;
+                _context4.next = 67;
                 return this.erc20ForwarderApproved(req.token, userAddress, spendValue);
 
-              case 57:
+              case 67:
                 allowedToSpend = _context4.sent;
 
                 if (allowedToSpend) {
-                  _context4.next = 62;
+                  _context4.next = 72;
                   break;
                 }
 
                 throw new Error("You have not given approval to ERC Forwarder contract to spend tokens");
 
-              case 62:
+              case 72:
                 _logMessage("".concat(userAddress, " has given permission ").concat(this.erc20Forwarder.address, " to spend required amount of tokens"));
 
-              case 63:
+              case 73:
                 return _context4.abrupt("return", {
                   request: req,
                   cost: totalFees
                 });
 
-              case 66:
-                _context4.prev = 66;
+              case 76:
+                _context4.prev = 76;
                 _context4.t0 = _context4["catch"](1);
 
                 _logMessage(_context4.t0);
 
                 throw _context4.t0;
 
-              case 70:
+              case 80:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[1, 66]]);
+        }, _callee4, this, [[1, 76]]);
       }));
 
       function buildTx(_x4) {
