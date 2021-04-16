@@ -362,6 +362,13 @@ class ERC20ForwarderClient {
 
       // if intended for permit chained execution then should add gas usage cost of each type of permit
 
+      let tokenContract = new ethers.Contract(
+        token,
+        tokenAbi,
+        this.provider
+      );
+      let tokenDecimals = await tokenContract.decimals();
+
       let permitFees;
       if (permitType) {
         let overHead =
@@ -372,14 +379,6 @@ class ERC20ForwarderClient {
           .mul(ethers.BigNumber.from(req.tokenGasPrice))
           .mul(ethers.BigNumber.from(feeMultiplier.toString()))
           .div(ethers.BigNumber.from(10000));
-
-        let tokenContract = new ethers.Contract(
-          token,
-          tokenAbi,
-          this.provider
-        );
-
-        let tokenDecimals = await tokenContract.decimals();
 
         let tokenSpendValue = parseFloat(permitCost).toString();
         permitCost = (
@@ -439,19 +438,27 @@ class ERC20ForwarderClient {
     }
   }
 
-  async buildTransferTx(token, to, amount) {
+  async buildTransferTx({token, to, amount, userAddress}) {
     try {
       const txCall = await this.transferHandler.populateTransaction.transfer(
         token,
         to,
         amount
       );
-      return await this.buildTx(
-        this.transferHandler.address,
-        token,
-        100000,
-        txCall.data
-      );
+
+      if (!userAddress)
+        userAddress = await this.provider.getSigner().getAddress();
+
+      const gasLimit = await this.provider.estimateGas({from:userAddress,to:this.transferHandler.address,data:txCall.data});
+      
+      _logMessage(`Transfer handler gas limit is ${gasLimit.toNumber()}`);
+
+      return await this.buildTx({
+        to:this.transferHandler.address,
+        token:token,
+        txGas:gasLimit.toNumber(),
+        data:txCall.data
+      });
     } catch (error) {
       _logMessage(error);
       throw error;
