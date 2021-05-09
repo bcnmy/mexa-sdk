@@ -1329,6 +1329,13 @@ function _getParamValue(paramObj) {
               value[j] = ethers.BigNumber.from(value[j]).toHexString();
           }
           break;
+        // when really big value is passed for a parameter that is uint256 it changes the hex interpretation of it while passing the data
+        /* input = "10637302780458209523406882397889756011558997474776808359911702615985827610624"
+           hex should be : 0x1784800100000000000000000000000000000000000000000000000000000000
+           hex sent to web3 : 0x178480010000004becf851ccbbc0e9d00f695fdff66a42e02000000000000000
+        */
+       // seems to be originating from scientificToDecimal
+       // workaround : skip scientificToDecimal 
         case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {})
           .input:
           value = scientificToDecimal(paramObj.value);
