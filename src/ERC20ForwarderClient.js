@@ -312,15 +312,17 @@ class ERC20ForwarderClient {
 
       if (!txGas) throw new Error("'txGas' parameter is mandatory");
 
-      if (!this.isSignerWithAccounts)
-        throw new Error(
-          "Provider object passed to Biconomy does not have user account information. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly"
-        );
-
       await this.checkTokenSupport(token);
 
-      if (!userAddress)
-        userAddress = await this.provider.getSigner().getAddress();
+      if (!userAddress) {
+        if (!this.isSignerWithAccounts) {
+          throw new Error(
+            "Provider object passed to Biconomy does neighter have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly"
+          );
+        } else {
+          userAddress = await this.provider.getSigner().getAddress();
+        }
+      }
 
       let nonce = await this.forwarder.getNonce(userAddress, batchId);
       const tokenGasPrice = await this.getTokenGasPrice(token);
@@ -466,10 +468,18 @@ class ERC20ForwarderClient {
   }
 
   async erc20ForwarderApproved(tokenAddress, userAddress, spendValue) {
+    let providerOrSigner;
+    if(this.isSignerWithAccounts)
+    {
+      providerOrSigner = this.provider.getSigner();
+    }
+    else{
+      providerOrSigner = this.provider;
+    }
     let token = new ethers.Contract(
       tokenAddress,
       tokenAbi,
-      this.provider.getSigner()
+      providerOrSigner
     );
     spendValue = Number(spendValue);
     const allowance = await token.allowance(
