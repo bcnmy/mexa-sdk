@@ -499,9 +499,10 @@ class ERC20ForwarderClient {
    *
    * @param {object} req Request object to be signed and sent
    * @param {string} signature Signature string singed from user account
-   * @param {string} userAddress User blockchain address
+   * @param {string} userAddress User blockchain address (optional) must pass when you have signer without accounts
+   * @param {number} gasLimit custom gasLimit (optional) to pass for this transaction
    */
-  async sendTxEIP712({ req, signature = null, userAddress }) {
+  async sendTxEIP712({ req, signature = null, userAddress, gasLimit }) {
     try {
       //possibly check allowance here
 
@@ -565,6 +566,7 @@ class ERC20ForwarderClient {
         from: userAddress,
         apiId: apiId,
         params: [req, domainSeparator, sig],
+        gasLimit: gasLimit,
         signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
       };
 
@@ -596,7 +598,8 @@ class ERC20ForwarderClient {
    *
    * @param {object} req Request object to be signed and sent
    * @param {string} signature Signature string singed from user account
-   * @param {string} userAddress User blockchain address
+   * @param {string} userAddress User blockchain address (optional) must pass when you have signer without accounts
+   * @param {number} gasLimit custom gasLimit (optional) to pass for this transaction
    * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options.
    */
   async permitAndSendTxEIP712({
@@ -604,6 +607,7 @@ class ERC20ForwarderClient {
     signature = null,
     userAddress,
     metaInfo,
+    gasLimit,
   }) {
     try {
       const domainSeparator = ethers.utils.keccak256(
@@ -667,6 +671,7 @@ class ERC20ForwarderClient {
         apiId: apiId,
         params: [req, domainSeparator, sig],
         metaInfo: metaInfo, // just pass it on
+        gasLimit: gasLimit,
         signatureType: this.biconomyAttributes.signType.EIP712_SIGN,
       };
 
@@ -698,9 +703,10 @@ class ERC20ForwarderClient {
    *
    * @param {object} req Request object to be signed and sent
    * @param {string} signature Signature string singed from user account
-   * @param {string} userAddress User blockchain address
+   * @param {string} userAddress User blockchain address (optional) must pass when you have signer without accounts
+   * @param {number} gasLimit custom gasLimit (optional) to pass for this transaction
    */
-  async sendTxPersonalSign({ req, signature = null, userAddress }) {
+  async sendTxPersonalSign({ req, signature = null, userAddress, gasLimit }) {
     try {
       const hashToSign = abi.soliditySHA3(
         [
@@ -764,6 +770,7 @@ class ERC20ForwarderClient {
         from: userAddress,
         apiId: apiId,
         params: [req, sig],
+        gasLimit: gasLimit,
         signatureType: this.biconomyAttributes.signType.PERSONAL_SIGN,
       };
 
