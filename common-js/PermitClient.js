@@ -36,7 +36,7 @@ function _logMessage(message) {
   }
 }
 
-function isEtheresProvider(provider) {
+function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
 /**
@@ -52,7 +52,7 @@ var PermitClient = /*#__PURE__*/function () {
   function PermitClient(provider, erc20ForwarderAddress, daiTokenAddress) {
     (0, _classCallCheck2["default"])(this, PermitClient);
 
-    if (isEtheresProvider(provider)) {
+    if (isEthersProvider(provider)) {
       this.provider = provider;
     } else {
       this.provider = new ethers.providers.Web3Provider(provider);
@@ -279,7 +279,7 @@ var PermitClient = /*#__PURE__*/function () {
                 provider = _ref.provider, spender = _ref.spender, nonce = _ref.nonce, userAddress = _ref.userAddress, allowed = _ref.allowed, expiry = _ref.expiry;
                 signatureInfo = {};
 
-                if (isEtheresProvider(provider)) {
+                if (isEthersProvider(provider)) {
                   ethersProvider = provider;
                 } else {
                   ethersProvider = new ethers.providers.Web3Provider(provider);
@@ -387,7 +387,7 @@ var PermitClient = /*#__PURE__*/function () {
                 provider = _ref2.provider, tokenDomainData = _ref2.tokenDomainData, spender = _ref2.spender, value = _ref2.value, nonce = _ref2.nonce, userAddress = _ref2.userAddress, deadline = _ref2.deadline;
                 signatureInfo = {};
 
-                if (isEtheresProvider(provider)) {
+                if (isEthersProvider(provider)) {
                   ethersProvider = provider;
                 } else {
                   ethersProvider = new ethers.providers.Web3Provider(provider);

@@ -18,7 +18,7 @@ function _logMessage(message) {
   }
 }
 
-function isEtheresProvider(provider) {
+function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
 
@@ -31,7 +31,7 @@ function isEtheresProvider(provider) {
  */
 class PermitClient {
   constructor(provider, erc20ForwarderAddress, daiTokenAddress) {
-    if (isEtheresProvider(provider)) {
+    if (isEthersProvider(provider)) {
       this.provider = provider;
     } else {
       this.provider = new ethers.providers.Web3Provider(provider);
@@ -182,7 +182,7 @@ class PermitClient {
   }) {
     let signatureInfo = {};
     let ethersProvider;
-    if (isEtheresProvider(provider)) {
+    if (isEthersProvider(provider)) {
       ethersProvider = provider;
     } else {
       ethersProvider = new ethers.providers.Web3Provider(provider);
@@ -253,7 +253,7 @@ class PermitClient {
   }) {
     let signatureInfo = {};
     let ethersProvider;
-    if (isEtheresProvider(provider)) {
+    if (isEthersProvider(provider)) {
       ethersProvider = provider;
     } else {
       ethersProvider = new ethers.providers.Web3Provider(provider);
