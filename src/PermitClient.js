@@ -31,7 +31,7 @@ function isEtheresProvider(provider) {
  */
 class PermitClient {
   constructor(provider, erc20ForwarderAddress, daiTokenAddress) {
-    if(isEtheresProvider(provider)) {
+    if (isEtheresProvider(provider)) {
       this.provider = provider;
     } else {
       this.provider = new ethers.providers.Web3Provider(provider);
@@ -170,6 +170,145 @@ class PermitClient {
       _logMessage(error);
       throw error;
     }
+  }
+
+  async getDaiPermitSignature({
+    provider,
+    spender,
+    nonce,
+    userAddress,
+    allowed,
+    expiry,
+  }) {
+    let signatureInfo = {};
+    let ethersProvider;
+    if (isEtheresProvider(provider)) {
+      ethersProvider = provider;
+    } else {
+      ethersProvider = new ethers.providers.Web3Provider(provider);
+    }
+
+    spender = spender || this.erc20ForwarderAddress;
+    expiry = expiry || Math.floor(Date.now() / 1000 + 3600);
+    allowed = allowed || true;
+    //TODO
+    //missing validations and ability to use standalone permit client than biconomy.permitClient
+    //checks if provider is necessary
+    // needs a check on signer without accounts
+    userAddress =
+      userAddress || (await ethersProvider.getSigner().getAddress());
+
+    let network = await this.provider.getNetwork();
+    daiDomainData.chainId = network.chainId;
+    daiDomainData.verifyingContract = this.daiTokenAddress;
+
+    if (!nonce) {
+      const dai = new ethers.Contract(
+        this.daiDomainData.verifyingContract,
+        daiAbi,
+        this.provider.getSigner()
+      );
+      nonce = await dai.nonces(userAddress);
+    }
+
+    const permitDataToSign = {
+      types: {
+        EIP712Domain: config.domainType,
+        Permit: config.daiPermitType,
+      },
+      domain: this.daiDomainData,
+      primaryType: "Permit",
+      message: {
+        holder: userAddress,
+        spender: spender,
+        nonce: parseInt(nonce),
+        expiry: parseInt(expiry),
+        allowed: true,
+      },
+    };
+    const result = await this.provider.send("eth_signTypedData_v4", [
+      userAddress,
+      JSON.stringify(permitDataToSign),
+    ]);
+    _logMessage("success", result);
+    const signature = result.substring(2);
+    const r = "0x" + signature.substring(0, 64);
+    const s = "0x" + signature.substring(64, 128);
+    const v = parseInt(signature.substring(128, 130), 16);
+    signatureInfo.signature = result;
+    signatureInfo.r = r;
+    signatureInfo.s = s;
+    signatureInfo.v = v;
+    return signatureInfo;
+  }
+
+  async getEIP2612PermitSignature({
+    provider,
+    tokenDomainData,
+    spender,
+    value,
+    nonce,
+    userAddress,
+    deadline,
+  }) {
+    let signatureInfo = {};
+    let ethersProvider;
+    if (isEtheresProvider(provider)) {
+      ethersProvider = provider;
+    } else {
+      ethersProvider = new ethers.providers.Web3Provider(provider);
+    }
+
+    //TODO
+    //missing validations and ability to use standalone permit client than biconomy.permitClient
+    //restrict on non optional value
+    //error handling
+    spender = spender || this.erc20ForwarderAddress;
+    deadline = deadline || Math.floor(Date.now() / 1000 + 3600);
+    userAddress =
+      userAddress ||
+      (await ethersProvider.getSigner().getAddress());
+      
+   
+    if(!nonce)
+    {
+      const token = new ethers.Contract(
+        tokenDomainData.verifyingContract,
+        erc20Eip2612Abi,
+        this.provider.getSigner()
+      );
+      nonce = await token.nonces(userAddress);
+    }
+
+    const permitDataToSign = {
+      types: {
+        EIP712Domain: config.domainType,
+        Permit: config.eip2612PermitType,
+      },
+      domain: tokenDomainData,
+      primaryType: "Permit",
+      message: {
+        owner: userAddress,
+        spender: spender,
+        nonce: parseInt(nonce),
+        value: value,
+        deadline: parseInt(deadline),
+      },
+    };
+    const result = await this.provider.send("eth_signTypedData_v4", [
+      userAddress,
+      JSON.stringify(permitDataToSign),
+    ]);
+    _logMessage("success", result);
+    const signature = result.substring(2);
+    const r = "0x" + signature.substring(0, 64);
+    const s = "0x" + signature.substring(64, 128);
+    const v = parseInt(signature.substring(128, 130), 16);
+    signatureInfo.signature = result;
+    signatureInfo.r = r;
+    signatureInfo.s = s;
+    signatureInfo.v = v;
+    return signatureInfo;
   }
 }
 
