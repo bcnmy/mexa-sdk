@@ -106,7 +106,7 @@ var PermitClient = /*#__PURE__*/function () {
                 network = _context.sent;
                 daiDomainData.chainId = network.chainId;
                 daiDomainData.verifyingContract = this.daiTokenAddress;
-                dai = new ethers.Contract(this.daiDomainData.verifyingContract, daiAbi, this.provider.getSigner());
+                dai = new ethers.Contract(this.daiDomainData.verifyingContract, daiAbi, this.provider);
                 _context.next = 18;
                 return dai.nonces(userAddress);
 
@@ -205,7 +205,7 @@ var PermitClient = /*#__PURE__*/function () {
 
               case 10:
                 userAddress = _context2.t0;
-                token = new ethers.Contract(tokenDomainData.verifyingContract, erc20Eip2612Abi, this.provider.getSigner());
+                token = new ethers.Contract(tokenDomainData.verifyingContract, erc20Eip2612Abi, this.provider);
                 _context2.next = 14;
                 return token.nonces(userAddress);
 
@@ -271,63 +271,62 @@ var PermitClient = /*#__PURE__*/function () {
     key: "getDaiPermitSignature",
     value: function () {
       var _getDaiPermitSignature = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(_ref) {
-        var provider, spender, nonce, userAddress, allowed, expiry, signatureInfo, ethersProvider, network, dai, permitDataToSign, result, signature, r, s, v;
+        var spender, nonce, userAddress, allowed, expiry, signatureInfo, network, dai, permitDataToSign, result, signature, r, s, v;
         return _regenerator["default"].wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                provider = _ref.provider, spender = _ref.spender, nonce = _ref.nonce, userAddress = _ref.userAddress, allowed = _ref.allowed, expiry = _ref.expiry;
+                spender = _ref.spender, nonce = _ref.nonce, userAddress = _ref.userAddress, allowed = _ref.allowed, expiry = _ref.expiry;
+                _context3.prev = 1;
                 signatureInfo = {};
-
-                if (isEthersProvider(provider)) {
-                  ethersProvider = provider;
-                } else {
-                  ethersProvider = new ethers.providers.Web3Provider(provider);
-                }
-
                 spender = spender || this.erc20ForwarderAddress;
                 expiry = expiry || Math.floor(Date.now() / 1000 + 3600);
-                allowed = allowed || true; //TODO
-                //missing validations and ability to use standalone permit client than biconomy.permitClient
-                //checks if provider is necessary
-                // needs a check on signer without accounts
+                allowed = allowed || true;
 
-                _context3.t0 = userAddress;
-
-                if (_context3.t0) {
-                  _context3.next = 11;
+                if (userAddress) {
+                  _context3.next = 17;
                   break;
                 }
 
+                _context3.prev = 7;
                 _context3.next = 10;
-                return ethersProvider.getSigner().getAddress();
+                return this.provider.getSigner().getAddress();
 
               case 10:
-                _context3.t0 = _context3.sent;
+                userAddress = _context3.sent;
+                _context3.next = 17;
+                break;
 
-              case 11:
-                userAddress = _context3.t0;
-                _context3.next = 14;
+              case 13:
+                _context3.prev = 13;
+                _context3.t0 = _context3["catch"](7);
+
+                _logMessage("Given provider in permit client does not have accounts information");
+
+                throw new Error("Provider object passed to Biconomy does neighter have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use PermitClient properly");
+
+              case 17:
+                _context3.next = 19;
                 return this.provider.getNetwork();
 
-              case 14:
+              case 19:
                 network = _context3.sent;
                 daiDomainData.chainId = network.chainId;
                 daiDomainData.verifyingContract = this.daiTokenAddress;
 
                 if (nonce) {
-                  _context3.next = 22;
+                  _context3.next = 27;
                   break;
                 }
 
-                dai = new ethers.Contract(this.daiDomainData.verifyingContract, daiAbi, this.provider.getSigner());
-                _context3.next = 21;
+                dai = new ethers.Contract(this.daiDomainData.verifyingContract, daiAbi, this.provider);
+                _context3.next = 26;
                 return dai.nonces(userAddress);
 
-              case 21:
+              case 26:
                 nonce = _context3.sent;
 
-              case 22:
+              case 27:
                 permitDataToSign = {
                   types: {
                     EIP712Domain: config.domainType,
@@ -343,10 +342,10 @@ var PermitClient = /*#__PURE__*/function () {
                     allowed: true
                   }
                 };
-                _context3.next = 25;
+                _context3.next = 30;
                 return this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign)]);
 
-              case 25:
+              case 30:
                 result = _context3.sent;
 
                 _logMessage("success", result);
@@ -361,12 +360,20 @@ var PermitClient = /*#__PURE__*/function () {
                 signatureInfo.v = v;
                 return _context3.abrupt("return", signatureInfo);
 
-              case 36:
+              case 43:
+                _context3.prev = 43;
+                _context3.t1 = _context3["catch"](1);
+
+                _logMessage(_context3.t1);
+
+                throw _context3.t1;
+
+              case 47:
               case "end":
                 return _context3.stop();
             }
           }
-        }, _callee3, this);
+        }, _callee3, this, [[1, 43], [7, 13]]);
       }));
 
       function getDaiPermitSignature(_x3) {
@@ -379,55 +386,102 @@ var PermitClient = /*#__PURE__*/function () {
     key: "getEIP2612PermitSignature",
     value: function () {
       var _getEIP2612PermitSignature = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(_ref2) {
-        var provider, tokenDomainData, spender, value, nonce, userAddress, deadline, signatureInfo, ethersProvider, token, permitDataToSign, result, signature, r, s, v;
+        var tokenDomainData, spender, value, nonce, userAddress, deadline, signatureInfo, network, token, permitDataToSign, result, signature, r, s, v;
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
-                provider = _ref2.provider, tokenDomainData = _ref2.tokenDomainData, spender = _ref2.spender, value = _ref2.value, nonce = _ref2.nonce, userAddress = _ref2.userAddress, deadline = _ref2.deadline;
+                tokenDomainData = _ref2.tokenDomainData, spender = _ref2.spender, value = _ref2.value, nonce = _ref2.nonce, userAddress = _ref2.userAddress, deadline = _ref2.deadline;
+                _context4.prev = 1;
                 signatureInfo = {};
 
-                if (isEthersProvider(provider)) {
-                  ethersProvider = provider;
-                } else {
-                  ethersProvider = new ethers.providers.Web3Provider(provider);
-                } //TODO
-                //missing validations and ability to use standalone permit client than biconomy.permitClient
-                //restrict on non optional value
-                //error handling
+                if (!(!value || value == null || value == undefined)) {
+                  _context4.next = 5;
+                  break;
+                }
 
+                throw new Error("Must pass value for EIP2612 permit");
 
-                spender = spender || this.erc20ForwarderAddress;
-                deadline = deadline || Math.floor(Date.now() / 1000 + 3600);
-                _context4.t0 = userAddress;
+              case 5:
+                if (!tokenDomainData) {
+                  _context4.next = 13;
+                  break;
+                }
 
-                if (_context4.t0) {
+                if (!(tokenDomainData.verifyingContract && tokenDomainData.name && tokenDomainData.version && tokenDomainData.chainId)) {
                   _context4.next = 10;
                   break;
                 }
 
-                _context4.next = 9;
-                return ethersProvider.getSigner().getAddress();
+                _logMessage("token domain data passed for EIP2612 permit signature is ".concat(tokenDomainData));
 
-              case 9:
-                _context4.t0 = _context4.sent;
+                _context4.next = 11;
+                break;
 
               case 10:
-                userAddress = _context4.t0;
+                throw new Error("Missing values in token domain data. All the values must be passed per EIP712 domain type");
 
-                if (nonce) {
-                  _context4.next = 16;
+              case 11:
+                _context4.next = 14;
+                break;
+
+              case 13:
+                throw new Error("token domain data is manadatory parameter");
+
+              case 14:
+                _context4.next = 16;
+                return this.provider.getNetwork();
+
+              case 16:
+                network = _context4.sent;
+
+                if (!(parseInt(tokenDomainData.chainId) != parseInt(network.chainId))) {
+                  _context4.next = 19;
                   break;
                 }
 
-                token = new ethers.Contract(tokenDomainData.verifyingContract, erc20Eip2612Abi, this.provider.getSigner());
-                _context4.next = 15;
+                throw new Error("Chain id in token domain data must match current network chain id!");
+
+              case 19:
+                spender = spender || this.erc20ForwarderAddress;
+                deadline = deadline || Math.floor(Date.now() / 1000 + 3600);
+
+                if (userAddress) {
+                  _context4.next = 32;
+                  break;
+                }
+
+                _context4.prev = 22;
+                _context4.next = 25;
+                return this.provider.getSigner().getAddress();
+
+              case 25:
+                userAddress = _context4.sent;
+                _context4.next = 32;
+                break;
+
+              case 28:
+                _context4.prev = 28;
+                _context4.t0 = _context4["catch"](22);
+
+                _logMessage("Given provider in permit client does not have accounts information");
+
+                throw new Error("Provider object passed to Biconomy does neighter have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use PermitClient properly");
+
+              case 32:
+                if (nonce) {
+                  _context4.next = 37;
+                  break;
+                }
+
+                token = new ethers.Contract(tokenDomainData.verifyingContract, erc20Eip2612Abi, this.provider);
+                _context4.next = 36;
                 return token.nonces(userAddress);
 
-              case 15:
+              case 36:
                 nonce = _context4.sent;
 
-              case 16:
+              case 37:
                 permitDataToSign = {
                   types: {
                     EIP712Domain: config.domainType,
@@ -443,10 +497,10 @@ var PermitClient = /*#__PURE__*/function () {
                     deadline: parseInt(deadline)
                   }
                 };
-                _context4.next = 19;
+                _context4.next = 40;
                 return this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign)]);
 
-              case 19:
+              case 40:
                 result = _context4.sent;
 
                 _logMessage("success", result);
@@ -461,12 +515,20 @@ var PermitClient = /*#__PURE__*/function () {
                 signatureInfo.v = v;
                 return _context4.abrupt("return", signatureInfo);
 
-              case 30:
+              case 53:
+                _context4.prev = 53;
+                _context4.t1 = _context4["catch"](1);
+
+                _logMessage(_context4.t1);
+
+                throw _context4.t1;
+
+              case 57:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this);
+        }, _callee4, this, [[1, 53], [22, 28]]);
       }));
 
       function getEIP2612PermitSignature(_x4) {
