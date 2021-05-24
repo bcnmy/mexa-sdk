@@ -65,7 +65,7 @@ class PermitClient {
       const dai = new ethers.Contract(
         this.daiDomainData.verifyingContract,
         daiAbi,
-        this.provider
+        this.provider.getSigner()
       );
       const nonce = await dai.nonces(userAddress);
       const permitDataToSign = {
@@ -129,7 +129,7 @@ class PermitClient {
       const token = new ethers.Contract(
         tokenDomainData.verifyingContract,
         erc20Eip2612Abi,
-        this.provider
+        this.provider.getSigner()
       );
       const nonce = await token.nonces(userAddress);
       const permitDataToSign = {
@@ -166,182 +166,6 @@ class PermitClient {
         s
       );
       return tx;
-    } catch (error) {
-      _logMessage(error);
-      throw error;
-    }
-  }
-
-  async getDaiPermitSignature({
-    spender,
-    nonce,
-    userAddress,
-    allowed,
-    expiry,
-  }) {
-    try {
-      let signatureInfo = {};
-      spender = spender || this.erc20ForwarderAddress;
-      expiry = expiry || Math.floor(Date.now() / 1000 + 3600);
-      allowed = allowed || true;
-
-      if (!userAddress) {
-        try {
-          userAddress = await this.provider.getSigner().getAddress();
-        } catch (error) {
-          _logMessage(
-            "Given provider in permit client does not have accounts information"
-          );
-
-          throw new Error(
-            "Provider object passed to Biconomy does neighter have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use PermitClient properly"
-          );
-        }
-      }
-
-      let network = await this.provider.getNetwork();
-      daiDomainData.chainId = network.chainId;
-      daiDomainData.verifyingContract = this.daiTokenAddress;
-
-      if (!nonce) {
-        const dai = new ethers.Contract(
-          this.daiDomainData.verifyingContract,
-          daiAbi,
-          this.provider
-        );
-        nonce = await dai.nonces(userAddress);
-      }
-
-      const permitDataToSign = {
-        types: {
-          EIP712Domain: config.domainType,
-          Permit: config.daiPermitType,
-        },
-        domain: this.daiDomainData,
-        primaryType: "Permit",
-        message: {
-          holder: userAddress,
-          spender: spender,
-          nonce: parseInt(nonce),
-          expiry: parseInt(expiry),
-          allowed: true,
-        },
-      };
-      const result = await this.provider.send("eth_signTypedData_v4", [
-        userAddress,
-        JSON.stringify(permitDataToSign),
-      ]);
-      _logMessage("success", result);
-      const signature = result.substring(2);
-      const r = "0x" + signature.substring(0, 64);
-      const s = "0x" + signature.substring(64, 128);
-      const v = parseInt(signature.substring(128, 130), 16);
-      signatureInfo.signature = result;
-      signatureInfo.r = r;
-      signatureInfo.s = s;
-      signatureInfo.v = v;
-      return signatureInfo;
-    } catch (error) {
-      _logMessage(error);
-      throw error;
-    }
-  }
-
-  async getEIP2612PermitSignature({
-    tokenDomainData,
-    spender,
-    value,
-    nonce,
-    userAddress,
-    deadline,
-  }) {
-    try {
-      let signatureInfo = {};
-      if (!value || value == null || value == undefined) {
-        throw new Error("Must pass value for EIP2612 permit");
-      }
-
-      if (tokenDomainData) {
-        if (
-          tokenDomainData.verifyingContract &&
-          tokenDomainData.name &&
-          tokenDomainData.version &&
-          tokenDomainData.chainId
-        ) {
-          _logMessage(
-            `token domain data passed for EIP2612 permit signature is ${tokenDomainData}`
-          );
-        } else {
-          throw new Error(
-            "Missing values in token domain data. All the values must be passed per EIP712 domain type"
-          );
-        }
-      } else {
-        throw new Error("token domain data is manadatory parameter");
-      }
-
-      let network = await this.provider.getNetwork();
-      if (parseInt(tokenDomainData.chainId) != parseInt(network.chainId)) {
-        throw new Error(
-          "Chain id in token domain data must match current network chain id!"
-        );
-      }
-
-      spender = spender || this.erc20ForwarderAddress;
-      deadline = deadline || Math.floor(Date.now() / 1000 + 3600);
-
-      if (!userAddress) {
-        try {
-          userAddress = await this.provider.getSigner().getAddress();
-        } catch (error) {
-          _logMessage(
-            "Given provider in permit client does not have accounts information"
-          );
-
-          throw new Error(
-            "Provider object passed to Biconomy does neighter have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use PermitClient properly"
-          );
-        }
-      }
-
-      if (!nonce) {
-        const token = new ethers.Contract(
-          tokenDomainData.verifyingContract,
-          erc20Eip2612Abi,
-          this.provider
-        );
-        nonce = await token.nonces(userAddress);
-      }
-
-      const permitDataToSign = {
-        types: {
-          EIP712Domain: config.domainType,
-          Permit: config.eip2612PermitType,
-        },
-        domain: tokenDomainData,
-        primaryType: "Permit",
-        message: {
-          owner: userAddress,
-          spender: spender,
-          nonce: parseInt(nonce),
-          value: value,
-          deadline: parseInt(deadline),
-        },
-      };
-      const result = await this.provider.send("eth_signTypedData_v4", [
-        userAddress,
-        JSON.stringify(permitDataToSign),
-      ]);
-      _logMessage("success", result);
-      const signature = result.substring(2);
-      const r = "0x" + signature.substring(0, 64);
-      const s = "0x" + signature.substring(64, 128);
-      const v = parseInt(signature.substring(128, 130), 16);
-      signatureInfo.signature = result;
-      signatureInfo.r = r;
-      signatureInfo.s = s;
-      signatureInfo.v = v;
-      return signatureInfo;
     } catch (error) {
       _logMessage(error);
       throw error;
