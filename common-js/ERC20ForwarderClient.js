@@ -512,7 +512,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   break;
                 }
 
-                throw new Error("Provider object passed to Biconomy does neighter have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly");
+                throw new Error("Provider object passed to Biconomy does neither have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly");
 
               case 26:
                 _context4.next = 28;

@@ -317,7 +317,7 @@ class ERC20ForwarderClient {
       if (!userAddress) {
         if (!this.isSignerWithAccounts) {
           throw new Error(
-            "Provider object passed to Biconomy does neighter have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly"
+            "Provider object passed to Biconomy does neither have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly"
           );
         } else {
           userAddress = await this.provider.getSigner().getAddress();
