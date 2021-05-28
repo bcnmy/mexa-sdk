@@ -36,7 +36,7 @@ function _logMessage(message) {
   }
 }
 
-function isEtheresProvider(provider) {
+function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
 /**
@@ -52,7 +52,7 @@ var PermitClient = /*#__PURE__*/function () {
   function PermitClient(provider, erc20ForwarderAddress, daiTokenAddress) {
     (0, _classCallCheck2["default"])(this, PermitClient);
 
-    if (isEtheresProvider(provider)) {
+    if (isEthersProvider(provider)) {
       this.provider = provider;
     } else {
       this.provider = new ethers.providers.Web3Provider(provider);

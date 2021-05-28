@@ -498,39 +498,39 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 throw new Error("'txGas' parameter is mandatory");
 
               case 19:
-                if (this.isSignerWithAccounts) {
-                  _context4.next = 21;
-                  break;
-                }
-
-                throw new Error("Provider object passed to Biconomy does not have user account information. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly");
-
-              case 21:
-                _context4.next = 23;
+                _context4.next = 21;
                 return this.checkTokenSupport(token);
 
-              case 23:
+              case 21:
                 if (userAddress) {
-                  _context4.next = 27;
+                  _context4.next = 29;
                   break;
                 }
 
-                _context4.next = 26;
-                return this.provider.getSigner().getAddress();
+                if (this.isSignerWithAccounts) {
+                  _context4.next = 26;
+                  break;
+                }
+
+                throw new Error("Provider object passed to Biconomy does neither have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly");
 
               case 26:
+                _context4.next = 28;
+                return this.provider.getSigner().getAddress();
+
+              case 28:
                 userAddress = _context4.sent;
 
-              case 27:
-                _context4.next = 29;
+              case 29:
+                _context4.next = 31;
                 return this.forwarder.getNonce(userAddress, batchId);
 
-              case 29:
+              case 31:
                 nonce = _context4.sent;
-                _context4.next = 32;
+                _context4.next = 34;
                 return this.getTokenGasPrice(token);
 
-              case 32:
+              case 34:
                 tokenGasPrice = _context4.sent;
                 req = {
                   from: userAddress,
@@ -543,38 +543,38 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   deadline: Math.floor(Date.now() / 1000 + deadlineInSec),
                   data: data
                 };
-                _context4.next = 36;
+                _context4.next = 38;
                 return this.feeManager.getFeeMultiplier(userAddress, token);
 
-              case 36:
+              case 38:
                 feeMultiplier = _context4.sent;
-                _context4.next = 39;
+                _context4.next = 41;
                 return this.oracleAggregator.getTokenOracleDecimals(token);
 
-              case 39:
+              case 41:
                 tokenOracleDecimals = _context4.sent;
-                _context4.next = 42;
+                _context4.next = 44;
                 return this.erc20Forwarder.transferHandlerGas(token);
 
-              case 42:
+              case 44:
                 transferHandlerGas = _context4.sent;
 
                 _logMessage("TransferHandler gas from ERC20erc20Forwarder contract is ".concat(transferHandlerGas.toString()));
 
                 if (!(feeMultiplier == undefined || tokenOracleDecimals == undefined || transferHandlerGas == undefined)) {
-                  _context4.next = 46;
+                  _context4.next = 48;
                   break;
                 }
 
                 throw new Error("One of the values is undefined. feeMultiplier: ".concat(feeMultiplier, " tokenOracleDecimals: ").concat(tokenOracleDecimals, " transferHandlerGas: ").concat(transferHandlerGas));
 
-              case 46:
+              case 48:
                 // if intended for permit chained execution then should add gas usage cost of each type of permit
                 tokenContract = new ethers.Contract(token, tokenAbi, this.provider);
-                _context4.next = 49;
+                _context4.next = 51;
                 return tokenContract.decimals();
 
-              case 49:
+              case 51:
                 tokenDecimals = _context4.sent;
 
                 if (permitType) {
@@ -603,46 +603,46 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
 
 
                 if (permitType) {
-                  _context4.next = 67;
+                  _context4.next = 69;
                   break;
                 }
 
-                _context4.next = 61;
+                _context4.next = 63;
                 return this.erc20ForwarderApproved(req.token, userAddress, spendValue);
 
-              case 61:
+              case 63:
                 allowedToSpend = _context4.sent;
 
                 if (allowedToSpend) {
-                  _context4.next = 66;
+                  _context4.next = 68;
                   break;
                 }
 
                 throw new Error("You have not given approval to ERC Forwarder contract to spend tokens");
 
-              case 66:
+              case 68:
                 _logMessage("".concat(userAddress, " has given permission ").concat(this.erc20Forwarder.address, " to spend required amount of tokens"));
 
-              case 67:
+              case 69:
                 return _context4.abrupt("return", {
                   request: req,
                   cost: totalFees
                 });
 
-              case 70:
-                _context4.prev = 70;
+              case 72:
+                _context4.prev = 72;
                 _context4.t0 = _context4["catch"](1);
 
                 _logMessage(_context4.t0);
 
                 throw _context4.t0;
 
-              case 74:
+              case 76:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[1, 70]]);
+        }, _callee4, this, [[1, 72]]);
       }));
 
       function buildTx(_x4) {
@@ -729,30 +729,36 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     key: "erc20ForwarderApproved",
     value: function () {
       var _erc20ForwarderApproved = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee6(tokenAddress, userAddress, spendValue) {
-        var token, allowance;
+        var providerOrSigner, token, allowance;
         return _regenerator["default"].wrap(function _callee6$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                token = new ethers.Contract(tokenAddress, tokenAbi, this.provider.getSigner());
+                if (this.isSignerWithAccounts) {
+                  providerOrSigner = this.provider.getSigner();
+                } else {
+                  providerOrSigner = this.provider;
+                }
+
+                token = new ethers.Contract(tokenAddress, tokenAbi, providerOrSigner);
                 spendValue = Number(spendValue);
-                _context6.next = 4;
+                _context6.next = 5;
                 return token.allowance(userAddress, this.erc20Forwarder.address);
 
-              case 4:
+              case 5:
                 allowance = _context6.sent;
 
                 if (!(allowance > spendValue)) {
-                  _context6.next = 9;
+                  _context6.next = 10;
                   break;
                 }
 
                 return _context6.abrupt("return", true);
 
-              case 9:
+              case 10:
                 return _context6.abrupt("return", false);
 
-              case 10:
+              case 11:
               case "end":
                 return _context6.stop();
             }
@@ -775,20 +781,21 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
      *
      * @param {object} req Request object to be signed and sent
      * @param {string} signature Signature string singed from user account
-     * @param {string} userAddress User blockchain address
+     * @param {string} userAddress User blockchain address (optional) must pass when you have signer without accounts
+     * @param {number} gasLimit custom gasLimit (optional) to pass for this transaction
      */
 
   }, {
     key: "sendTxEIP712",
     value: function () {
       var _sendTxEIP = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(_ref5) {
-        var req, _ref5$signature, signature, userAddress, domainSeparator, dataToSign, sig, api, apiId, metaTxBody, txResponse;
+        var req, _ref5$signature, signature, userAddress, gasLimit, domainSeparator, dataToSign, sig, api, apiId, metaTxBody, txResponse;
 
         return _regenerator["default"].wrap(function _callee7$(_context7) {
           while (1) {
             switch (_context7.prev = _context7.next) {
               case 0:
-                req = _ref5.req, _ref5$signature = _ref5.signature, signature = _ref5$signature === void 0 ? null : _ref5$signature, userAddress = _ref5.userAddress;
+                req = _ref5.req, _ref5$signature = _ref5.signature, signature = _ref5$signature === void 0 ? null : _ref5$signature, userAddress = _ref5.userAddress, gasLimit = _ref5.gasLimit;
                 _context7.prev = 1;
                 //possibly check allowance here
                 domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.verifyingContract, this.forwarderDomainData.salt]));
@@ -867,6 +874,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   from: userAddress,
                   apiId: apiId,
                   params: [req, domainSeparator, sig],
+                  gasLimit: gasLimit,
                   signatureType: this.biconomyAttributes.signType.EIP712_SIGN
                 };
                 _context7.next = 29;
@@ -918,7 +926,8 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
      *
      * @param {object} req Request object to be signed and sent
      * @param {string} signature Signature string singed from user account
-     * @param {string} userAddress User blockchain address
+     * @param {string} userAddress User blockchain address (optional) must pass when you have signer without accounts
+     * @param {number} gasLimit custom gasLimit (optional) to pass for this transaction
      * @param {object} metaInfo For permit chained execution clients can pass permitType {string} constant and permitData {object} containing permit options.
      */
 
@@ -926,13 +935,13 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     key: "permitAndSendTxEIP712",
     value: function () {
       var _permitAndSendTxEIP = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee8(_ref6) {
-        var req, _ref6$signature, signature, userAddress, metaInfo, domainSeparator, dataToSign, sig, api, apiId, metaTxBody, txResponse;
+        var req, _ref6$signature, signature, userAddress, metaInfo, gasLimit, domainSeparator, dataToSign, sig, api, apiId, metaTxBody, txResponse;
 
         return _regenerator["default"].wrap(function _callee8$(_context8) {
           while (1) {
             switch (_context8.prev = _context8.next) {
               case 0:
-                req = _ref6.req, _ref6$signature = _ref6.signature, signature = _ref6$signature === void 0 ? null : _ref6$signature, userAddress = _ref6.userAddress, metaInfo = _ref6.metaInfo;
+                req = _ref6.req, _ref6$signature = _ref6.signature, signature = _ref6$signature === void 0 ? null : _ref6$signature, userAddress = _ref6.userAddress, metaInfo = _ref6.metaInfo, gasLimit = _ref6.gasLimit;
                 _context8.prev = 1;
                 domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.verifyingContract, this.forwarderDomainData.salt]));
 
@@ -1012,6 +1021,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   params: [req, domainSeparator, sig],
                   metaInfo: metaInfo,
                   // just pass it on
+                  gasLimit: gasLimit,
                   signatureType: this.biconomyAttributes.signType.EIP712_SIGN
                 };
                 _context8.next = 29;
@@ -1063,20 +1073,21 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
      *
      * @param {object} req Request object to be signed and sent
      * @param {string} signature Signature string singed from user account
-     * @param {string} userAddress User blockchain address
+     * @param {string} userAddress User blockchain address (optional) must pass when you have signer without accounts
+     * @param {number} gasLimit custom gasLimit (optional) to pass for this transaction
      */
 
   }, {
     key: "sendTxPersonalSign",
     value: function () {
       var _sendTxPersonalSign = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(_ref7) {
-        var req, _ref7$signature, signature, userAddress, hashToSign, signer, sig, api, apiId, metaTxBody, txResponse;
+        var req, _ref7$signature, signature, userAddress, gasLimit, hashToSign, signer, sig, api, apiId, metaTxBody, txResponse;
 
         return _regenerator["default"].wrap(function _callee9$(_context9) {
           while (1) {
             switch (_context9.prev = _context9.next) {
               case 0:
-                req = _ref7.req, _ref7$signature = _ref7.signature, signature = _ref7$signature === void 0 ? null : _ref7$signature, userAddress = _ref7.userAddress;
+                req = _ref7.req, _ref7$signature = _ref7.signature, signature = _ref7$signature === void 0 ? null : _ref7$signature, userAddress = _ref7.userAddress, gasLimit = _ref7.gasLimit;
                 _context9.prev = 1;
                 hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [req.from, req.to, req.token, req.txGas, req.tokenGasPrice, req.batchId, req.batchNonce, req.deadline, ethers.utils.keccak256(req.data)]);
                 signer = this.provider.getSigner();
@@ -1154,6 +1165,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   from: userAddress,
                   apiId: apiId,
                   params: [req, sig],
+                  gasLimit: gasLimit,
                   signatureType: this.biconomyAttributes.signType.PERSONAL_SIGN
                 };
                 _context9.next = 31;
