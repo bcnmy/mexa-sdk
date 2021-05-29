@@ -370,6 +370,7 @@ class ERC20ForwarderClient {
         this.provider
       );
       let tokenDecimals = await tokenContract.decimals();
+      let userBalance = await tokenContract.balanceOf(userAddress);
 
       let permitFees;
       if (permitType) {
@@ -413,6 +414,15 @@ class ERC20ForwarderClient {
       let totalFees = fee;
       if (permitFees) {
         totalFees = parseFloat(fee + permitFees).toFixed(3);
+      }
+
+      if( parseFloat(userBalance.toString()) >= (parseFloat(totalFees)*10**(Number(tokenDecimals))) ){
+        _logMessage("user has enough balance to pay for fees")
+      }
+      else{
+        throw new Error(
+          `User does not have enough balance to pay for fees. Maximum fees that would be charged is ${totalFees}..Please check your balance`
+        );
       }
 
       // if intended for permit chained execution then should not check allowance

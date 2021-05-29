@@ -420,7 +420,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     key: "buildTx",
     value: function () {
       var _buildTx = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(_ref3) {
-        var to, token, txGas, data, _ref3$batchId, batchId, _ref3$deadlineInSec, deadlineInSec, userAddress, permitType, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, tokenContract, tokenDecimals, permitFees, overHead, permitCost, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend;
+        var to, token, txGas, data, _ref3$batchId, batchId, _ref3$deadlineInSec, deadlineInSec, userAddress, permitType, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, tokenContract, tokenDecimals, userBalance, permitFees, overHead, permitCost, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend;
 
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
@@ -576,6 +576,11 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
 
               case 51:
                 tokenDecimals = _context4.sent;
+                _context4.next = 54;
+                return tokenContract.balanceOf(userAddress);
+
+              case 54:
+                userBalance = _context4.sent;
 
                 if (permitType) {
                   overHead = permitType == config.DAI ? this.daiPermitOverhead : this.eip2612PermitOverhead;
@@ -599,50 +604,63 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
 
                 if (permitFees) {
                   totalFees = parseFloat(fee + permitFees).toFixed(3);
-                } // if intended for permit chained execution then should not check allowance
+                }
 
-
-                if (permitType) {
-                  _context4.next = 69;
+                if (!(parseFloat(userBalance.toString()) >= parseFloat(totalFees) * Math.pow(10, Number(tokenDecimals)))) {
+                  _context4.next = 67;
                   break;
                 }
 
-                _context4.next = 63;
+                _logMessage("user has enough balance to pay for fees");
+
+                _context4.next = 68;
+                break;
+
+              case 67:
+                throw new Error("User does not have enough balance to pay for fees. Maximum fees that would be charged is ".concat(totalFees, "..Please check your balance"));
+
+              case 68:
+                if (permitType) {
+                  _context4.next = 77;
+                  break;
+                }
+
+                _context4.next = 71;
                 return this.erc20ForwarderApproved(req.token, userAddress, spendValue);
 
-              case 63:
+              case 71:
                 allowedToSpend = _context4.sent;
 
                 if (allowedToSpend) {
-                  _context4.next = 68;
+                  _context4.next = 76;
                   break;
                 }
 
                 throw new Error("You have not given approval to ERC Forwarder contract to spend tokens");
 
-              case 68:
+              case 76:
                 _logMessage("".concat(userAddress, " has given permission ").concat(this.erc20Forwarder.address, " to spend required amount of tokens"));
 
-              case 69:
+              case 77:
                 return _context4.abrupt("return", {
                   request: req,
                   cost: totalFees
                 });
 
-              case 72:
-                _context4.prev = 72;
+              case 80:
+                _context4.prev = 80;
                 _context4.t0 = _context4["catch"](1);
 
                 _logMessage(_context4.t0);
 
                 throw _context4.t0;
 
-              case 76:
+              case 84:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[1, 72]]);
+        }, _callee4, this, [[1, 80]]);
       }));
 
       function buildTx(_x4) {
