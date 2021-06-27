@@ -761,6 +761,7 @@ async function sendSignedTransaction(engine, payload, end) {
  * This is an internal function that is called while intercepting eth_sendTransaction RPC method call.
  **/
 async function handleSendTransaction(engine, payload, end) {
+  try {
   _logMessage("Handle transaction with payload");
   _logMessage(payload);
   if (payload.params && payload.params[0] && payload.params[0].to) {
@@ -975,6 +976,10 @@ async function handleSendTransaction(engine, payload, end) {
     );
     eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
     end(error);
+  }
+}
+  catch (error) {
+    return end(error);
   }
 }
 
