@@ -1061,7 +1061,10 @@ function getTargetProvider(engine) {
 function getSignatureEIP712(engine, account, request) {
   const dataToSign = _getEIP712ForwardMessageToSign(request);
   let targetProvider = getTargetProvider(engine);
-  const promi = new Promise(async function (resolve, reject) {
+  if(!targetProvider){
+    throw new Error(`Unable to get provider information passed to Biconomy`);
+  }
+  const promise = new Promise(async function (resolve, reject) {
     if(targetProvider) {
       if(isEthersProvider(targetProvider)) {
         try{
@@ -1092,7 +1095,7 @@ function getSignatureEIP712(engine, account, request) {
     }
   });
 
-  return promi;
+  return promise;
 }
 
 async function getSignaturePersonal(engine, req) {
@@ -1102,8 +1105,11 @@ async function getSignaturePersonal(engine, req) {
   }
   let signature;
   let targetProvider = getTargetProvider(engine);
+  if(!targetProvider){
+    throw new Error(`Unable to get provider information passed to Biconomy`);
+  }
   let signer = targetProvider.getSigner();
-  const promi = new Promise(async function (resolve, reject) {
+  const promise = new Promise(async function (resolve, reject) {
     try {
       signature = await signer.signMessage(ethers.utils.arrayify(hashToSign));
       resolve(signature);
@@ -1111,7 +1117,7 @@ async function getSignaturePersonal(engine, req) {
       reject(error);
     }
   });
-  return promi;
+  return promise;
 }
 
 // On getting smart contract data get the API data also

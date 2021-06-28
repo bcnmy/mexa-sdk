@@ -1329,7 +1329,12 @@ function getSignatureEIP712(engine, account, request) {
   var dataToSign = _getEIP712ForwardMessageToSign(request);
 
   var targetProvider = getTargetProvider(engine);
-  var promi = new Promise( /*#__PURE__*/function () {
+
+  if (!targetProvider) {
+    throw new Error("Unable to get provider information passed to Biconomy");
+  }
+
+  var promise = new Promise( /*#__PURE__*/function () {
     var _ref4 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(resolve, reject) {
       var signature;
       return _regenerator["default"].wrap(function _callee4$(_context4) {
@@ -1399,7 +1404,7 @@ function getSignatureEIP712(engine, account, request) {
       return _ref4.apply(this, arguments);
     };
   }());
-  return promi;
+  return promise;
 }
 
 function getSignaturePersonal(_x13, _x14) {
@@ -1409,7 +1414,7 @@ function getSignaturePersonal(_x13, _x14) {
 
 function _getSignaturePersonal() {
   _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(engine, req) {
-    var hashToSign, signature, targetProvider, signer, promi;
+    var hashToSign, signature, targetProvider, signer, promise;
     return _regenerator["default"].wrap(function _callee10$(_context10) {
       while (1) {
         switch (_context10.prev = _context10.next) {
@@ -1425,8 +1430,17 @@ function _getSignaturePersonal() {
 
           case 3:
             targetProvider = getTargetProvider(engine);
+
+            if (targetProvider) {
+              _context10.next = 6;
+              break;
+            }
+
+            throw new Error("Unable to get provider information passed to Biconomy");
+
+          case 6:
             signer = targetProvider.getSigner();
-            promi = new Promise( /*#__PURE__*/function () {
+            promise = new Promise( /*#__PURE__*/function () {
               var _ref8 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(resolve, reject) {
                 return _regenerator["default"].wrap(function _callee9$(_context9) {
                   while (1) {
@@ -1459,9 +1473,9 @@ function _getSignaturePersonal() {
                 return _ref8.apply(this, arguments);
               };
             }());
-            return _context10.abrupt("return", promi);
+            return _context10.abrupt("return", promise);
 
-          case 7:
+          case 9:
           case "end":
             return _context10.stop();
         }
