@@ -932,19 +932,21 @@ function _handleSendTransaction() {
       while (1) {
         switch (_context8.prev = _context8.next) {
           case 0:
+            _context8.prev = 0;
+
             _logMessage("Handle transaction with payload");
 
             _logMessage(payload);
 
             if (!(payload.params && payload.params[0] && payload.params[0].to)) {
-              _context8.next = 136;
+              _context8.next = 137;
               break;
             }
 
             to = payload.params[0].to.toLowerCase();
 
             if (!(decoderMap[to] || decoderMap[config.SCW])) {
-              _context8.next = 126;
+              _context8.next = 127;
               break;
             }
 
@@ -955,7 +957,7 @@ function _handleSendTransaction() {
             }
 
             if (methodInfo) {
-              _context8.next = 12;
+              _context8.next = 13;
               break;
             }
 
@@ -964,7 +966,7 @@ function _handleSendTransaction() {
             error.message = "Can't decode method information from payload. Make sure you have uploaded correct ABI on Biconomy Dashboard";
             return _context8.abrupt("return", end(error, null));
 
-          case 12:
+          case 13:
             methodName = methodInfo.name;
             api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined; // Information we get here is contractAddress, methodName, methodType, ApiId
 
@@ -986,7 +988,7 @@ function _handleSendTransaction() {
             _logMessage("gas limit : ".concat(gasLimit));
 
             if (api) {
-              _context8.next = 32;
+              _context8.next = 33;
               break;
             }
 
@@ -995,7 +997,7 @@ function _handleSendTransaction() {
             _logMessage("Strict mode ".concat(engine.strictMode));
 
             if (!engine.strictMode) {
-              _context8.next = 30;
+              _context8.next = 31;
               break;
             }
 
@@ -1004,12 +1006,12 @@ function _handleSendTransaction() {
             _error11.message = "Biconomy strict mode is on. No registered API found for method ".concat(methodName, ". Please register API from developer dashboard.");
             return _context8.abrupt("return", end(_error11, null));
 
-          case 30:
+          case 31:
             _logMessage("Falling back to default provider as strict mode is false in biconomy");
 
             return _context8.abrupt("return", callDefaultProvider(engine, payload, end, "No registered API found for method ".concat(methodName, ". Please register API from developer dashboard.")));
 
-          case 32:
+          case 33:
             _logMessage("API found");
 
             _logMessage("Getting user account");
@@ -1017,13 +1019,13 @@ function _handleSendTransaction() {
             account = payload.params[0].from;
 
             if (account) {
-              _context8.next = 37;
+              _context8.next = 38;
               break;
             }
 
             return _context8.abrupt("return", end("Not able to get user account"));
 
-          case 37:
+          case 38:
             _logMessage("User account fetched");
 
             params = methodInfo.params;
@@ -1033,7 +1035,7 @@ function _handleSendTransaction() {
             paramArray = [];
 
             if (!(metaTxApproach == engine.ERC20_FORWARDER)) {
-              _context8.next = 45;
+              _context8.next = 46;
               break;
             }
 
@@ -1041,14 +1043,14 @@ function _handleSendTransaction() {
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error12);
             return _context8.abrupt("return", end(_error12));
 
-          case 45:
+          case 46:
             if (!(api.url == NATIVE_META_TX_URL)) {
-              _context8.next = 121;
+              _context8.next = 122;
               break;
             }
 
             if (!(metaTxApproach == engine.TRUSTED_FORWARDER)) {
-              _context8.next = 111;
+              _context8.next = 112;
               break;
             }
 
@@ -1066,35 +1068,35 @@ function _handleSendTransaction() {
             contractABI = smartContractMap[to];
 
             if (!contractABI) {
-              _context8.next = 61;
+              _context8.next = 62;
               break;
             }
 
             contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-            _context8.next = 57;
+            _context8.next = 58;
             return (_contract$estimateGas3 = contract.estimateGas)[methodName].apply(_contract$estimateGas3, paramArrayForGasCalculation.concat([{
               from: account
             }]));
 
-          case 57:
+          case 58:
             gasLimitNum = _context8.sent;
 
             _logMessage("Gas limit calculated for method ".concat(methodName, " in SDK: ").concat(gasLimitNum));
 
-            _context8.next = 64;
+            _context8.next = 65;
             break;
 
-          case 61:
+          case 62:
             _error13 = formatMessage(RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND, "Smart contract ABI not found!");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error13);
             end(_error13);
 
-          case 64:
-            _context8.next = 66;
+          case 65:
+            _context8.next = 67;
             return buildForwardTxRequest(account, to, parseInt(gasLimitNum), //txGas
             forwardedData, biconomyForwarder);
 
-          case 66:
+          case 67:
             request = _context8.sent.request;
 
             _logMessage(request);
@@ -1102,7 +1104,7 @@ function _handleSendTransaction() {
             paramArray.push(request);
 
             if (!(signatureType && signatureType == engine.EIP712_SIGN)) {
-              _context8.next = 86;
+              _context8.next = 87;
               break;
             }
 
@@ -1115,7 +1117,7 @@ function _handleSendTransaction() {
             paramArray.push(domainSeparator);
 
             if (!signatureFromPayload) {
-              _context8.next = 79;
+              _context8.next = 80;
               break;
             }
 
@@ -1123,26 +1125,26 @@ function _handleSendTransaction() {
 
             _logMessage("EIP712 signature from payload is ".concat(signatureEIP712));
 
-            _context8.next = 83;
+            _context8.next = 84;
             break;
 
-          case 79:
-            _context8.next = 81;
+          case 80:
+            _context8.next = 82;
             return getSignatureEIP712(engine, account, request);
 
-          case 81:
+          case 82:
             signatureEIP712 = _context8.sent;
 
             _logMessage("EIP712 signature is ".concat(signatureEIP712));
 
-          case 83:
+          case 84:
             paramArray.push(signatureEIP712);
-            _context8.next = 100;
+            _context8.next = 101;
             break;
 
-          case 86:
+          case 87:
             if (!signatureFromPayload) {
-              _context8.next = 91;
+              _context8.next = 92;
               break;
             }
 
@@ -1150,32 +1152,32 @@ function _handleSendTransaction() {
 
             _logMessage("Personal signature from payload is ".concat(signaturePersonal));
 
-            _context8.next = 95;
+            _context8.next = 96;
             break;
 
-          case 91:
-            _context8.next = 93;
+          case 92:
+            _context8.next = 94;
             return getSignaturePersonal(engine, request);
 
-          case 93:
+          case 94:
             signaturePersonal = _context8.sent;
 
             _logMessage("Personal signature is ".concat(signaturePersonal));
 
-          case 95:
+          case 96:
             if (!signaturePersonal) {
-              _context8.next = 99;
+              _context8.next = 100;
               break;
             }
 
             paramArray.push(signaturePersonal);
-            _context8.next = 100;
+            _context8.next = 101;
             break;
 
-          case 99:
+          case 100:
             throw new Error("Could not get personal signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy");
 
-          case 100:
+          case 101:
             data = {};
             data.from = account;
             data.apiId = api.id;
@@ -1187,14 +1189,14 @@ function _handleSendTransaction() {
               data.signatureType = engine.EIP712_SIGN;
             }
 
-            _context8.next = 109;
+            _context8.next = 110;
             return _sendTransaction(engine, account, api, data, end);
 
-          case 109:
-            _context8.next = 119;
+          case 110:
+            _context8.next = 120;
             break;
 
-          case 111:
+          case 112:
             for (_i2 = 0; _i2 < params.length; _i2++) {
               paramArray.push(_getParamValue(params[_i2]));
             }
@@ -1208,51 +1210,60 @@ function _handleSendTransaction() {
 
             _sendTransaction(engine, account, api, _data4, end);
 
-          case 119:
-            _context8.next = 124;
+          case 120:
+            _context8.next = 125;
             break;
 
-          case 121:
+          case 122:
             _error14 = formatMessage(RESPONSE_CODES.INVALID_OPERATION, "Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with \"native meta tx\" checkbox selected.");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error14);
             return _context8.abrupt("return", end(_error14));
 
-          case 124:
-            _context8.next = 134;
+          case 125:
+            _context8.next = 135;
             break;
 
-          case 126:
+          case 127:
             if (!engine.strictMode) {
-              _context8.next = 132;
+              _context8.next = 133;
               break;
             }
 
             _error15 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error15);
             end(_error15);
-            _context8.next = 134;
+            _context8.next = 135;
             break;
 
-          case 132:
+          case 133:
             _logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
 
             return _context8.abrupt("return", callDefaultProvider(engine, payload, end, "Current provider can't send transactions and smart contract ".concat(to, " not found on Biconomy Dashbaord")));
 
-          case 134:
-            _context8.next = 139;
+          case 135:
+            _context8.next = 140;
             break;
 
-          case 136:
+          case 137:
             _error16 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload), ". Expecting params key to be an array with first element having a 'to' property"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error16);
             end(_error16);
 
-          case 139:
+          case 140:
+            _context8.next = 145;
+            break;
+
+          case 142:
+            _context8.prev = 142;
+            _context8.t0 = _context8["catch"](0);
+            return _context8.abrupt("return", end(_context8.t0));
+
+          case 145:
           case "end":
             return _context8.stop();
         }
       }
-    }, _callee8);
+    }, _callee8, null, [[0, 142]]);
   }));
   return _handleSendTransaction.apply(this, arguments);
 }
@@ -1318,7 +1329,12 @@ function getSignatureEIP712(engine, account, request) {
   var dataToSign = _getEIP712ForwardMessageToSign(request);
 
   var targetProvider = getTargetProvider(engine);
-  var promi = new Promise( /*#__PURE__*/function () {
+
+  if (!targetProvider) {
+    throw new Error("Unable to get provider information passed to Biconomy");
+  }
+
+  var promise = new Promise( /*#__PURE__*/function () {
     var _ref4 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(resolve, reject) {
       var signature;
       return _regenerator["default"].wrap(function _callee4$(_context4) {
@@ -1326,26 +1342,36 @@ function getSignatureEIP712(engine, account, request) {
           switch (_context4.prev = _context4.next) {
             case 0:
               if (!targetProvider) {
-                _context4.next = 12;
+                _context4.next = 18;
                 break;
               }
 
               if (!isEthersProvider(targetProvider)) {
-                _context4.next = 8;
+                _context4.next = 14;
                 break;
               }
 
-              _context4.next = 4;
+              _context4.prev = 2;
+              _context4.next = 5;
               return targetProvider.send("eth_signTypedData_v3", [account, dataToSign]);
 
-            case 4:
+            case 5:
               signature = _context4.sent;
               resolve(signature);
-              _context4.next = 10;
+              _context4.next = 12;
               break;
 
-            case 8:
-              _context4.next = 10;
+            case 9:
+              _context4.prev = 9;
+              _context4.t0 = _context4["catch"](2);
+              reject(_context4.t0);
+
+            case 12:
+              _context4.next = 16;
+              break;
+
+            case 14:
+              _context4.next = 16;
               return targetProvider.send({
                 jsonrpc: "2.0",
                 id: 999999999999,
@@ -1359,26 +1385,26 @@ function getSignatureEIP712(engine, account, request) {
                 }
               });
 
-            case 10:
-              _context4.next = 13;
+            case 16:
+              _context4.next = 19;
               break;
 
-            case 12:
+            case 18:
               reject("Could not get signature from the provider passed to Biconomy. Check if you have passed a walletProvider in Biconomy Options.");
 
-            case 13:
+            case 19:
             case "end":
               return _context4.stop();
           }
         }
-      }, _callee4);
+      }, _callee4, null, [[2, 9]]);
     }));
 
     return function (_x11, _x12) {
       return _ref4.apply(this, arguments);
     };
   }());
-  return promi;
+  return promise;
 }
 
 function getSignaturePersonal(_x13, _x14) {
@@ -1387,69 +1413,74 @@ function getSignaturePersonal(_x13, _x14) {
 
 
 function _getSignaturePersonal() {
-  _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(engine, req) {
-    var hashToSign, signature, walletSigner;
-    return _regenerator["default"].wrap(function _callee9$(_context9) {
+  _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(engine, req) {
+    var hashToSign, signature, targetProvider, signer, promise;
+    return _regenerator["default"].wrap(function _callee10$(_context10) {
       while (1) {
-        switch (_context9.prev = _context9.next) {
+        switch (_context10.prev = _context10.next) {
           case 0:
             hashToSign = _getPersonalForwardMessageToSign(req);
 
             if (!(!engine.signer && !engine.walletProvider)) {
-              _context9.next = 3;
+              _context10.next = 3;
               break;
             }
 
             throw new Error("Can't sign messages with current provider. Did you forget to pass walletProvider in Biconomy options?");
 
           case 3:
-            if (!engine.canSignMessages) {
-              _context9.next = 9;
+            targetProvider = getTargetProvider(engine);
+
+            if (targetProvider) {
+              _context10.next = 6;
               break;
             }
 
-            _context9.next = 6;
-            return engine.signer.signMessage(ethers.utils.arrayify(hashToSign));
+            throw new Error("Unable to get provider information passed to Biconomy");
 
           case 6:
-            signature = _context9.sent;
-            _context9.next = 22;
-            break;
+            signer = targetProvider.getSigner();
+            promise = new Promise( /*#__PURE__*/function () {
+              var _ref8 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(resolve, reject) {
+                return _regenerator["default"].wrap(function _callee9$(_context9) {
+                  while (1) {
+                    switch (_context9.prev = _context9.next) {
+                      case 0:
+                        _context9.prev = 0;
+                        _context9.next = 3;
+                        return signer.signMessage(ethers.utils.arrayify(hashToSign));
+
+                      case 3:
+                        signature = _context9.sent;
+                        resolve(signature);
+                        _context9.next = 10;
+                        break;
+
+                      case 7:
+                        _context9.prev = 7;
+                        _context9.t0 = _context9["catch"](0);
+                        reject(_context9.t0);
+
+                      case 10:
+                      case "end":
+                        return _context9.stop();
+                    }
+                  }
+                }, _callee9, null, [[0, 7]]);
+              }));
+
+              return function (_x27, _x28) {
+                return _ref8.apply(this, arguments);
+              };
+            }());
+            return _context10.abrupt("return", promise);
 
           case 9:
-            if (!engine.walletProvider) {
-              _context9.next = 22;
-              break;
-            }
-
-            _context9.next = 12;
-            return engine.walletProvider.getSigner();
-
-          case 12:
-            walletSigner = _context9.sent;
-            _context9.prev = 13;
-            _context9.next = 16;
-            return walletSigner.signMessage(ethers.utils.arrayify(hashToSign));
-
-          case 16:
-            signature = _context9.sent;
-            _context9.next = 22;
-            break;
-
-          case 19:
-            _context9.prev = 19;
-            _context9.t0 = _context9["catch"](13);
-            throw new Error("Can't get signature from Wallet Provider passed to Biconomy options. Make sure wallet provider you have passed can sign messages.");
-
-          case 22:
-            return _context9.abrupt("return", signature);
-
-          case 23:
           case "end":
-            return _context9.stop();
+            return _context10.stop();
         }
       }
-    }, _callee9, null, [[13, 19]]);
+    }, _callee10);
   }));
   return _getSignaturePersonal.apply(this, arguments);
 }
@@ -1780,11 +1811,11 @@ function _sendTransaction(_x16, _x17, _x18, _x19, _x20) {
 
 
 function _sendTransaction2() {
-  _sendTransaction2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(engine, account, api, data, cb) {
+  _sendTransaction2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(engine, account, api, data, cb) {
     var url, fetchOption;
-    return _regenerator["default"].wrap(function _callee10$(_context10) {
+    return _regenerator["default"].wrap(function _callee11$(_context11) {
       while (1) {
-        switch (_context10.prev = _context10.next) {
+        switch (_context11.prev = _context11.next) {
           case 0:
             if (engine && account && api && data) {
               url = api.url;
@@ -1821,10 +1852,10 @@ function _sendTransaction2() {
 
           case 1:
           case "end":
-            return _context10.stop();
+            return _context11.stop();
         }
       }
-    }, _callee10);
+    }, _callee11);
   }));
   return _sendTransaction2.apply(this, arguments);
 }
@@ -1834,33 +1865,33 @@ function _init(_x21, _x22) {
 }
 
 function _init2() {
-  _init2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee12(apiKey, engine) {
+  _init2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee13(apiKey, engine) {
     var getDappAPI;
-    return _regenerator["default"].wrap(function _callee12$(_context12) {
+    return _regenerator["default"].wrap(function _callee13$(_context13) {
       while (1) {
-        switch (_context12.prev = _context12.next) {
+        switch (_context13.prev = _context13.next) {
           case 0:
-            _context12.prev = 0;
-            _context12.next = 3;
+            _context13.prev = 0;
+            _context13.next = 3;
             return engine.ethersProvider.getSigner();
 
           case 3:
-            engine.signer = _context12.sent;
+            engine.signer = _context13.sent;
             // Check current network id and dapp network id registered on dashboard
             getDappAPI = "".concat(baseURL, "/api/").concat(config.version, "/dapp");
             fetch(getDappAPI, getFetchOptions("GET", apiKey)).then(function (response) {
               return response.json();
             }).then( /*#__PURE__*/function () {
-              var _ref8 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(dappResponse) {
+              var _ref9 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee12(dappResponse) {
                 var dappNetworkId, dappId, getNetworkIdOption, providerNetworkId;
-                return _regenerator["default"].wrap(function _callee11$(_context11) {
+                return _regenerator["default"].wrap(function _callee12$(_context12) {
                   while (1) {
-                    switch (_context11.prev = _context11.next) {
+                    switch (_context12.prev = _context12.next) {
                       case 0:
                         _logMessage(dappResponse);
 
                         if (!(dappResponse && dappResponse.dapp)) {
-                          _context11.next = 20;
+                          _context12.next = 20;
                           break;
                         }
 
@@ -1877,18 +1908,18 @@ function _init2() {
                         };
 
                         if (!isEthersProvider(engine.originalProvider)) {
-                          _context11.next = 17;
+                          _context12.next = 17;
                           break;
                         }
 
-                        _context11.next = 9;
+                        _context12.next = 9;
                         return engine.originalProvider.send("net_version", []);
 
                       case 9:
-                        providerNetworkId = _context11.sent;
+                        providerNetworkId = _context12.sent;
 
                         if (!providerNetworkId) {
-                          _context11.next = 14;
+                          _context12.next = 14;
                           break;
                         }
 
@@ -1898,14 +1929,14 @@ function _init2() {
                           apiKey: apiKey,
                           dappId: dappId
                         });
-                        _context11.next = 15;
+                        _context12.next = 15;
                         break;
 
                       case 14:
-                        return _context11.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), "Could not get network version"));
+                        return _context12.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), "Could not get network version"));
 
                       case 15:
-                        _context11.next = 18;
+                        _context12.next = 18;
                         break;
 
                       case 17:
@@ -1924,7 +1955,7 @@ function _init2() {
                         });
 
                       case 18:
-                        _context11.next = 21;
+                        _context12.next = 21;
                         break;
 
                       case 20:
@@ -1936,32 +1967,32 @@ function _init2() {
 
                       case 21:
                       case "end":
-                        return _context11.stop();
+                        return _context12.stop();
                     }
                   }
-                }, _callee11);
+                }, _callee12);
               }));
 
-              return function (_x27) {
-                return _ref8.apply(this, arguments);
+              return function (_x29) {
+                return _ref9.apply(this, arguments);
               };
             }())["catch"](function (error) {
               eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
             });
-            _context12.next = 11;
+            _context13.next = 11;
             break;
 
           case 8:
-            _context12.prev = 8;
-            _context12.t0 = _context12["catch"](0);
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), _context12.t0);
+            _context13.prev = 8;
+            _context13.t0 = _context13["catch"](0);
+            eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), _context13.t0);
 
           case 11:
           case "end":
-            return _context12.stop();
+            return _context13.stop();
         }
       }
-    }, _callee12, null, [[0, 8]]);
+    }, _callee13, null, [[0, 8]]);
   }));
   return _init2.apply(this, arguments);
 }
@@ -1975,11 +2006,11 @@ function onNetworkId(_x23, _x24) {
 }
 
 function _onNetworkId() {
-  _onNetworkId = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee13(engine, _ref6) {
+  _onNetworkId = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee14(engine, _ref6) {
     var providerNetworkId, dappNetworkId, apiKey, dappId;
-    return _regenerator["default"].wrap(function _callee13$(_context13) {
+    return _regenerator["default"].wrap(function _callee14$(_context14) {
       while (1) {
-        switch (_context13.prev = _context13.next) {
+        switch (_context14.prev = _context14.next) {
           case 0:
             providerNetworkId = _ref6.providerNetworkId, dappNetworkId = _ref6.dappNetworkId, apiKey = _ref6.apiKey, dappId = _ref6.dappId;
             engine.networkId = providerNetworkId;
@@ -1987,11 +2018,11 @@ function _onNetworkId() {
             _logMessage("Current provider network id: ".concat(providerNetworkId));
 
             if (!(providerNetworkId != dappNetworkId)) {
-              _context13.next = 7;
+              _context14.next = 7;
               break;
             }
 
-            return _context13.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH, "Current networkId ".concat(providerNetworkId, " is different from dapp network id registered on mexa dashboard ").concat(dappNetworkId))));
+            return _context14.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH, "Current networkId ".concat(providerNetworkId, " is different from dapp network id registered on mexa dashboard ").concat(dappNetworkId))));
 
           case 7:
             domainData.chainId = providerNetworkId;
@@ -2085,10 +2116,10 @@ function _onNetworkId() {
 
           case 10:
           case "end":
-            return _context13.stop();
+            return _context14.stop();
         }
       }
-    }, _callee13);
+    }, _callee14);
   }));
   return _onNetworkId.apply(this, arguments);
 }
@@ -2098,19 +2129,19 @@ function _checkUserLogin(_x25, _x26) {
 }
 
 function _checkUserLogin2() {
-  _checkUserLogin2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee14(engine, dappId) {
-    return _regenerator["default"].wrap(function _callee14$(_context14) {
+  _checkUserLogin2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee15(engine, dappId) {
+    return _regenerator["default"].wrap(function _callee15$(_context15) {
       while (1) {
-        switch (_context14.prev = _context14.next) {
+        switch (_context15.prev = _context15.next) {
           case 0:
             eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
 
           case 1:
           case "end":
-            return _context14.stop();
+            return _context15.stop();
         }
       }
-    }, _callee14);
+    }, _callee15);
   }));
   return _checkUserLogin2.apply(this, arguments);
 }
