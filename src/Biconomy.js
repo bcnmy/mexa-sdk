@@ -761,220 +761,225 @@ async function sendSignedTransaction(engine, payload, end) {
  * This is an internal function that is called while intercepting eth_sendTransaction RPC method call.
  **/
 async function handleSendTransaction(engine, payload, end) {
-  _logMessage("Handle transaction with payload");
-  _logMessage(payload);
-  if (payload.params && payload.params[0] && payload.params[0].to) {
-    let to = payload.params[0].to.toLowerCase();
-    if (decoderMap[to] || decoderMap[config.SCW]) {
-      let methodInfo = decodeMethod(to, payload.params[0].data);
+  try {
+    _logMessage("Handle transaction with payload");
+    _logMessage(payload);
+    if (payload.params && payload.params[0] && payload.params[0].to) {
+      let to = payload.params[0].to.toLowerCase();
+      if (decoderMap[to] || decoderMap[config.SCW]) {
+        let methodInfo = decodeMethod(to, payload.params[0].data);
 
-      // Check if the Smart Contract Wallet is registered on dashboard
-      if (!methodInfo) {
-        methodInfo = decodeMethod(config.SCW, payload.params[0].data);
-      }
-      if(!methodInfo) {
-        let error = {};
-        error.code = RESPONSE_CODES.WRONG_ABI;
-        error.message = `Can't decode method information from payload. Make sure you have uploaded correct ABI on Biconomy Dashboard`;
-        return end(error, null);
-      }
-      let methodName = methodInfo.name;
-      let api = engine.dappAPIMap[to]
-        ? engine.dappAPIMap[to][methodName]
-        : undefined;
-      // Information we get here is contractAddress, methodName, methodType, ApiId
-      let metaTxApproach;
-      if (!api) {
-        api = engine.dappAPIMap[config.SCW]
-          ? engine.dappAPIMap[config.SCW][methodName]
-          : undefined;
-          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
-      } else {
-        let contractAddr = api.contractAddress.toLowerCase();
-        metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-      }
-
-      let gasLimit = payload.params[0].gas;
-      let signatureType = payload.params[0].signatureType;
-
-      _logMessage(payload.params[0]);
-      _logMessage(api);
-      _logMessage(`gas limit : ${gasLimit}`);
-
-      if (!api) {
-        _logMessage(`API not found for method ${methodName}`);
-        _logMessage(`Strict mode ${engine.strictMode}`);
-        if (engine.strictMode) {
+        // Check if the Smart Contract Wallet is registered on dashboard
+        if (!methodInfo) {
+          methodInfo = decodeMethod(config.SCW, payload.params[0].data);
+        }
+        if (!methodInfo) {
           let error = {};
-          error.code = RESPONSE_CODES.API_NOT_FOUND;
-          error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
+          error.code = RESPONSE_CODES.WRONG_ABI;
+          error.message = `Can't decode method information from payload. Make sure you have uploaded correct ABI on Biconomy Dashboard`;
           return end(error, null);
+        }
+        let methodName = methodInfo.name;
+        let api = engine.dappAPIMap[to]
+          ? engine.dappAPIMap[to][methodName]
+          : undefined;
+        // Information we get here is contractAddress, methodName, methodType, ApiId
+        let metaTxApproach;
+        if (!api) {
+          api = engine.dappAPIMap[config.SCW]
+            ? engine.dappAPIMap[config.SCW][methodName]
+            : undefined;
+          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+        } else {
+          let contractAddr = api.contractAddress.toLowerCase();
+          metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+        }
+
+        let gasLimit = payload.params[0].gas;
+        let signatureType = payload.params[0].signatureType;
+
+        _logMessage(payload.params[0]);
+        _logMessage(api);
+        _logMessage(`gas limit : ${gasLimit}`);
+
+        if (!api) {
+          _logMessage(`API not found for method ${methodName}`);
+          _logMessage(`Strict mode ${engine.strictMode}`);
+          if (engine.strictMode) {
+            let error = {};
+            error.code = RESPONSE_CODES.API_NOT_FOUND;
+            error.message = `Biconomy strict mode is on. No registered API found for method ${methodName}. Please register API from developer dashboard.`;
+            return end(error, null);
+          } else {
+            _logMessage(
+              `Falling back to default provider as strict mode is false in biconomy`
+            );
+            return callDefaultProvider(engine, payload, end, `No registered API found for method ${methodName}. Please register API from developer dashboard.`);
+          }
+        }
+        _logMessage("API found");
+
+        _logMessage("Getting user account");
+        let account = payload.params[0].from;
+
+        if (!account) {
+          return end(`Not able to get user account`);
+        }
+        _logMessage(`User account fetched`);
+
+        let params = methodInfo.params;
+        _logMessage(params);
+        let paramArray = [];
+
+        if (metaTxApproach == engine.ERC20_FORWARDER) {
+          let error = formatMessage(
+            RESPONSE_CODES.INVALID_PAYLOAD,
+            `This operation is not allowed for contracts registered on dashboard as "ERC20Forwarder". Use ERC20Forwarder client instead!`
+          );
+          eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+          return end(error);
+        }
+
+        let forwardedData, gasLimitNum;
+
+        if (api.url == NATIVE_META_TX_URL) {
+          if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+            _logMessage("Smart contract is configured to use Trusted Forwarder as meta transaction type");
+            forwardedData = payload.params[0].data;
+
+            let signatureFromPayload = payload.params[0].signature;
+            // Check if gas limit is present, it not calculate gas limit
+
+            let paramArrayForGasCalculation = [];
+            for (let i = 0; i < params.length; i++) {
+              paramArrayForGasCalculation.push(_getParamValue(params[i]));
+            }
+
+            let contractABI = smartContractMap[to];
+            if (contractABI) {
+              let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
+              gasLimitNum = await contract.estimateGas[methodName](...paramArrayForGasCalculation, { from: account });
+
+              _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
+            }
+            else {
+              let error = formatMessage(
+                RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
+                `Smart contract ABI not found!`
+              );
+              eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+              end(error);
+            }
+
+            const request = (
+              await buildForwardTxRequest(
+                account,
+                to,
+                parseInt(gasLimitNum), //txGas
+                forwardedData,
+                biconomyForwarder
+              )
+            ).request;
+            _logMessage(request);
+
+            paramArray.push(request);
+            if (signatureType && signatureType == engine.EIP712_SIGN) {
+              const domainSeparator = getDomainSeperator(
+                forwarderDomainData
+              );
+              _logMessage("Domain separator to be used:")
+              _logMessage(domainSeparator);
+              paramArray.push(domainSeparator);
+              let signatureEIP712;
+              if (signatureFromPayload) {
+                signatureEIP712 = signatureFromPayload;
+                _logMessage(`EIP712 signature from payload is ${signatureEIP712}`);
+              } else {
+                signatureEIP712 = await getSignatureEIP712(
+                  engine,
+                  account,
+                  request
+                );
+                _logMessage(`EIP712 signature is ${signatureEIP712}`);
+              }
+              paramArray.push(signatureEIP712);
+            } else {
+              let signaturePersonal;
+              if (signatureFromPayload) {
+                signaturePersonal = signatureFromPayload;
+                _logMessage(`Personal signature from payload is ${signaturePersonal}`);
+              } else {
+                signaturePersonal = await getSignaturePersonal(
+                  engine,
+                  request
+                );
+                _logMessage(`Personal signature is ${signaturePersonal}`);
+              }
+              if (signaturePersonal) {
+                paramArray.push(signaturePersonal);
+              } else {
+                throw new Error("Could not get personal signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy")
+              }
+            }
+
+            let data = {};
+            data.from = account;
+            data.apiId = api.id;
+            data.params = paramArray;
+            data.to = to;
+            data.gasLimit = gasLimit;
+            if (signatureType && signatureType == engine.EIP712_SIGN) {
+              data.signatureType = engine.EIP712_SIGN;
+            }
+            await _sendTransaction(engine, account, api, data, end);
+          } else {
+            for (let i = 0; i < params.length; i++) {
+              paramArray.push(_getParamValue(params[i]));
+            }
+            let data = {};
+            data.from = account;
+            data.apiId = api.id;
+            data.params = paramArray;
+            data.gasLimit = gasLimit;
+            data.to = to;
+            _sendTransaction(engine, account, api, data, end);
+          }
+        } else {
+          let error = formatMessage(
+            RESPONSE_CODES.INVALID_OPERATION,
+            `Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with "native meta tx" checkbox selected.`
+          );
+          eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+          return end(error);
+        }
+      } else {
+        if (engine.strictMode) {
+          let error = formatMessage(
+            RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,
+            `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`
+          );
+          eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+          end(error);
         } else {
           _logMessage(
-            `Falling back to default provider as strict mode is false in biconomy`
+            "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
           );
-          return callDefaultProvider(engine, payload, end, `No registered API found for method ${methodName}. Please register API from developer dashboard.`);
+          return callDefaultProvider(engine, payload, end, `Current provider can't send transactions and smart contract ${to} not found on Biconomy Dashbaord`);
         }
-      }
-      _logMessage("API found");
-
-      _logMessage("Getting user account");
-      let account = payload.params[0].from;
-
-      if (!account) {
-        return end(`Not able to get user account`);
-      }
-      _logMessage(`User account fetched`);
-
-      let params = methodInfo.params;
-      _logMessage(params);
-      let paramArray = [];
-
-      if (metaTxApproach == engine.ERC20_FORWARDER) {
-        let error = formatMessage(
-          RESPONSE_CODES.INVALID_PAYLOAD,
-          `This operation is not allowed for contracts registered on dashboard as "ERC20Forwarder". Use ERC20Forwarder client instead!`
-        );
-        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        return end(error);
-      }
-
-      let forwardedData, gasLimitNum;
-
-      if (api.url == NATIVE_META_TX_URL) {
-        if (metaTxApproach == engine.TRUSTED_FORWARDER) {
-          _logMessage("Smart contract is configured to use Trusted Forwarder as meta transaction type");
-          forwardedData = payload.params[0].data;
-
-          let signatureFromPayload = payload.params[0].signature;
-          // Check if gas limit is present, it not calculate gas limit
-
-          let paramArrayForGasCalculation = [];
-          for (let i = 0; i < params.length; i++) {
-            paramArrayForGasCalculation.push(_getParamValue(params[i]));
-          }
-
-          let contractABI = smartContractMap[to];
-          if (contractABI) {
-            let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-            gasLimitNum = await contract.estimateGas[methodName](...paramArrayForGasCalculation, {from: account});
-
-            _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
-          }
-          else {
-            let error = formatMessage(
-              RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
-              `Smart contract ABI not found!`
-            );
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-            end(error);
-          }
-
-          const request = (
-            await buildForwardTxRequest(
-              account,
-              to,
-              parseInt(gasLimitNum), //txGas
-              forwardedData,
-              biconomyForwarder
-            )
-          ).request;
-          _logMessage(request);
-
-          paramArray.push(request);
-          if (signatureType && signatureType == engine.EIP712_SIGN) {
-            const domainSeparator = getDomainSeperator(
-              forwarderDomainData
-            );
-            _logMessage("Domain separator to be used:")
-            _logMessage(domainSeparator);
-            paramArray.push(domainSeparator);
-            let signatureEIP712;
-            if (signatureFromPayload) {
-              signatureEIP712 = signatureFromPayload;
-              _logMessage(`EIP712 signature from payload is ${signatureEIP712}`);
-            } else {
-              signatureEIP712 = await getSignatureEIP712(
-                engine,
-                account,
-                request
-              );
-              _logMessage(`EIP712 signature is ${signatureEIP712}`);
-            }
-            paramArray.push(signatureEIP712);
-          } else {
-            let signaturePersonal;
-            if (signatureFromPayload) {
-              signaturePersonal = signatureFromPayload;
-              _logMessage(`Personal signature from payload is ${signaturePersonal}`);
-            } else {
-              signaturePersonal = await getSignaturePersonal(
-                engine,
-                request
-              );
-              _logMessage(`Personal signature is ${signaturePersonal}`);
-            }
-            if(signaturePersonal) {
-              paramArray.push(signaturePersonal);
-            } else {
-              throw new Error("Could not get personal signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy")
-            }
-          }
-
-          let data = {};
-          data.from = account;
-          data.apiId = api.id;
-          data.params = paramArray;
-          data.to = to;
-          data.gasLimit = gasLimit;
-          if (signatureType && signatureType == engine.EIP712_SIGN) {
-            data.signatureType = engine.EIP712_SIGN;
-          }
-          await _sendTransaction(engine, account, api, data, end);
-        } else {
-          for (let i = 0; i < params.length; i++) {
-            paramArray.push(_getParamValue(params[i]));
-          }
-          let data = {};
-          data.from = account;
-          data.apiId = api.id;
-          data.params = paramArray;
-          data.gasLimit = gasLimit;
-          data.to = to;
-          _sendTransaction(engine, account, api, data, end);
-        }
-      } else {
-        let error = formatMessage(
-          RESPONSE_CODES.INVALID_OPERATION,
-          `Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with "native meta tx" checkbox selected.`
-        );
-        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        return end(error);
       }
     } else {
-      if (engine.strictMode) {
-        let error = formatMessage(
-          RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,
-          `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`
-        );
-        eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-        end(error);
-      } else {
-        _logMessage(
-          "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
-        );
-        return callDefaultProvider(engine, payload, end, `Current provider can't send transactions and smart contract ${to} not found on Biconomy Dashbaord`);
-      }
+      let error = formatMessage(
+        RESPONSE_CODES.INVALID_PAYLOAD,
+        `Invalid payload data ${JSON.stringify(
+          payload
+        )}. Expecting params key to be an array with first element having a 'to' property`
+      );
+      eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+      end(error);
     }
-  } else {
-    let error = formatMessage(
-      RESPONSE_CODES.INVALID_PAYLOAD,
-      `Invalid payload data ${JSON.stringify(
-        payload
-      )}. Expecting params key to be an array with first element having a 'to' property`
-    );
-    eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-    end(error);
+  }
+  catch (error) {
+    return end(error);
   }
 }
 
@@ -1055,13 +1060,19 @@ function getTargetProvider(engine) {
 
 function getSignatureEIP712(engine, account, request) {
   const dataToSign = _getEIP712ForwardMessageToSign(request);
-
   let targetProvider = getTargetProvider(engine);
-  const promi = new Promise(async function (resolve, reject) {
+  if(!targetProvider){
+    throw new Error(`Unable to get provider information passed to Biconomy`);
+  }
+  const promise = new Promise(async function (resolve, reject) {
     if(targetProvider) {
       if(isEthersProvider(targetProvider)) {
+        try{
         let signature = await targetProvider.send("eth_signTypedData_v3", [account, dataToSign]);
         resolve(signature);
+        } catch (error) {
+          reject(error);
+        }
       } else {
         await targetProvider.send(
           {
@@ -1084,26 +1095,29 @@ function getSignatureEIP712(engine, account, request) {
     }
   });
 
-  return promi;
+  return promise;
 }
 
 async function getSignaturePersonal(engine, req) {
   const hashToSign = _getPersonalForwardMessageToSign(req);
-  if(!engine.signer && !engine.walletProvider) {
+  if (!engine.signer && !engine.walletProvider) {
     throw new Error(`Can't sign messages with current provider. Did you forget to pass walletProvider in Biconomy options?`);
   }
   let signature;
-  if(engine.canSignMessages) {
-    signature = await engine.signer.signMessage(ethers.utils.arrayify(hashToSign));
-  } else if(engine.walletProvider) {
-    let walletSigner = await engine.walletProvider.getSigner();
-    try {
-      signature = await walletSigner.signMessage(ethers.utils.arrayify(hashToSign));
-    } catch(error) {
-      throw new Error("Can't get signature from Wallet Provider passed to Biconomy options. Make sure wallet provider you have passed can sign messages.")
-    }
+  let targetProvider = getTargetProvider(engine);
+  if(!targetProvider){
+    throw new Error(`Unable to get provider information passed to Biconomy`);
   }
-  return signature;
+  let signer = targetProvider.getSigner();
+  const promise = new Promise(async function (resolve, reject) {
+    try {
+      signature = await signer.signMessage(ethers.utils.arrayify(hashToSign));
+      resolve(signature);
+    } catch (error) {
+      reject(error);
+    }
+  });
+  return promise;
 }
 
 // On getting smart contract data get the API data also
@@ -1706,37 +1720,40 @@ function _logMessage(message) {
 
 var scientificToDecimal = function (num) {
   var result;
-  var nsign = Math.sign(num);
+  // If the number is not in scientific notation return it as it is.
+  if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) {
+    result = num.toLocaleString('fullwide', { useGrouping: false });
+    return result.toString();
+  }
+  var nsign = Math.sign(Number(num));
   // remove the sign
-  num = Math.abs(num);
+  num = Math.abs(Number(num)).toString();
   // if the number is in scientific notation remove it
-  if (/\d+\.?\d*e[\+\-]*\d+/i.test(num)) {
-    var zero = "0",
-      parts = String(num).toLowerCase().split("e"), // split into coeff and exponent
-      e = parts.pop(), // store the exponential part
-      l = Math.abs(e), // get the number of zeros
-      sign = e / l,
-      coeff_array = parts[0].split(".");
-    if (sign === -1) {
-      l = l - coeff_array[0].length;
-      if (l < 0) {
-        num =
-          coeff_array[0].slice(0, l) +
-          "." +
-          coeff_array[0].slice(l) +
-          (coeff_array.length === 2 ? coeff_array[1] : "");
-      } else {
-        num = zero + "." + new Array(l + 1).join(zero) + coeff_array.join("");
-      }
+  var zero = "0",
+    parts = String(num).toLowerCase().split("e"), // split into coeff and exponent
+    e = parts.pop(), // store the exponential part
+    l = Math.abs(e), // get the number of zeros
+    sign = e / l,
+    coeff_array = parts[0].split(".");
+  if (sign === -1) {
+    l = l - coeff_array[0].length;
+    if (l < 0) {
+      num =
+        coeff_array[0].slice(0, l) +
+        "." +
+        coeff_array[0].slice(l) +
+        (coeff_array.length === 2 ? coeff_array[1] : "");
     } else {
-      var dec = coeff_array[1];
-      if (dec) l = l - dec.length;
+      num = zero + "." + new Array(l + 1).join(zero) + coeff_array.join("");
+    }
+  } else {
+    var dec = coeff_array[1];
+    if (dec) l = l - dec.length;
 
-      if (l < 0) {
-        num = coeff_array[0] + dec.slice(0, l) + "." + dec.slice(l);
-      } else {
-        num = coeff_array.join("") + new Array(l + 1).join(zero);
-      }
+    if (l < 0) {
+      num = coeff_array[0] + dec.slice(0, l) + "." + dec.slice(l);
+    } else {
+      num = coeff_array.join("") + new Array(l + 1).join(zero);
     }
   }
   result = nsign < 0 ? "-" + num : num;
