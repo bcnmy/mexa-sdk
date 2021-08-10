@@ -1355,8 +1355,6 @@ function _validate(options) {
           for (let j = 0; j < multiArray.length; j++) {
             let innerArray = multiArray[j];
             for(let k=0; k < innerArray.length; k++) {
-              _logMessage(typeof(innerArray[k]));
-              _logMessage(innerArray[k]);
               var newInnerArray = new Array();
               newInnerArray[k] = scientificToDecimal(innerArray[k]);
               if (newInnerArray[k])

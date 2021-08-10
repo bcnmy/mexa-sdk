@@ -1744,10 +1744,6 @@ function _getParamValue(paramObj) {
             var innerArray = multiArray[_j];
 
             for (var k = 0; k < innerArray.length; k++) {
-              _logMessage((0, _typeof2["default"])(innerArray[k]));
-
-              _logMessage(innerArray[k]);
-
               var newInnerArray = new Array();
               newInnerArray[k] = scientificToDecimal(innerArray[k]);
               if (newInnerArray[k]) newInnerArray[k] = ethers.BigNumber.from(newInnerArray[k]).toHexString();
