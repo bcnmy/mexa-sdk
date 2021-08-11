@@ -1328,7 +1328,7 @@ function _validate(options) {
  * Get paramter value from param object based on its type.
  **/
  function _getParamValue(paramObj) {
-  let value;
+  var value;
   try {
     if (paramObj && paramObj.value) {
       let type = paramObj.type;
@@ -1351,7 +1351,7 @@ function _validate(options) {
           //value = paramObj.value;
           //break;
           let multiArray = paramObj.value;
-          var myArray = new Array();
+          value = new Array();
           for (let j = 0; j < multiArray.length; j++) {
             let innerArray = multiArray[j];
             for(let k=0; k < innerArray.length; k++) {
@@ -1360,9 +1360,10 @@ function _validate(options) {
               if (newInnerArray[k])
               newInnerArray[k] = ethers.BigNumber.from(newInnerArray[k]).toHexString();
             }
-            myArray.push(newInnerArray);
+            value.push(newInnerArray);
           }
-          return myArray;
+          break;
+        //only uint/int 
         case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {})
           .input:
           value = scientificToDecimal(paramObj.value);
