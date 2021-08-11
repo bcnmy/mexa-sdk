@@ -2196,39 +2196,45 @@ function _logMessage(message) {
 }
 
 var scientificToDecimal = function scientificToDecimal(num) {
-  var result;
-  var nsign = Math.sign(num); // remove the sign
+  var result; // If the number is not in scientific notation return it as it is.
 
-  num = Math.abs(num); // if the number is in scientific notation remove it
+  if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) {
+    result = num.toLocaleString('fullwide', {
+      useGrouping: false
+    });
+    return result.toString();
+  }
 
-  if (/\d+\.?\d*e[\+\-]*\d+/i.test(num)) {
-    var zero = "0",
-        parts = String(num).toLowerCase().split("e"),
-        // split into coeff and exponent
-    e = parts.pop(),
-        // store the exponential part
-    l = Math.abs(e),
-        // get the number of zeros
-    sign = e / l,
-        coeff_array = parts[0].split(".");
+  var nsign = Math.sign(Number(num)); // remove the sign
 
-    if (sign === -1) {
-      l = l - coeff_array[0].length;
+  num = Math.abs(Number(num)).toString(); // if the number is in scientific notation remove it
 
-      if (l < 0) {
-        num = coeff_array[0].slice(0, l) + "." + coeff_array[0].slice(l) + (coeff_array.length === 2 ? coeff_array[1] : "");
-      } else {
-        num = zero + "." + new Array(l + 1).join(zero) + coeff_array.join("");
-      }
+  var zero = "0",
+      parts = String(num).toLowerCase().split("e"),
+      // split into coeff and exponent
+  e = parts.pop(),
+      // store the exponential part
+  l = Math.abs(e),
+      // get the number of zeros
+  sign = e / l,
+      coeff_array = parts[0].split(".");
+
+  if (sign === -1) {
+    l = l - coeff_array[0].length;
+
+    if (l < 0) {
+      num = coeff_array[0].slice(0, l) + "." + coeff_array[0].slice(l) + (coeff_array.length === 2 ? coeff_array[1] : "");
     } else {
-      var dec = coeff_array[1];
-      if (dec) l = l - dec.length;
+      num = zero + "." + new Array(l + 1).join(zero) + coeff_array.join("");
+    }
+  } else {
+    var dec = coeff_array[1];
+    if (dec) l = l - dec.length;
 
-      if (l < 0) {
-        num = coeff_array[0] + dec.slice(0, l) + "." + dec.slice(l);
-      } else {
-        num = coeff_array.join("") + new Array(l + 1).join(zero);
-      }
+    if (l < 0) {
+      num = coeff_array[0] + dec.slice(0, l) + "." + dec.slice(l);
+    } else {
+      num = coeff_array.join("") + new Array(l + 1).join(zero);
     }
   }
 
