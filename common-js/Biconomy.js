@@ -1720,7 +1720,8 @@ function _getParamValue(paramObj) {
       var type = paramObj.type;
 
       switch (type) {
-        case (type.match(/^uint.*\[\]$/) || type.match(/^int.*\[\]$/) || {}).input:
+        //only int/uint 1D arrays
+        case (type.match(/^uint.*\[\]^\[$/) || type.match(/^int.*\[\]^\[$/) || {}).input:
           var val = paramObj.value;
           value = [];
 
@@ -1730,6 +1731,29 @@ function _getParamValue(paramObj) {
           }
 
           break;
+        //only int/uint 2D arrays  
+
+        case (type.match(/^uint.*\[\]\[\]$/) || type.match(/^int.*\[\]\[\]$/) || {}).input:
+          //verify if its altually alright to return as it is!
+          //value = paramObj.value;
+          //break;
+          var multiArray = paramObj.value;
+          value = new Array();
+
+          for (var _j = 0; _j < multiArray.length; _j++) {
+            var innerArray = multiArray[_j];
+
+            for (var k = 0; k < innerArray.length; k++) {
+              var newInnerArray = new Array();
+              newInnerArray[k] = scientificToDecimal(innerArray[k]);
+              if (newInnerArray[k]) newInnerArray[k] = ethers.BigNumber.from(newInnerArray[k]).toHexString();
+            }
+
+            value.push(newInnerArray);
+          }
+
+          break;
+        //only uint/int 
 
         case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {}).input:
           value = scientificToDecimal(paramObj.value); //https://docs.ethers.io/v5/api/utils/bignumber/#BigNumber--notes
