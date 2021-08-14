@@ -440,6 +440,13 @@ class ERC20ForwarderClient {
     }
   }
 
+  /*@notice : estimates permitEIP2612AndTransfer (USDC) cost or Transfer cost 
+    along with balance checks of the user
+  */
+  async estimateTransferHandlerCost({token, txGas}) {
+
+  }
+
   async buildTransferTx({token, to, amount, userAddress}) {
     try {
       const txCall = await this.transferHandler.populateTransaction.transfer(
