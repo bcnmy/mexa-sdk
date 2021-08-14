@@ -1323,9 +1323,12 @@ function getTargetProvider(engine) {
   }
 
   return provider;
-}
+} //take parameter for chosen signature type V3 or V4
+
 
 function getSignatureEIP712(engine, account, request) {
+  var signTypedDataType = "eth_signTypedData_v3";
+
   var dataToSign = _getEIP712ForwardMessageToSign(request);
 
   var targetProvider = getTargetProvider(engine);
@@ -1353,7 +1356,7 @@ function getSignatureEIP712(engine, account, request) {
 
               _context4.prev = 2;
               _context4.next = 5;
-              return targetProvider.send("eth_signTypedData_v3", [account, dataToSign]);
+              return targetProvider.send(signTypedDataType, [account, dataToSign]);
 
             case 5:
               signature = _context4.sent;
@@ -1375,7 +1378,7 @@ function getSignatureEIP712(engine, account, request) {
               return targetProvider.send({
                 jsonrpc: "2.0",
                 id: 999999999999,
-                method: "eth_signTypedData_v3",
+                method: signTypedDataType,
                 params: [account, dataToSign]
               }, function (error, res) {
                 if (error) {
