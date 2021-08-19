@@ -321,10 +321,13 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         }
         _logMessage("API found");
         let params = methodInfo.params;
+        let typeString = "";
         let paramArray = [];
         for (let i = 0; i < params.length; i++) {
           paramArray.push(_getParamValue(params[i]));
+          typeString = typeString + params[i].type.toString()+",";
         }
+        typeString = typeString.substring(0,typeString.length - 1);
 
         let parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
         let account = parsedTransaction.from;
@@ -337,7 +340,8 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           let contractABI = smartContractMap[to];
           if (contractABI) {
             let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-            gasLimit = await contract.estimateGas[methodName](...paramArray, { from: account });
+            let methodSignature = methodName+"("+typeString+")";
+            gasLimit = await contract.estimateGas[methodSignature](...paramArray, { from: account });
 
             // Do not send this value in API call. only meant for txGas
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
@@ -630,17 +634,21 @@ async function sendSignedTransaction(engine, payload, end) {
             forwardedData = decodedTx.data;
 
             let paramArrayForGasCalculation = [];
+            let typeString = "";
             for (let i = 0; i < params.length; i++) {
               paramArrayForGasCalculation.push(
                 _getParamValue(params[i])
               );
+              typeString = typeString + params[i].type.toString()+",";
             }
+            typeString = typeString.substring(0,typeString.length - 1);
 
             if (!gasLimit || parseInt(gasLimit) == 0) {
               let contractABI = smartContractMap[to];
               if (contractABI) {
                 let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-                gasLimit = await contract.estimateGas[methodName](...paramArrayForGasCalculation, { from: account });
+                let methodSignature = methodName+"("+typeString+")";
+                gasLimit = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
 
                 // do not send this value in API call. only meant for txGas
                 gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
@@ -851,14 +859,17 @@ async function handleSendTransaction(engine, payload, end) {
             // Check if gas limit is present, it not calculate gas limit
 
             let paramArrayForGasCalculation = [];
+            let typeString = "";
             for (let i = 0; i < params.length; i++) {
               paramArrayForGasCalculation.push(_getParamValue(params[i]));
+              typeString = typeString + params[i].type.toString()+",";
             }
-
+            typeString = typeString.substring(0,typeString.length - 1);
             let contractABI = smartContractMap[to];
             if (contractABI) {
               let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-              gasLimitNum = await contract.estimateGas[methodName](...paramArrayForGasCalculation, { from: account });
+              let methodSignature = methodName+"("+typeString+")";
+              gasLimitNum = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
 
               _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
             }
