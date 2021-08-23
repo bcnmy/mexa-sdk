@@ -613,7 +613,7 @@ function sendSignedTransaction(_x5, _x6, _x7) {
   return _sendSignedTransaction.apply(this, arguments);
 }
 /**
- * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v3
+ * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v4
  * method and send the request to biconomy for processing and call the callback method 'end'
  * with transaction hash.
  *
@@ -1327,7 +1327,8 @@ function getTargetProvider(engine) {
 
 
 function getSignatureEIP712(engine, account, request) {
-  var signTypedDataType = "eth_signTypedData_v3";
+  //default V4 now   
+  var signTypedDataType = "eth_signTypedData_v4";
 
   var dataToSign = _getEIP712ForwardMessageToSign(request);
 

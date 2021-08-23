@@ -754,7 +754,7 @@ async function sendSignedTransaction(engine, payload, end) {
 }
 
 /**
- * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v3
+ * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v4
  * method and send the request to biconomy for processing and call the callback method 'end'
  * with transaction hash.
  *
@@ -1060,7 +1060,8 @@ function getTargetProvider(engine) {
 
 //take parameter for chosen signature type V3 or V4
 function getSignatureEIP712(engine, account, request) {
-  let signTypedDataType = "eth_signTypedData_v3";
+  //default V4 now   
+  let signTypedDataType = "eth_signTypedData_v4";
   const dataToSign = _getEIP712ForwardMessageToSign(request);
   let targetProvider = getTargetProvider(engine);
   if(!targetProvider){
