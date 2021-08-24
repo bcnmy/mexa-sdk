@@ -412,7 +412,10 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 typeString = typeString + params[i].type.toString() + ",";
               }
 
-              typeString = typeString.substring(0, typeString.length - 1);
+              if (params.length > 0) {
+                typeString = typeString.substring(0, typeString.length - 1);
+              }
+
               parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
               account = parsedTransaction.from;
 
@@ -778,7 +781,9 @@ function _sendSignedTransaction() {
               typeString = typeString + params[i].type.toString() + ",";
             }
 
-            typeString = typeString.substring(0, typeString.length - 1);
+            if (params.length > 0) {
+              typeString = typeString.substring(0, typeString.length - 1);
+            }
 
             if (!(!gasLimit || parseInt(gasLimit) == 0)) {
               _context7.next = 62;
@@ -1076,7 +1081,10 @@ function _handleSendTransaction() {
               typeString = typeString + params[i].type.toString() + ",";
             }
 
-            typeString = typeString.substring(0, typeString.length - 1);
+            if (params.length > 0) {
+              typeString = typeString.substring(0, typeString.length - 1);
+            }
+
             contractABI = smartContractMap[to];
 
             if (!contractABI) {

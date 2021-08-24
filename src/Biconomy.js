@@ -327,7 +327,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           paramArray.push(_getParamValue(params[i]));
           typeString = typeString + params[i].type.toString()+",";
         }
+        if(params.length > 0) {
         typeString = typeString.substring(0,typeString.length - 1);
+        }
 
         let parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
         let account = parsedTransaction.from;
@@ -641,7 +643,9 @@ async function sendSignedTransaction(engine, payload, end) {
               );
               typeString = typeString + params[i].type.toString()+",";
             }
+            if(params.length > 0) {
             typeString = typeString.substring(0,typeString.length - 1);
+            }
 
             if (!gasLimit || parseInt(gasLimit) == 0) {
               let contractABI = smartContractMap[to];
@@ -864,7 +868,9 @@ async function handleSendTransaction(engine, payload, end) {
               paramArrayForGasCalculation.push(_getParamValue(params[i]));
               typeString = typeString + params[i].type.toString()+",";
             }
+            if(params.length > 0) {
             typeString = typeString.substring(0,typeString.length - 1);
+            }
             let contractABI = smartContractMap[to];
             if (contractABI) {
               let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
