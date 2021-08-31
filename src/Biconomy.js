@@ -1000,14 +1000,17 @@ async function handleSendTransaction(engine, payload, end) {
   }
 }
 
-function callDefaultProvider(engine, payload, callback, errorMessage) {
+async function callDefaultProvider(engine, payload, callback, errorMessage) {
   let targetProvider = engine.originalProvider;
   if(targetProvider) {
     if(!engine.canSignMessages) {
       throw new Error(errorMessage);
     } else {
       if(engine.isEthersProviderPresent) {
-        return engine.originalProvider.send(payload.method, payload.params);
+        let responseFromProvider = await engine.originalProvider.send(payload.method, payload.params);
+        _logMessage("Response from original provider", responseFromProvider);
+        callback(null, responseFromProvider);
+        return responseFromProvider;
       } else {
         return engine.originalProvider.send(payload, callback);
       }

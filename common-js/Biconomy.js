@@ -1289,22 +1289,66 @@ function _handleSendTransaction() {
   return _handleSendTransaction.apply(this, arguments);
 }
 
-function callDefaultProvider(engine, payload, callback, errorMessage) {
-  var targetProvider = engine.originalProvider;
+function callDefaultProvider(_x11, _x12, _x13, _x14) {
+  return _callDefaultProvider.apply(this, arguments);
+}
 
-  if (targetProvider) {
-    if (!engine.canSignMessages) {
-      throw new Error(errorMessage);
-    } else {
-      if (engine.isEthersProviderPresent) {
-        return engine.originalProvider.send(payload.method, payload.params);
-      } else {
-        return engine.originalProvider.send(payload, callback);
+function _callDefaultProvider() {
+  _callDefaultProvider = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(engine, payload, callback, errorMessage) {
+    var targetProvider, responseFromProvider;
+    return _regenerator["default"].wrap(function _callee9$(_context9) {
+      while (1) {
+        switch (_context9.prev = _context9.next) {
+          case 0:
+            targetProvider = engine.originalProvider;
+
+            if (!targetProvider) {
+              _context9.next = 18;
+              break;
+            }
+
+            if (engine.canSignMessages) {
+              _context9.next = 6;
+              break;
+            }
+
+            throw new Error(errorMessage);
+
+          case 6:
+            if (!engine.isEthersProviderPresent) {
+              _context9.next = 15;
+              break;
+            }
+
+            _context9.next = 9;
+            return engine.originalProvider.send(payload.method, payload.params);
+
+          case 9:
+            responseFromProvider = _context9.sent;
+
+            _logMessage("Response from original provider", responseFromProvider);
+
+            callback(null, responseFromProvider);
+            return _context9.abrupt("return", responseFromProvider);
+
+          case 15:
+            return _context9.abrupt("return", engine.originalProvider.send(payload, callback));
+
+          case 16:
+            _context9.next = 19;
+            break;
+
+          case 18:
+            throw new Error("Original provider not present in Biconomy");
+
+          case 19:
+          case "end":
+            return _context9.stop();
+        }
       }
-    }
-  } else {
-    throw new Error("Original provider not present in Biconomy");
-  }
+    }, _callee9);
+  }));
+  return _callDefaultProvider.apply(this, arguments);
 }
 
 function _getEIP712ForwardMessageToSign(request) {
@@ -1446,29 +1490,29 @@ function getSignatureEIP712(engine, account, request) {
       }, _callee4, null, [[2, 12]]);
     }));
 
-    return function (_x11, _x12) {
+    return function (_x15, _x16) {
       return _ref4.apply(this, arguments);
     };
   }());
   return promise;
 }
 
-function getSignaturePersonal(_x13, _x14) {
+function getSignaturePersonal(_x17, _x18) {
   return _getSignaturePersonal.apply(this, arguments);
 } // On getting smart contract data get the API data also
 
 
 function _getSignaturePersonal() {
-  _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(engine, req) {
+  _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(engine, req) {
     var hashToSign, signature, targetProvider, signer, promise;
-    return _regenerator["default"].wrap(function _callee10$(_context10) {
+    return _regenerator["default"].wrap(function _callee11$(_context11) {
       while (1) {
-        switch (_context10.prev = _context10.next) {
+        switch (_context11.prev = _context11.next) {
           case 0:
             hashToSign = _getPersonalForwardMessageToSign(req);
 
             if (!(!engine.signer && !engine.walletProvider)) {
-              _context10.next = 3;
+              _context11.next = 3;
               break;
             }
 
@@ -1478,7 +1522,7 @@ function _getSignaturePersonal() {
             targetProvider = getTargetProvider(engine);
 
             if (targetProvider) {
-              _context10.next = 6;
+              _context11.next = 6;
               break;
             }
 
@@ -1487,46 +1531,46 @@ function _getSignaturePersonal() {
           case 6:
             signer = targetProvider.getSigner();
             promise = new Promise( /*#__PURE__*/function () {
-              var _ref8 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(resolve, reject) {
-                return _regenerator["default"].wrap(function _callee9$(_context9) {
+              var _ref8 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(resolve, reject) {
+                return _regenerator["default"].wrap(function _callee10$(_context10) {
                   while (1) {
-                    switch (_context9.prev = _context9.next) {
+                    switch (_context10.prev = _context10.next) {
                       case 0:
-                        _context9.prev = 0;
-                        _context9.next = 3;
+                        _context10.prev = 0;
+                        _context10.next = 3;
                         return signer.signMessage(ethers.utils.arrayify(hashToSign));
 
                       case 3:
-                        signature = _context9.sent;
+                        signature = _context10.sent;
                         resolve(signature);
-                        _context9.next = 10;
+                        _context10.next = 10;
                         break;
 
                       case 7:
-                        _context9.prev = 7;
-                        _context9.t0 = _context9["catch"](0);
-                        reject(_context9.t0);
+                        _context10.prev = 7;
+                        _context10.t0 = _context10["catch"](0);
+                        reject(_context10.t0);
 
                       case 10:
                       case "end":
-                        return _context9.stop();
+                        return _context10.stop();
                     }
                   }
-                }, _callee9, null, [[0, 7]]);
+                }, _callee10, null, [[0, 7]]);
               }));
 
-              return function (_x27, _x28) {
+              return function (_x31, _x32) {
                 return _ref8.apply(this, arguments);
               };
             }());
-            return _context10.abrupt("return", promise);
+            return _context11.abrupt("return", promise);
 
           case 9:
           case "end":
-            return _context10.stop();
+            return _context11.stop();
         }
       }
-    }, _callee10);
+    }, _callee11);
   }));
   return _getSignaturePersonal.apply(this, arguments);
 }
@@ -1691,7 +1735,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
     }, _callee5, null, [[0, 47], [6, 12]]);
   }));
 
-  return function (_x15) {
+  return function (_x19) {
     return _ref5.apply(this, arguments);
   };
 }());
@@ -1840,7 +1884,7 @@ function _getParamValue(paramObj) {
  **/
 
 
-function _sendTransaction(_x16, _x17, _x18, _x19, _x20) {
+function _sendTransaction(_x20, _x21, _x22, _x23, _x24) {
   return _sendTransaction2.apply(this, arguments);
 }
 /**
@@ -1854,11 +1898,11 @@ function _sendTransaction(_x16, _x17, _x18, _x19, _x20) {
 
 
 function _sendTransaction2() {
-  _sendTransaction2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(engine, account, api, data, cb) {
+  _sendTransaction2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee12(engine, account, api, data, cb) {
     var url, fetchOption;
-    return _regenerator["default"].wrap(function _callee11$(_context11) {
+    return _regenerator["default"].wrap(function _callee12$(_context12) {
       while (1) {
-        switch (_context11.prev = _context11.next) {
+        switch (_context12.prev = _context12.next) {
           case 0:
             if (engine && account && api && data) {
               url = api.url;
@@ -1895,46 +1939,46 @@ function _sendTransaction2() {
 
           case 1:
           case "end":
-            return _context11.stop();
+            return _context12.stop();
         }
       }
-    }, _callee11);
+    }, _callee12);
   }));
   return _sendTransaction2.apply(this, arguments);
 }
 
-function _init(_x21, _x22) {
+function _init(_x25, _x26) {
   return _init2.apply(this, arguments);
 }
 
 function _init2() {
-  _init2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee13(apiKey, engine) {
+  _init2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee14(apiKey, engine) {
     var getDappAPI;
-    return _regenerator["default"].wrap(function _callee13$(_context13) {
+    return _regenerator["default"].wrap(function _callee14$(_context14) {
       while (1) {
-        switch (_context13.prev = _context13.next) {
+        switch (_context14.prev = _context14.next) {
           case 0:
-            _context13.prev = 0;
-            _context13.next = 3;
+            _context14.prev = 0;
+            _context14.next = 3;
             return engine.ethersProvider.getSigner();
 
           case 3:
-            engine.signer = _context13.sent;
+            engine.signer = _context14.sent;
             // Check current network id and dapp network id registered on dashboard
             getDappAPI = "".concat(baseURL, "/api/").concat(config.version, "/dapp");
             fetch(getDappAPI, getFetchOptions("GET", apiKey)).then(function (response) {
               return response.json();
             }).then( /*#__PURE__*/function () {
-              var _ref9 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee12(dappResponse) {
+              var _ref9 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee13(dappResponse) {
                 var dappNetworkId, dappId, getNetworkIdOption, providerNetworkId;
-                return _regenerator["default"].wrap(function _callee12$(_context12) {
+                return _regenerator["default"].wrap(function _callee13$(_context13) {
                   while (1) {
-                    switch (_context12.prev = _context12.next) {
+                    switch (_context13.prev = _context13.next) {
                       case 0:
                         _logMessage(dappResponse);
 
                         if (!(dappResponse && dappResponse.dapp)) {
-                          _context12.next = 20;
+                          _context13.next = 20;
                           break;
                         }
 
@@ -1951,18 +1995,18 @@ function _init2() {
                         };
 
                         if (!isEthersProvider(engine.originalProvider)) {
-                          _context12.next = 17;
+                          _context13.next = 17;
                           break;
                         }
 
-                        _context12.next = 9;
+                        _context13.next = 9;
                         return engine.originalProvider.send("net_version", []);
 
                       case 9:
-                        providerNetworkId = _context12.sent;
+                        providerNetworkId = _context13.sent;
 
                         if (!providerNetworkId) {
-                          _context12.next = 14;
+                          _context13.next = 14;
                           break;
                         }
 
@@ -1972,14 +2016,14 @@ function _init2() {
                           apiKey: apiKey,
                           dappId: dappId
                         });
-                        _context12.next = 15;
+                        _context13.next = 15;
                         break;
 
                       case 14:
-                        return _context12.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), "Could not get network version"));
+                        return _context13.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), "Could not get network version"));
 
                       case 15:
-                        _context12.next = 18;
+                        _context13.next = 18;
                         break;
 
                       case 17:
@@ -1998,7 +2042,7 @@ function _init2() {
                         });
 
                       case 18:
-                        _context12.next = 21;
+                        _context13.next = 21;
                         break;
 
                       case 20:
@@ -2010,32 +2054,32 @@ function _init2() {
 
                       case 21:
                       case "end":
-                        return _context12.stop();
+                        return _context13.stop();
                     }
                   }
-                }, _callee12);
+                }, _callee13);
               }));
 
-              return function (_x29) {
+              return function (_x33) {
                 return _ref9.apply(this, arguments);
               };
             }())["catch"](function (error) {
               eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), error);
             });
-            _context13.next = 11;
+            _context14.next = 11;
             break;
 
           case 8:
-            _context13.prev = 8;
-            _context13.t0 = _context13["catch"](0);
-            eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), _context13.t0);
+            _context14.prev = 8;
+            _context14.t0 = _context14["catch"](0);
+            eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Error while initializing Biconomy"), _context14.t0);
 
           case 11:
           case "end":
-            return _context13.stop();
+            return _context14.stop();
         }
       }
-    }, _callee13, null, [[0, 8]]);
+    }, _callee14, null, [[0, 8]]);
   }));
   return _init2.apply(this, arguments);
 }
@@ -2044,16 +2088,16 @@ function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
 
-function onNetworkId(_x23, _x24) {
+function onNetworkId(_x27, _x28) {
   return _onNetworkId.apply(this, arguments);
 }
 
 function _onNetworkId() {
-  _onNetworkId = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee14(engine, _ref6) {
+  _onNetworkId = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee15(engine, _ref6) {
     var providerNetworkId, dappNetworkId, apiKey, dappId;
-    return _regenerator["default"].wrap(function _callee14$(_context14) {
+    return _regenerator["default"].wrap(function _callee15$(_context15) {
       while (1) {
-        switch (_context14.prev = _context14.next) {
+        switch (_context15.prev = _context15.next) {
           case 0:
             providerNetworkId = _ref6.providerNetworkId, dappNetworkId = _ref6.dappNetworkId, apiKey = _ref6.apiKey, dappId = _ref6.dappId;
             engine.networkId = providerNetworkId;
@@ -2061,11 +2105,11 @@ function _onNetworkId() {
             _logMessage("Current provider network id: ".concat(providerNetworkId));
 
             if (!(providerNetworkId != dappNetworkId)) {
-              _context14.next = 7;
+              _context15.next = 7;
               break;
             }
 
-            return _context14.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH, "Current networkId ".concat(providerNetworkId, " is different from dapp network id registered on mexa dashboard ").concat(dappNetworkId))));
+            return _context15.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_MISMATCH, "Current networkId ".concat(providerNetworkId, " is different from dapp network id registered on mexa dashboard ").concat(dappNetworkId))));
 
           case 7:
             domainData.chainId = providerNetworkId;
@@ -2159,32 +2203,32 @@ function _onNetworkId() {
 
           case 10:
           case "end":
-            return _context14.stop();
+            return _context15.stop();
         }
       }
-    }, _callee14);
+    }, _callee15);
   }));
   return _onNetworkId.apply(this, arguments);
 }
 
-function _checkUserLogin(_x25, _x26) {
+function _checkUserLogin(_x29, _x30) {
   return _checkUserLogin2.apply(this, arguments);
 }
 
 function _checkUserLogin2() {
-  _checkUserLogin2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee15(engine, dappId) {
-    return _regenerator["default"].wrap(function _callee15$(_context15) {
+  _checkUserLogin2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee16(engine, dappId) {
+    return _regenerator["default"].wrap(function _callee16$(_context16) {
       while (1) {
-        switch (_context15.prev = _context15.next) {
+        switch (_context16.prev = _context16.next) {
           case 0:
             eventEmitter.emit(EVENTS.SMART_CONTRACT_DATA_READY, dappId, engine);
 
           case 1:
           case "end":
-            return _context15.stop();
+            return _context16.stop();
         }
       }
-    }, _callee15);
+    }, _callee16);
   }));
   return _checkUserLogin2.apply(this, arguments);
 }
