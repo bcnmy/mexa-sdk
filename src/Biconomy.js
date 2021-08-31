@@ -859,33 +859,47 @@ async function handleSendTransaction(engine, payload, end) {
             _logMessage("Smart contract is configured to use Trusted Forwarder as meta transaction type");
             forwardedData = payload.params[0].data;
 
-            let signatureFromPayload = payload.params[0].signature;
-            // Check if gas limit is present, it not calculate gas limit
-
             let paramArrayForGasCalculation = [];
             let typeString = "";
-            for (let i = 0; i < params.length; i++) {
-              paramArrayForGasCalculation.push(_getParamValue(params[i]));
-              typeString = typeString + params[i].type.toString()+",";
-            }
-            if(params.length > 0) {
-            typeString = typeString.substring(0,typeString.length - 1);
-            }
-            let contractABI = smartContractMap[to];
-            if (contractABI) {
-              let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-              let methodSignature = methodName+"("+typeString+")";
-              gasLimitNum = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
+            let signatureFromPayload = payload.params[0].signature;
+            // Check if gas limit is present, it not calculate gas limit
+            
+            if (!gasLimit || parseInt(gasLimit) == 0) {
 
-              _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
-            }
-            else {
-              let error = formatMessage(
-                RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
-                `Smart contract ABI not found!`
-              );
-              eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
-              end(error);
+              for (let i = 0; i < params.length; i++) {
+                paramArrayForGasCalculation.push(_getParamValue(params[i]));
+                typeString = typeString + params[i].type.toString()+",";
+              }
+              if(params.length > 0) {
+              typeString = typeString.substring(0,typeString.length - 1);
+              }
+
+              let contractABI = smartContractMap[to];
+              if (contractABI) {
+                let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
+                let methodSignature = methodName+"("+typeString+")";
+                gasLimit = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
+                 // do not send this value in API call. only meant for txGas
+                gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
+                 .add(ethers.BigNumber.from(5000))
+                 .toNumber();
+
+                _logMessage(`Gas limit calculated for method ${methodName} in SDK: ${gasLimitNum}`);
+                _logMessage("gas limit number" + gasLimitNum);
+              }
+              else {
+                let error = formatMessage(
+                  RESPONSE_CODES.SMART_CONTRACT_NOT_FOUND,
+                  `Smart contract ABI not found!`
+                );
+                eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
+                end(error);
+              }
+            } else {
+              gasLimitNum = ethers.BigNumber.from(
+                gasLimit.toString()
+              ).toNumber();
+              _logMessage("gas limit number " + gasLimitNum);
             }
 
             const request = (
