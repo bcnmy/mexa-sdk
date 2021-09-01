@@ -888,7 +888,6 @@ async function handleSendTransaction(engine, payload, end) {
                  .toNumber();
 
                 _logMessage(`Gas limit (txGas) calculated for method ${methodName} in SDK: ${gasLimitNum}`);
-                _logMessage("gas limit (txGas) number: " + gasLimitNum);
               }
               else {
                 let error = formatMessage(
