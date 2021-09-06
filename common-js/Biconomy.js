@@ -1412,6 +1412,23 @@ function getTargetProvider(engine) {
   }
 
   return provider;
+}
+
+function getSignatureParameters(signature) {
+  if (!ethers.utils.isHexString(signature)) {
+    throw new Error('Given value "'.concat(signature, '" is not a valid hex string.'));
+  }
+
+  var r = signature.slice(0, 66);
+  var s = "0x".concat(signature.slice(66, 130));
+  var v = "0x".concat(signature.slice(130, 132));
+  v = ethers.BigNumber.from(v).toNumber();
+  if (![27, 28].includes(v)) v += 27;
+  return {
+    r: r,
+    s: s,
+    v: v
+  };
 } //take parameter for chosen signature type V3 or V4
 
 
@@ -1429,18 +1446,19 @@ function getSignatureEIP712(engine, account, request) {
 
   var promise = new Promise( /*#__PURE__*/function () {
     var _ref4 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(resolve, reject) {
-      var signature;
+      var signature, _getSignatureParamete, r, s, v, newSignature;
+
       return _regenerator["default"].wrap(function _callee4$(_context4) {
         while (1) {
           switch (_context4.prev = _context4.next) {
             case 0:
               if (!targetProvider) {
-                _context4.next = 18;
+                _context4.next = 21;
                 break;
               }
 
               if (!isEthersProvider(targetProvider)) {
-                _context4.next = 14;
+                _context4.next = 17;
                 break;
               }
 
@@ -1450,21 +1468,24 @@ function getSignatureEIP712(engine, account, request) {
 
             case 5:
               signature = _context4.sent;
-              resolve(signature);
-              _context4.next = 12;
+              _getSignatureParamete = getSignatureParameters(signature), r = _getSignatureParamete.r, s = _getSignatureParamete.s, v = _getSignatureParamete.v;
+              v = ethers.BigNumber.from(v).toHexString();
+              newSignature = r + s.slice(2) + v.slice(2);
+              resolve(newSignature);
+              _context4.next = 15;
               break;
 
-            case 9:
-              _context4.prev = 9;
+            case 12:
+              _context4.prev = 12;
               _context4.t0 = _context4["catch"](2);
               reject(_context4.t0);
 
-            case 12:
-              _context4.next = 16;
+            case 15:
+              _context4.next = 19;
               break;
 
-            case 14:
-              _context4.next = 16;
+            case 17:
+              _context4.next = 19;
               return targetProvider.send({
                 jsonrpc: "2.0",
                 id: 999999999999,
@@ -1478,19 +1499,19 @@ function getSignatureEIP712(engine, account, request) {
                 }
               });
 
-            case 16:
-              _context4.next = 19;
+            case 19:
+              _context4.next = 22;
               break;
 
-            case 18:
+            case 21:
               reject("Could not get signature from the provider passed to Biconomy. Check if you have passed a walletProvider in Biconomy Options.");
 
-            case 19:
+            case 22:
             case "end":
               return _context4.stop();
           }
         }
-      }, _callee4, null, [[2, 9]]);
+      }, _callee4, null, [[2, 12]]);
     }));
 
     return function (_x15, _x16) {

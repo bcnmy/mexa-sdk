@@ -1097,6 +1097,24 @@ function getTargetProvider(engine) {
   return provider;
 }
 
+function getSignatureParameters(signature) {
+  if (!ethers.utils.isHexString(signature)) {
+      throw new Error(
+          'Given value "'.concat(signature, '" is not a valid hex string.')
+      );
+  }
+  var r = signature.slice(0, 66);
+  var s = "0x".concat(signature.slice(66, 130));
+  var v = "0x".concat(signature.slice(130, 132));
+  v = ethers.BigNumber.from(v).toNumber();
+  if (![27, 28].includes(v)) v += 27;
+  return {
+      r: r,
+      s: s,
+      v: v
+  };
+}
+
 //take parameter for chosen signature type V3 or V4
 function getSignatureEIP712(engine, account, request) {
   //default V4 now   
@@ -1111,7 +1129,10 @@ function getSignatureEIP712(engine, account, request) {
       if(isEthersProvider(targetProvider)) {
         try{
         let signature = await targetProvider.send(signTypedDataType, [account, dataToSign]);
-        resolve(signature);
+        let { r, s, v } = getSignatureParameters(signature);
+        v = ethers.BigNumber.from(v).toHexString();
+        let newSignature = r + s.slice(2) + v.slice(2);
+        resolve(newSignature);
         } catch (error) {
           reject(error);
         }
