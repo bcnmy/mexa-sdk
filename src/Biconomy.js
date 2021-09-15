@@ -26,7 +26,7 @@ let {
   transferHandlerAbi,
 } = require("./abis");
 
-let fetch = require("node-fetch");
+let fetch = require("cross-fetch");
 
 let decoderMap = {},
   smartContractMap = {},

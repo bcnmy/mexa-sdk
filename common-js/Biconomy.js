@@ -46,7 +46,7 @@ var _require4 = require("./abis"),
     biconomyForwarderAbi = _require4.biconomyForwarderAbi,
     transferHandlerAbi = _require4.transferHandlerAbi;
 
-var fetch = require("node-fetch");
+var fetch = require("cross-fetch");
 
 var decoderMap = {},
     smartContractMap = {},

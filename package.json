@@ -1,6 +1,6 @@
 {
   "name": "@biconomy/mexa",
-  "version": "2.0.19",
+  "version": "2.0.20",
   "description": "Mexa SDK to enable meta transaction in your DApps",
   "main": "common-js/index.js",
   "scripts": {
@@ -33,11 +33,11 @@
     "@babel/core": "^7.12.13",
     "@babel/runtime": "^7.12.13",
     "abi-decoder": "^2.2.2",
+    "cross-fetch": "^3.1.4",
     "ethereum-tx-decoder": "^3.0.0",
     "ethereumjs-abi": "^0.6.8",
     "ethers": "^5.0.24",
     "events": "^3.0.0",
-    "node-fetch": "^2.6.0",
     "promise": "^8.0.3"
   },
   "engines": {
