@@ -160,6 +160,14 @@ function Biconomy(provider, options) {
           });
         });
       } else {
+        //might not be needed here in this.send
+        //TODO
+        //save chainId while init and compare against
+        if (payload.method == "eth_estimateGas") { //&& chainId == 42161
+          //TODO
+          //change to master account only for arbitrum
+          payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
+        }
         if (self.isEthersProviderPresent) {
           return self.originalProvider.send(payload.method, payload.params);
         } else {
@@ -212,6 +220,13 @@ function Biconomy(provider, options) {
           });
         });
       } else {
+        //TODO
+        //save chainId while init and compare against
+        if (payload.method == "eth_estimateGas") { //&& chainId == 42161
+          //TODO
+          //change to master account only for arbitrum
+          payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
+        }
         if (self.originalProvider.request) {
           return self.originalProvider.request(args, cb);
         } else if (self.originalProvider.send) {
@@ -1531,14 +1546,16 @@ async function _init(apiKey, engine) {
           _logMessage(
             `Network id corresponding to dapp id ${dappId} is ${dappNetworkId}`
           );
+          //TODO
+          //review - changes primarily done for Ava C chain mainnet (different chainId and networkId)
           let getNetworkIdOption = {
             jsonrpc: JSON_RPC_VERSION,
             id: "102",
-            method: "net_version",
+            method: "eth_chainId",
             params: [],
           };
           if (isEthersProvider(engine.originalProvider)) {
-            let providerNetworkId = await engine.originalProvider.send("net_version", []);
+            let providerNetworkId = await engine.originalProvider.send("eth_chainId", []);
             if (providerNetworkId) {
               onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
             } else {

@@ -181,6 +181,16 @@ function Biconomy(provider, options) {
           });
         });
       } else {
+        //might not be needed here in this.send
+        //TODO
+        //save chainId while init and compare against
+        if (payload.method == "eth_estimateGas") {
+          //&& chainId == 42161
+          //TODO
+          //change to master account only for arbitrum
+          payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
+        }
+
         if (self.isEthersProviderPresent) {
           return self.originalProvider.send(payload.method, payload.params);
         } else {
@@ -240,6 +250,15 @@ function Biconomy(provider, options) {
           });
         });
       } else {
+        //TODO
+        //save chainId while init and compare against
+        if (payload.method == "eth_estimateGas") {
+          //&& chainId == 42161
+          //TODO
+          //change to master account only for arbitrum
+          payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
+        }
+
         if (self.originalProvider.request) {
           return self.originalProvider.request(args, cb);
         } else if (self.originalProvider.send) {
@@ -2009,12 +2028,14 @@ function _init2() {
                         dappNetworkId = dappResponse.dapp.networkId;
                         dappId = dappResponse.dapp._id;
 
-                        _logMessage("Network id corresponding to dapp id ".concat(dappId, " is ").concat(dappNetworkId));
+                        _logMessage("Network id corresponding to dapp id ".concat(dappId, " is ").concat(dappNetworkId)); //TODO
+                        //review - changes primarily done for Ava C chain mainnet (different chainId and networkId)
+
 
                         getNetworkIdOption = {
                           jsonrpc: JSON_RPC_VERSION,
                           id: "102",
-                          method: "net_version",
+                          method: "eth_chainId",
                           params: []
                         };
 
@@ -2024,7 +2045,7 @@ function _init2() {
                         }
 
                         _context13.next = 9;
-                        return engine.originalProvider.send("net_version", []);
+                        return engine.originalProvider.send("eth_chainId", []);
 
                       case 9:
                         providerNetworkId = _context13.sent;
