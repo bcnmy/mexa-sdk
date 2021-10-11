@@ -341,220 +341,234 @@ Biconomy.prototype.getEthersProvider = function () {
 
 
 Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction, tokenAddress, cb) {
-  var engine = this;
-  return new Promise( /*#__PURE__*/function () {
-    var _ref3 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(resolve, reject) {
-      var decodedTx, to, methodInfo, error, methodName, token, api, metaTxApproach, contractAddr, _error, params, typeString, paramArray, i, parsedTransaction, account, gasLimit, gasLimitNum, contractABI, _contract$estimateGas, contract, methodSignature, _error2, request, cost, buildTxResponse, _error3, eip712DataToSign, hashToSign, dataToSign, _error4;
+  try {
+    var engine = this;
+    return new Promise( /*#__PURE__*/function () {
+      var _ref3 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(resolve, reject) {
+        var decodedTx, to, methodInfo, error, methodName, token, api, metaTxApproach, contractAddr, _error, params, typeString, paramArray, i, parsedTransaction, account, gasLimit, gasLimitNum, contractABI, contract, methodSignature, _contract$estimateGas, _error2, request, cost, buildTxResponse, _error3, eip712DataToSign, hashToSign, dataToSign, _error4;
 
-      return _regenerator["default"].wrap(function _callee3$(_context3) {
-        while (1) {
-          switch (_context3.prev = _context3.next) {
-            case 0:
-              if (!rawTransaction) {
-                _context3.next = 73;
+        return _regenerator["default"].wrap(function _callee3$(_context3) {
+          while (1) {
+            switch (_context3.prev = _context3.next) {
+              case 0:
+                if (!rawTransaction) {
+                  _context3.next = 79;
+                  break;
+                }
+
+                decodedTx = txDecoder.decodeTx(rawTransaction);
+
+                if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
+                  _context3.next = 76;
+                  break;
+                }
+
+                to = decodedTx.to.toLowerCase();
+                methodInfo = decodeMethod(to, decodedTx.data);
+
+                if (methodInfo) {
+                  _context3.next = 9;
+                  break;
+                }
+
+                error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH, "Smart Contract address registered on dashboard is different than what is sent(".concat(decodedTx.to, ") in current transaction"));
+                if (cb) cb(error);
+                return _context3.abrupt("return", reject(error));
+
+              case 9:
+                methodName = methodInfo.name; //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
+
+                token = tokenAddress ? tokenAddress : engine.daiTokenAddress;
+
+                _logMessage(tokenAddress);
+
+                api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
+
+                if (!api) {
+                  api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
+                  metaTxApproach = smartContractMetaTransactionMap[config.SCW];
+                } else {
+                  contractAddr = api.contractAddress.toLowerCase();
+                  metaTxApproach = smartContractMetaTransactionMap[contractAddr];
+                }
+
+                if (api) {
+                  _context3.next = 19;
+                  break;
+                }
+
+                _logMessage("API not found for method ".concat(methodName));
+
+                _error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, "No API found on dashboard for called method ".concat(methodName));
+                if (cb) cb(_error);
+                return _context3.abrupt("return", reject(_error));
+
+              case 19:
+                _logMessage("API found");
+
+                params = methodInfo.params;
+                typeString = "";
+                paramArray = [];
+
+                for (i = 0; i < params.length; i++) {
+                  paramArray.push(_getParamValue(params[i]));
+                  typeString = typeString + params[i].type.toString() + ",";
+                }
+
+                if (params.length > 0) {
+                  typeString = typeString.substring(0, typeString.length - 1);
+                }
+
+                parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
+                account = parsedTransaction.from;
+
+                _logMessage("Signer is ".concat(account));
+
+                gasLimit = decodedTx.gasLimit;
+
+                if (!(!gasLimit || parseInt(gasLimit) == 0)) {
+                  _context3.next = 47;
+                  break;
+                }
+
+                contractABI = smartContractMap[to];
+
+                if (!contractABI) {
+                  _context3.next = 45;
+                  break;
+                }
+
+                contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
+                methodSignature = methodName + "(" + typeString + ")";
+                _context3.prev = 34;
+                _context3.next = 37;
+                return (_contract$estimateGas = contract.estimateGas)[methodSignature].apply(_contract$estimateGas, paramArray.concat([{
+                  from: account
+                }]));
+
+              case 37:
+                gasLimit = _context3.sent;
+                _context3.next = 43;
                 break;
-              }
 
-              decodedTx = txDecoder.decodeTx(rawTransaction);
+              case 40:
+                _context3.prev = 40;
+                _context3.t0 = _context3["catch"](34);
+                return _context3.abrupt("return", reject(_context3.t0));
 
-              if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-                _context3.next = 70;
+              case 43:
+                // Do not send this value in API call. only meant for txGas
+                gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
+
+                _logMessage("Gas limit number ".concat(gasLimitNum));
+
+              case 45:
+                _context3.next = 48;
                 break;
-              }
 
-              to = decodedTx.to.toLowerCase();
-              methodInfo = decodeMethod(to, decodedTx.data);
+              case 47:
+                gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
 
-              if (methodInfo) {
-                _context3.next = 9;
+              case 48:
+                if (account) {
+                  _context3.next = 51;
+                  break;
+                }
+
+                _error2 = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Not able to get user account from signed transaction");
+                return _context3.abrupt("return", end(_error2));
+
+              case 51:
+                if (!(metaTxApproach == engine.TRUSTED_FORWARDER)) {
+                  _context3.next = 57;
+                  break;
+                }
+
+                _context3.next = 54;
+                return buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder);
+
+              case 54:
+                request = _context3.sent.request;
+                _context3.next = 67;
                 break;
-              }
 
-              error = formatMessage(RESPONSE_CODES.DASHBOARD_DATA_MISMATCH, "Smart Contract address registered on dashboard is different than what is sent(".concat(decodedTx.to, ") in current transaction"));
-              if (cb) cb(error);
-              return _context3.abrupt("return", reject(error));
+              case 57:
+                if (!(metaTxApproach == engine.ERC20_FORWARDER)) {
+                  _context3.next = 64;
+                  break;
+                }
 
-            case 9:
-              methodName = methodInfo.name; //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
+                _context3.next = 60;
+                return engine.erc20ForwarderClient.buildTx({
+                  userAddress: account,
+                  to: to,
+                  txGas: gasLimitNum,
+                  data: decodedTx.data,
+                  token: token
+                });
 
-              token = tokenAddress ? tokenAddress : engine.daiTokenAddress;
+              case 60:
+                buildTxResponse = _context3.sent;
 
-              _logMessage(tokenAddress);
+                if (buildTxResponse) {
+                  request = buildTxResponse.request;
+                  cost = buildTxResponse.cost;
+                } else {
+                  reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Unable to build forwarder request"));
+                }
 
-              api = engine.dappAPIMap[to] ? engine.dappAPIMap[to][methodName] : undefined;
-
-              if (!api) {
-                api = engine.dappAPIMap[config.SCW] ? engine.dappAPIMap[config.SCW][methodName] : undefined;
-                metaTxApproach = smartContractMetaTransactionMap[config.SCW];
-              } else {
-                contractAddr = api.contractAddress.toLowerCase();
-                metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-              }
-
-              if (api) {
-                _context3.next = 19;
+                _context3.next = 67;
                 break;
-              }
 
-              _logMessage("API not found for method ".concat(methodName));
+              case 64:
+                _error3 = formatMessage(RESPONSE_CODES.INVALID_OPERATION, "Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign");
+                if (cb) cb(_error3);
+                return _context3.abrupt("return", reject(_error3));
 
-              _error = formatMessage(RESPONSE_CODES.API_NOT_FOUND, "No API found on dashboard for called method ".concat(methodName));
-              if (cb) cb(_error);
-              return _context3.abrupt("return", reject(_error));
+              case 67:
+                _logMessage("Forward Request is: ");
 
-            case 19:
-              _logMessage("API found");
+                _logMessage(request);
 
-              params = methodInfo.params;
-              typeString = "";
-              paramArray = [];
+                eip712DataToSign = {
+                  types: {
+                    EIP712Domain: forwarderDomainType,
+                    ERC20ForwardRequest: forwardRequestType
+                  },
+                  domain: forwarderDomainData,
+                  primaryType: "ERC20ForwardRequest",
+                  message: request
+                };
+                hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
+                dataToSign = {
+                  eip712Format: eip712DataToSign,
+                  personalSignatureFormat: hashToSign,
+                  request: request,
+                  cost: cost
+                };
+                if (cb) cb(null, dataToSign);
+                return _context3.abrupt("return", resolve(dataToSign));
 
-              for (i = 0; i < params.length; i++) {
-                paramArray.push(_getParamValue(params[i]));
-                typeString = typeString + params[i].type.toString() + ",";
-              }
+              case 76:
+                _error4 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
+                if (cb) cb(_error4);
+                return _context3.abrupt("return", reject(_error4));
 
-              if (params.length > 0) {
-                typeString = typeString.substring(0, typeString.length - 1);
-              }
-
-              parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
-              account = parsedTransaction.from;
-
-              _logMessage("Signer is ".concat(account));
-
-              gasLimit = decodedTx.gasLimit;
-
-              if (!(!gasLimit || parseInt(gasLimit) == 0)) {
-                _context3.next = 41;
-                break;
-              }
-
-              contractABI = smartContractMap[to];
-
-              if (!contractABI) {
-                _context3.next = 39;
-                break;
-              }
-
-              contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-              methodSignature = methodName + "(" + typeString + ")";
-              _context3.next = 36;
-              return (_contract$estimateGas = contract.estimateGas)[methodSignature].apply(_contract$estimateGas, paramArray.concat([{
-                from: account
-              }]));
-
-            case 36:
-              gasLimit = _context3.sent;
-              // Do not send this value in API call. only meant for txGas
-              gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
-
-              _logMessage("Gas limit number ".concat(gasLimitNum));
-
-            case 39:
-              _context3.next = 42;
-              break;
-
-            case 41:
-              gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
-
-            case 42:
-              if (account) {
-                _context3.next = 45;
-                break;
-              }
-
-              _error2 = formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Not able to get user account from signed transaction");
-              return _context3.abrupt("return", end(_error2));
-
-            case 45:
-              if (!(metaTxApproach == engine.TRUSTED_FORWARDER)) {
-                _context3.next = 51;
-                break;
-              }
-
-              _context3.next = 48;
-              return buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder);
-
-            case 48:
-              request = _context3.sent.request;
-              _context3.next = 61;
-              break;
-
-            case 51:
-              if (!(metaTxApproach == engine.ERC20_FORWARDER)) {
-                _context3.next = 58;
-                break;
-              }
-
-              _context3.next = 54;
-              return engine.erc20ForwarderClient.buildTx({
-                userAddress: account,
-                to: to,
-                txGas: gasLimitNum,
-                data: decodedTx.data,
-                token: token
-              });
-
-            case 54:
-              buildTxResponse = _context3.sent;
-
-              if (buildTxResponse) {
-                request = buildTxResponse.request;
-                cost = buildTxResponse.cost;
-              } else {
-                reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Unable to build forwarder request"));
-              }
-
-              _context3.next = 61;
-              break;
-
-            case 58:
-              _error3 = formatMessage(RESPONSE_CODES.INVALID_OPERATION, "Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign");
-              if (cb) cb(_error3);
-              return _context3.abrupt("return", reject(_error3));
-
-            case 61:
-              _logMessage("Forward Request is: ");
-
-              _logMessage(request);
-
-              eip712DataToSign = {
-                types: {
-                  EIP712Domain: forwarderDomainType,
-                  ERC20ForwardRequest: forwardRequestType
-                },
-                domain: forwarderDomainData,
-                primaryType: "ERC20ForwardRequest",
-                message: request
-              };
-              hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
-              dataToSign = {
-                eip712Format: eip712DataToSign,
-                personalSignatureFormat: hashToSign,
-                request: request,
-                cost: cost
-              };
-              if (cb) cb(null, dataToSign);
-              return _context3.abrupt("return", resolve(dataToSign));
-
-            case 70:
-              _error4 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
-              if (cb) cb(_error4);
-              return _context3.abrupt("return", reject(_error4));
-
-            case 73:
-            case "end":
-              return _context3.stop();
+              case 79:
+              case "end":
+                return _context3.stop();
+            }
           }
-        }
-      }, _callee3);
-    }));
+        }, _callee3, null, [[34, 40]]);
+      }));
 
-    return function (_x3, _x4) {
-      return _ref3.apply(this, arguments);
-    };
-  }());
+      return function (_x3, _x4) {
+        return _ref3.apply(this, arguments);
+      };
+    }());
+  } catch (error) {
+    return end(error);
+  }
 };
 /**
  * Method used to listen to events emitted from the SDK

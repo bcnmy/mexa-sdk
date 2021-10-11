@@ -278,6 +278,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
   tokenAddress,
   cb
 ) {
+  try{
   let engine = this;
   return new Promise(async (resolve, reject) => {
     if (rawTransaction) {
@@ -345,8 +346,11 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           if (contractABI) {
             let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
             let methodSignature = methodName+"("+typeString+")";
+            try{
             gasLimit = await contract.estimateGas[methodSignature](...paramArray, { from: account });
-
+            } catch(err) {
+              return reject(err);
+            }
             // Do not send this value in API call. only meant for txGas
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
               .add(ethers.BigNumber.from(5000))
@@ -459,6 +463,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
       }
     }
   });
+} catch (error) {
+  return end(error);
+}
 };
 
 /**
