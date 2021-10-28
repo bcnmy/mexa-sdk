@@ -2021,7 +2021,7 @@ function _init2() {
                         _logMessage(dappResponse);
 
                         if (!(dappResponse && dappResponse.dapp)) {
-                          _context13.next = 22;
+                          _context13.next = 21;
                           break;
                         }
 
@@ -2040,45 +2040,44 @@ function _init2() {
                         };
 
                         if (!isEthersProvider(engine.originalProvider)) {
-                          _context13.next = 19;
+                          _context13.next = 18;
                           break;
                         }
 
-                        _context13.t0 = parseInt;
-                        _context13.next = 10;
+                        _context13.next = 9;
                         return engine.originalProvider.send("eth_chainId", []);
 
-                      case 10:
-                        _context13.t1 = _context13.sent;
-                        providerNetworkId = (0, _context13.t0)(_context13.t1);
+                      case 9:
+                        providerNetworkId = _context13.sent;
 
                         if (!providerNetworkId) {
-                          _context13.next = 16;
+                          _context13.next = 15;
                           break;
                         }
 
+                        providerNetworkId = parseInt(providerNetworkId.toString());
                         onNetworkId(engine, {
                           providerNetworkId: providerNetworkId,
                           dappNetworkId: dappNetworkId,
                           apiKey: apiKey,
                           dappId: dappId
                         });
-                        _context13.next = 17;
+                        _context13.next = 16;
                         break;
 
-                      case 16:
+                      case 15:
                         return _context13.abrupt("return", eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), "Could not get network version"));
 
-                      case 17:
-                        _context13.next = 20;
+                      case 16:
+                        _context13.next = 19;
                         break;
 
-                      case 19:
+                      case 18:
                         engine.originalProvider.send(getNetworkIdOption, function (error, networkResponse) {
                           if (error || networkResponse && networkResponse.error) {
                             return eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.NETWORK_ID_NOT_FOUND, "Could not get network version"), error || networkResponse.error);
                           } else {
-                            var _providerNetworkId = parseInt(networkResponse.result);
+                            var _providerNetworkId = parseInt(networkResponse.result.toString());
 
                             onNetworkId(engine, {
                               providerNetworkId: _providerNetworkId,
@@ -2089,18 +2088,18 @@ function _init2() {
                           }
                         });
 
-                      case 20:
-                        _context13.next = 23;
+                      case 19:
+                        _context13.next = 22;
                         break;
 
-                      case 22:
+                      case 21:
                         if (dappResponse.log) {
                           eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.ERROR_RESPONSE, dappResponse.log));
                         } else {
                           eventEmitter.emit(EVENTS.BICONOMY_ERROR, formatMessage(RESPONSE_CODES.DAPP_NOT_FOUND, "No Dapp Registered with apikey ".concat(apiKey)));
                         }
 
-                      case 23:
+                      case 22:
                       case "end":
                         return _context13.stop();
                     }

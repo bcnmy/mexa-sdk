@@ -1557,8 +1557,9 @@ async function _init(apiKey, engine) {
             params: [],
           };
           if (isEthersProvider(engine.originalProvider)) {
-            let providerNetworkId = parseInt(await engine.originalProvider.send("eth_chainId", []));
+            let providerNetworkId = await engine.originalProvider.send("eth_chainId", []);
             if (providerNetworkId) {
+              providerNetworkId = parseInt(providerNetworkId.toString());
               onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
             } else {
               return eventEmitter.emit(
@@ -1583,7 +1584,7 @@ async function _init(apiKey, engine) {
                     error || networkResponse.error
                   );
                 } else {
-                  let providerNetworkId = parseInt(networkResponse.result);
+                  let providerNetworkId = parseInt(networkResponse.result.toString());
                   onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
                 }
               }
