@@ -166,7 +166,8 @@ function Biconomy(provider, options) {
         if (payload.method == "eth_estimateGas") { //&& chainId == 42161
           //TODO
           //change to master account only for arbitrum
-          payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
+          //payload.params[0].gasPrice = "0";
+          //payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
         }
         if (self.isEthersProviderPresent) {
           return self.originalProvider.send(payload.method, payload.params);
@@ -225,7 +226,8 @@ function Biconomy(provider, options) {
         if (payload.method == "eth_estimateGas") { //&& chainId == 42161
           //TODO
           //change to master account only for arbitrum
-          payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
+          //payload.params[0].gasPrice = "0";
+          //payload.params[0].from = "0x7e31eca826d7a8029b15f4e389a86078e5daa713"; //some account with AETH
         }
         if (self.originalProvider.request) {
           return self.originalProvider.request(args, cb);
@@ -1555,7 +1557,7 @@ async function _init(apiKey, engine) {
             params: [],
           };
           if (isEthersProvider(engine.originalProvider)) {
-            let providerNetworkId = await engine.originalProvider.send("eth_chainId", []);
+            let providerNetworkId = parseInt(await engine.originalProvider.send("eth_chainId", []));
             if (providerNetworkId) {
               onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
             } else {
@@ -1581,7 +1583,7 @@ async function _init(apiKey, engine) {
                     error || networkResponse.error
                   );
                 } else {
-                  let providerNetworkId = networkResponse.result;
+                  let providerNetworkId = parseInt(networkResponse.result);
                   onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
                 }
               }
