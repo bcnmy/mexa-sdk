@@ -272,12 +272,13 @@ Biconomy.prototype.getEthersProvider = function() {
 }
 
 //TODO
-//Allow to provider custom txGas
+//Allow to provide custom txGas
 Biconomy.prototype.getForwardRequestAndMessageToSign = function (
   rawTransaction,
   tokenAddress,
   cb
 ) {
+  try {
   let engine = this;
   return new Promise(async (resolve, reject) => {
     if (rawTransaction) {
@@ -345,8 +346,11 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           if (contractABI) {
             let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
             let methodSignature = methodName+"("+typeString+")";
+            try {
             gasLimit = await contract.estimateGas[methodSignature](...paramArray, { from: account });
-
+            } catch(err) {
+              return reject(err);
+            }
             // Do not send this value in API call. only meant for txGas
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
               .add(ethers.BigNumber.from(5000))
@@ -459,6 +463,9 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
       }
     }
   });
+} catch(error) {
+  return end(error);
+}
 };
 
 /**
@@ -1534,12 +1541,13 @@ async function _init(apiKey, engine) {
           let getNetworkIdOption = {
             jsonrpc: JSON_RPC_VERSION,
             id: "102",
-            method: "net_version",
+            method: "eth_chainId",
             params: [],
           };
           if (isEthersProvider(engine.originalProvider)) {
-            let providerNetworkId = await engine.originalProvider.send("net_version", []);
+            let providerNetworkId = await engine.originalProvider.send("eth_chainId", []);
             if (providerNetworkId) {
+              providerNetworkId = parseInt(providerNetworkId.toString());
               onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
             } else {
               return eventEmitter.emit(
@@ -1564,7 +1572,7 @@ async function _init(apiKey, engine) {
                     error || networkResponse.error
                   );
                 } else {
-                  let providerNetworkId = networkResponse.result;
+                  let providerNetworkId = parseInt(networkResponse.result.toString());
                   onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, dappId });
                 }
               }
