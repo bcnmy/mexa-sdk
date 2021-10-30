@@ -83,15 +83,6 @@ A json object having configuration values for initializing mexa sdk.
   </thead>
   <tbody>
     <tr>
-      <td style="text-align:left">dappId</td>
-      <td style="text-align:left">
-        <p>type: string</p>
-        <p>DApp ID can be found on mexa dashboard.</p>
-      </td>
-      <td style="text-align:left">true</td>
-      <td style="text-align:left">Unique id assigned to each DApp on mexa dashboard.</td>
-    </tr>
-    <tr>
       <td style="text-align:left">apiKey</td>
       <td style="text-align:left">
         <p>type: string</p>
