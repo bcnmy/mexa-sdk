@@ -925,6 +925,7 @@ async function handleSendTransaction(engine, payload, end) {
 
             paramArray.push(request);
             if (signatureType && signatureType == engine.EIP712_SIGN) {
+              _logMessage("EIP712 signature flow");
               const domainSeparator = getDomainSeperator(
                 forwarderDomainData
               );
@@ -945,6 +946,7 @@ async function handleSendTransaction(engine, payload, end) {
               }
               paramArray.push(signatureEIP712);
             } else {
+              _logMessage("Personal signature flow");
               let signaturePersonal;
               if (signatureFromPayload) {
                 signaturePersonal = signatureFromPayload;
@@ -1175,10 +1177,20 @@ async function getSignaturePersonal(engine, req) {
   }
   let signature;
   let targetProvider = getTargetProvider(engine);
+
   if(!targetProvider){
     throw new Error(`Unable to get provider information passed to Biconomy`);
   }
-  let signer = targetProvider.getSigner();
+
+  let providerWithSigner;
+
+  if(isEthersProvider(targetProvider)) {
+    providerWithSigner = targetProvider;
+  } else {
+    providerWithSigner = new ethers.providers.Web3Provider(targetProvider);
+  }
+  
+  let signer = providerWithSigner.getSigner();
   const promise = new Promise(async function (resolve, reject) {
     try {
       signature = await signer.signMessage(ethers.utils.arrayify(hashToSign));
