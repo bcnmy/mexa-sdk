@@ -969,14 +969,14 @@ function _handleSendTransaction() {
             _logMessage(payload);
 
             if (!(payload.params && payload.params[0] && payload.params[0].to)) {
-              _context8.next = 149;
+              _context8.next = 151;
               break;
             }
 
             to = payload.params[0].to.toLowerCase();
 
             if (!(decoderMap[to] || decoderMap[config.SCW])) {
-              _context8.next = 139;
+              _context8.next = 141;
               break;
             }
 
@@ -1078,12 +1078,12 @@ function _handleSendTransaction() {
 
           case 48:
             if (!(api.url == NATIVE_META_TX_URL)) {
-              _context8.next = 134;
+              _context8.next = 136;
               break;
             }
 
             if (!(metaTxApproach == engine.TRUSTED_FORWARDER)) {
-              _context8.next = 124;
+              _context8.next = 126;
               break;
             }
 
@@ -1161,9 +1161,11 @@ function _handleSendTransaction() {
             paramArray.push(request);
 
             if (!(signatureType && signatureType == engine.EIP712_SIGN)) {
-              _context8.next = 99;
+              _context8.next = 100;
               break;
             }
+
+            _logMessage("EIP712 signature flow");
 
             domainSeparator = getDomainSeperator(forwarderDomainData);
 
@@ -1174,7 +1176,7 @@ function _handleSendTransaction() {
             paramArray.push(domainSeparator);
 
             if (!signatureFromPayload) {
-              _context8.next = 92;
+              _context8.next = 93;
               break;
             }
 
@@ -1182,26 +1184,28 @@ function _handleSendTransaction() {
 
             _logMessage("EIP712 signature from payload is ".concat(signatureEIP712));
 
-            _context8.next = 96;
+            _context8.next = 97;
             break;
 
-          case 92:
-            _context8.next = 94;
+          case 93:
+            _context8.next = 95;
             return getSignatureEIP712(engine, account, request);
 
-          case 94:
+          case 95:
             signatureEIP712 = _context8.sent;
 
             _logMessage("EIP712 signature is ".concat(signatureEIP712));
 
-          case 96:
+          case 97:
             paramArray.push(signatureEIP712);
-            _context8.next = 113;
+            _context8.next = 115;
             break;
 
-          case 99:
+          case 100:
+            _logMessage("Personal signature flow");
+
             if (!signatureFromPayload) {
-              _context8.next = 104;
+              _context8.next = 106;
               break;
             }
 
@@ -1209,32 +1213,32 @@ function _handleSendTransaction() {
 
             _logMessage("Personal signature from payload is ".concat(signaturePersonal));
 
-            _context8.next = 108;
+            _context8.next = 110;
             break;
 
-          case 104:
-            _context8.next = 106;
+          case 106:
+            _context8.next = 108;
             return getSignaturePersonal(engine, request);
 
-          case 106:
+          case 108:
             signaturePersonal = _context8.sent;
 
             _logMessage("Personal signature is ".concat(signaturePersonal));
 
-          case 108:
+          case 110:
             if (!signaturePersonal) {
-              _context8.next = 112;
+              _context8.next = 114;
               break;
             }
 
             paramArray.push(signaturePersonal);
-            _context8.next = 113;
+            _context8.next = 115;
             break;
 
-          case 112:
+          case 114:
             throw new Error("Could not get personal signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy");
 
-          case 113:
+          case 115:
             data = {};
             data.from = account;
             data.apiId = api.id;
@@ -1248,14 +1252,14 @@ function _handleSendTransaction() {
               data.signatureType = engine.EIP712_SIGN;
             }
 
-            _context8.next = 122;
+            _context8.next = 124;
             return _sendTransaction(engine, account, api, data, end);
 
-          case 122:
-            _context8.next = 132;
+          case 124:
+            _context8.next = 134;
             break;
 
-          case 124:
+          case 126:
             for (_i2 = 0; _i2 < params.length; _i2++) {
               paramArray.push(_getParamValue(params[_i2]));
             }
@@ -1269,60 +1273,60 @@ function _handleSendTransaction() {
 
             _sendTransaction(engine, account, api, _data4, end);
 
-          case 132:
-            _context8.next = 137;
+          case 134:
+            _context8.next = 139;
             break;
 
-          case 134:
+          case 136:
             _error14 = formatMessage(RESPONSE_CODES.INVALID_OPERATION, "Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with \"native meta tx\" checkbox selected.");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error14);
             return _context8.abrupt("return", end(_error14));
 
-          case 137:
-            _context8.next = 147;
+          case 139:
+            _context8.next = 149;
             break;
 
-          case 139:
+          case 141:
             if (!engine.strictMode) {
-              _context8.next = 145;
+              _context8.next = 147;
               break;
             }
 
             _error15 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error15);
             end(_error15);
-            _context8.next = 147;
+            _context8.next = 149;
             break;
 
-          case 145:
+          case 147:
             _logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
 
             return _context8.abrupt("return", callDefaultProvider(engine, payload, end, "Current provider can't send transactions and smart contract ".concat(to, " not found on Biconomy Dashbaord")));
 
-          case 147:
-            _context8.next = 152;
+          case 149:
+            _context8.next = 154;
             break;
 
-          case 149:
+          case 151:
             _error16 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload), ". Expecting params key to be an array with first element having a 'to' property"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error16);
             end(_error16);
 
-          case 152:
-            _context8.next = 157;
+          case 154:
+            _context8.next = 159;
             break;
 
-          case 154:
-            _context8.prev = 154;
+          case 156:
+            _context8.prev = 156;
             _context8.t0 = _context8["catch"](0);
             return _context8.abrupt("return", end(_context8.t0));
 
-          case 157:
+          case 159:
           case "end":
             return _context8.stop();
         }
       }
-    }, _callee8, null, [[0, 154]]);
+    }, _callee8, null, [[0, 156]]);
   }));
   return _handleSendTransaction.apply(this, arguments);
 }
@@ -1542,7 +1546,7 @@ function getSignaturePersonal(_x17, _x18) {
 
 function _getSignaturePersonal() {
   _getSignaturePersonal = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(engine, req) {
-    var hashToSign, signature, targetProvider, signer, promise;
+    var hashToSign, signature, targetProvider, providerWithSigner, signer, promise;
     return _regenerator["default"].wrap(function _callee11$(_context11) {
       while (1) {
         switch (_context11.prev = _context11.next) {
@@ -1567,7 +1571,13 @@ function _getSignaturePersonal() {
             throw new Error("Unable to get provider information passed to Biconomy");
 
           case 6:
-            signer = targetProvider.getSigner();
+            if (isEthersProvider(targetProvider)) {
+              providerWithSigner = targetProvider;
+            } else {
+              providerWithSigner = new ethers.providers.Web3Provider(targetProvider);
+            }
+
+            signer = providerWithSigner.getSigner();
             promise = new Promise( /*#__PURE__*/function () {
               var _ref8 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee10(resolve, reject) {
                 return _regenerator["default"].wrap(function _callee10$(_context10) {
@@ -1603,7 +1613,7 @@ function _getSignaturePersonal() {
             }());
             return _context11.abrupt("return", promise);
 
-          case 9:
+          case 10:
           case "end":
             return _context11.stop();
         }
