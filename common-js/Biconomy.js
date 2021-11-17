@@ -1118,6 +1118,11 @@ function _handleSendTransaction() {
             contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
             methodSignature = methodName + "(" + typeString + ")";
             _context8.next = 64;
+
+            if (!paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1]) {
+              paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1] = Buffer.from('', 'utf8');
+            }
+
             return (_contract$estimateGas3 = contract.estimateGas)[methodSignature].apply(_contract$estimateGas3, paramArrayForGasCalculation.concat([{
               from: account
             }]));

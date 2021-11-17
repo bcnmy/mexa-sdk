@@ -1,6 +1,6 @@
 {
-  "name": "@biconomy/mexa",
-  "version": "2.0.22",
+  "name": "@dydxprotocol/mexa-sdk",
+  "version": "2.0.23",
   "description": "Mexa SDK to enable meta transaction in your DApps",
   "main": "common-js/index.js",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bcnmy/mexa-sdk.git"
+    "url": "git+https://github.com/dydxprotocol/mexa-sdk.git"
   },
   "keywords": [
     "mexa",
@@ -22,9 +22,9 @@
   "author": "Sachin Tomar",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/bcnmy/mexa-sdk/issues"
+    "url": "https://github.com/dydxprotocol/mexa-sdk/issues"
   },
-  "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
+  "homepage": "https://github.com/dydxprotocol/mexa-sdk#readme",
   "files": [
     "*.js",
     "/dist/*.js"
