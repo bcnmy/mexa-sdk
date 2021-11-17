@@ -653,7 +653,7 @@ function _sendSignedTransaction() {
         switch (_context7.prev = _context7.next) {
           case 0:
             if (!(payload && payload.params[0])) {
-              _context7.next = 101;
+              _context7.next = 102;
               break;
             }
 
@@ -675,14 +675,14 @@ function _sendSignedTransaction() {
             }
 
             if (!rawTransaction) {
-              _context7.next = 96;
+              _context7.next = 97;
               break;
             }
 
             decodedTx = txDecoder.decodeTx(rawTransaction);
 
             if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-              _context7.next = 91;
+              _context7.next = 92;
               break;
             }
 
@@ -778,12 +778,12 @@ function _sendSignedTransaction() {
             gasLimit = decodedTx.gasLimit;
 
             if (!(api.url == NATIVE_META_TX_URL)) {
-              _context7.next = 88;
+              _context7.next = 89;
               break;
             }
 
             if (!(metaTxApproach != engine.DEFAULT)) {
-              _context7.next = 77;
+              _context7.next = 78;
               break;
             }
 
@@ -802,39 +802,44 @@ function _sendSignedTransaction() {
             }
 
             if (!(!gasLimit || parseInt(gasLimit) == 0)) {
-              _context7.next = 62;
+              _context7.next = 63;
               break;
             }
 
             contractABI = smartContractMap[to];
 
             if (!contractABI) {
-              _context7.next = 60;
+              _context7.next = 61;
               break;
             }
 
             contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
             methodSignature = methodName + "(" + typeString + ")";
-            _context7.next = 57;
+
+            if (!paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1]) {
+              paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1] = Buffer.from('', 'utf8');
+            }
+
+            _context7.next = 58;
             return (_contract$estimateGas2 = contract.estimateGas)[methodSignature].apply(_contract$estimateGas2, paramArrayForGasCalculation.concat([{
               from: account
             }]));
 
-          case 57:
+          case 58:
             gasLimit = _context7.sent;
             // do not send this value in API call. only meant for txGas
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).add(ethers.BigNumber.from(5000)).toNumber();
 
             _logMessage("gas limit number" + gasLimitNum);
 
-          case 60:
-            _context7.next = 63;
+          case 61:
+            _context7.next = 64;
             break;
 
-          case 62:
+          case 63:
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
 
-          case 63:
+          case 64:
             _logMessage(request);
 
             paramArray.push(request);
@@ -858,14 +863,14 @@ function _sendSignedTransaction() {
               _data.signatureType = engine.EIP712_SIGN;
             }
 
-            _context7.next = 75;
+            _context7.next = 76;
             return _sendTransaction(engine, account, api, _data, end);
 
-          case 75:
-            _context7.next = 86;
+          case 76:
+            _context7.next = 87;
             break;
 
-          case 77:
+          case 78:
             for (_i = 0; _i < params.length; _i++) {
               paramArray.push(_getParamValue(params[_i]));
             }
@@ -877,14 +882,14 @@ function _sendSignedTransaction() {
             _data2.gasLimit = decodedTx.gasLimit.toString(); //verify
 
             _data2.to = decodedTx.to.toLowerCase();
-            _context7.next = 86;
+            _context7.next = 87;
             return _sendTransaction(engine, account, api, _data2, end);
 
-          case 86:
-            _context7.next = 89;
+          case 87:
+            _context7.next = 90;
             break;
 
-          case 88:
+          case 89:
             if (signature) {
               relayerPayment = {};
               relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
@@ -913,34 +918,34 @@ function _sendSignedTransaction() {
               end(_error7);
             }
 
-          case 89:
-            _context7.next = 94;
+          case 90:
+            _context7.next = 95;
             break;
 
-          case 91:
+          case 92:
             _error8 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Not able to deode the data in rawTransaction using ethereum-tx-decoder. Please check the data sent.");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error8);
             end(_error8);
 
-          case 94:
-            _context7.next = 99;
+          case 95:
+            _context7.next = 100;
             break;
 
-          case 96:
+          case 97:
             _error9 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload.params[0]), ".rawTransaction is required in param object"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error9);
             end(_error9);
 
-          case 99:
-            _context7.next = 104;
+          case 100:
+            _context7.next = 105;
             break;
 
-          case 101:
+          case 102:
             _error10 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload.params[0]), ". Non empty Array expected in params key"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error10);
             end(_error10);
 
-          case 104:
+          case 105:
           case "end":
             return _context7.stop();
         }
