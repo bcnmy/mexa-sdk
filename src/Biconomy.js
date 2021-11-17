@@ -661,11 +661,6 @@ async function sendSignedTransaction(engine, payload, end) {
               if (contractABI) {
                 let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
                 let methodSignature = methodName+"("+typeString+")";
-                
-                if (!paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1]) {
-                  paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1] = Buffer.from('', 'utf8');
-                }
-
                 gasLimit = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
 
                 // do not send this value in API call. only meant for txGas
@@ -893,6 +888,11 @@ async function handleSendTransaction(engine, payload, end) {
               if (contractABI) {
                 let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
                 let methodSignature = methodName+"("+typeString+")";
+
+                if (!paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1]) {
+                  paramArrayForGasCalculation[paramArrayForGasCalculation.length - 1] = Buffer.from('', 'utf8');
+                }
+
                 txGas = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
                  // do not send this value in API call. only meant for txGas
                 gasLimitNum = ethers.BigNumber.from(txGas.toString())
