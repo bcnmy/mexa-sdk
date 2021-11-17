@@ -1854,6 +1854,11 @@ function _getParamValue(paramObj) {
   var value;
 
   try {
+    if (paramObj && paramObj.type == "bytes" && (!paramObj.value || paramObj.value == undefined || paramObj.value == null)) {
+      value = "0x";
+      return value;
+    }
+
     if (paramObj && paramObj.value) {
       var type = paramObj.type;
 
