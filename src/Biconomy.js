@@ -1157,7 +1157,11 @@ function getSignatureEIP712(engine, account, request) {
             if (error) {
               reject(error);
             } else {
-              resolve(res.result);
+              let oldSignature = res.result;
+              let { r, s, v } = getSignatureParameters(oldSignature);
+              v = ethers.BigNumber.from(v).toHexString();
+              let newSignature = r + s.slice(2) + v.slice(2);
+              resolve(newSignature);
             }
           }
         );
