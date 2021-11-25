@@ -1513,7 +1513,18 @@ function getSignatureEIP712(engine, account, request) {
                 if (error) {
                   reject(error);
                 } else {
-                  resolve(res.result);
+                  var oldSignature = res.result;
+
+                  var _getSignatureParamete2 = getSignatureParameters(oldSignature),
+                      _r = _getSignatureParamete2.r,
+                      _s = _getSignatureParamete2.s,
+                      _v = _getSignatureParamete2.v;
+
+                  _v = ethers.BigNumber.from(_v).toHexString();
+
+                  var _newSignature = _r + _s.slice(2) + _v.slice(2);
+
+                  resolve(_newSignature);
                 }
               });
 
@@ -1854,6 +1865,11 @@ function _getParamValue(paramObj) {
   var value;
 
   try {
+    if (paramObj && paramObj.type == "bytes" && (!paramObj.value || paramObj.value == undefined || paramObj.value == null)) {
+      value = "0x";
+      return value;
+    }
+
     if (paramObj && paramObj.value) {
       var type = paramObj.type;
 
