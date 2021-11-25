@@ -1157,7 +1157,11 @@ function getSignatureEIP712(engine, account, request) {
             if (error) {
               reject(error);
             } else {
-              resolve(res.result);
+              let oldSignature = res.result;
+              let { r, s, v } = getSignatureParameters(oldSignature);
+              v = ethers.BigNumber.from(v).toHexString();
+              let newSignature = r + s.slice(2) + v.slice(2);
+              resolve(newSignature);
             }
           }
         );
@@ -1412,6 +1416,10 @@ function _validate(options) {
  function _getParamValue(paramObj) {
   var value;
   try {
+    if (paramObj && paramObj.type == "bytes" && (!paramObj.value || paramObj.value == undefined || paramObj.value == null)) {
+      value = "0x";
+      return value;
+    }
     if (paramObj && paramObj.value) {
       let type = paramObj.type;
       switch (type) {
