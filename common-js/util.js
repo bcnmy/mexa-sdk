@@ -1,5 +1,8 @@
 "use strict";
 
+var _require = require("./config"),
+    config = _require.config;
+
 function toJSONRPCPayload(engine, method, params) {
   if (!method) {
     throw new Error('JSONRPC method should be specified for params: "' + JSON.stringify(params) + '"!');
@@ -20,6 +23,12 @@ function toJSONRPCPayload(engine, method, params) {
 }
 
 ;
+
+var isTrustedForwarderV2Supported = function isTrustedForwarderV2Supported(networkId) {
+  return config.trustedForwarderV2SupportedNetworks.indexOf(parseInt(networkId)) >= 0;
+};
+
 module.exports = {
-  toJSONRPCPayload: toJSONRPCPayload
+  toJSONRPCPayload: toJSONRPCPayload,
+  isTrustedForwarderV2Supported: isTrustedForwarderV2Supported
 };

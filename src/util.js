@@ -1,3 +1,5 @@
+const { config } = require("./config");
+
 function toJSONRPCPayload(engine, method, params) {
     if (!method) {
         throw new Error('JSONRPC method should be specified for params: "'+ JSON.stringify(params) +'"!');
@@ -18,4 +20,8 @@ function toJSONRPCPayload(engine, method, params) {
     };
 };
 
-module.exports = {toJSONRPCPayload}
+const isTrustedForwarderV2Supported = (networkId) => {
+    return config.trustedForwarderV2SupportedNetworks.indexOf(parseInt(networkId)) >= 0;
+  }
+
+module.exports = {toJSONRPCPayload, isTrustedForwarderV2Supported}

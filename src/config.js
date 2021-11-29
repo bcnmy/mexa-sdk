@@ -140,6 +140,8 @@ const STATUS = {
 
 config.SCW = "SCW";
 
+config.trustedForwarderV2SupportedNetworks = [137];
+
 module.exports = {
 	config,
 	EVENTS,

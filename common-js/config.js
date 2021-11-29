@@ -169,6 +169,7 @@ var STATUS = {
   NO_DATA: 'no_data'
 };
 config.SCW = "SCW";
+config.trustedForwarderV2SupportedNetworks = [137];
 module.exports = {
   config: config,
   EVENTS: EVENTS,

@@ -2,7 +2,8 @@ const Promise = require("promise");
 const ethers = require("ethers");
 const txDecoder = require("ethereum-tx-decoder");
 const abi = require("ethereumjs-abi");
-const { toJSONRPCPayload } = require("./util");
+const { toJSONRPCPayload, isTrustedForwarderV2Supported } = require("./util");
+let { eip2771BaseAbi } = require("./abis");
 const {
   config,
   RESPONSE_CODES,
@@ -34,6 +35,7 @@ let decoderMap = {},
   // could be contract address -> contract object
   smartContractMetaTransactionMap = {};
 let biconomyForwarder;
+let biconomyForwarderV2;
 const events = require("events");
 var eventEmitter = new events.EventEmitter();
 let trustedForwarderOverhead;
@@ -59,6 +61,7 @@ let daiDomainData = {
 };
 
 let forwarderDomainData;
+let forwarderV2DomainData;
 
 // EIP712 format data for login
 let loginDomainType, loginMessageType, loginDomainData;
@@ -276,6 +279,7 @@ Biconomy.prototype.getEthersProvider = function() {
 Biconomy.prototype.getForwardRequestAndMessageToSign = function (
   rawTransaction,
   tokenAddress,
+  useForwarderV2,
   cb
 ) {
   try {
@@ -368,8 +372,15 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           );
           return end(error);
         }
-
+        let domainData = forwarderDomainData;
+        if(useForwarderV2){
+          domainData = forwarderV2DomainData;
+        }
         let request, cost;
+        let trustedForwarderContract = biconomyForwarder;
+        if(useForwarderV2) {
+          trustedForwarderContract = biconomyForwarderV2;
+        } 
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
           request = (
             await buildForwardTxRequest(
@@ -377,7 +388,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
               to,
               gasLimitNum,
               decodedTx.data,
-              biconomyForwarder
+              trustedForwarderContract
             )
           ).request;
         } else if (metaTxApproach == engine.ERC20_FORWARDER) {
@@ -412,7 +423,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
             EIP712Domain: forwarderDomainType,
             ERC20ForwardRequest: forwardRequestType,
           },
-          domain: forwarderDomainData,
+          domain: domainData,
           primaryType: "ERC20ForwardRequest",
           message: request,
         };
@@ -535,6 +546,7 @@ async function sendSignedTransaction(engine, payload, end) {
   if (payload && payload.params[0]) {
     let data = payload.params[0];
     let rawTransaction, signature, request, signatureType;
+    let useForwarderV2 = false;
     // user would need to pass token address as well!
     // OR they could pass the symbol and engine will provide the address for you..
     // default is DAI
@@ -556,6 +568,24 @@ async function sendSignedTransaction(engine, payload, end) {
 
       if (decodedTx.to && decodedTx.data && decodedTx.value) {
         let to = decodedTx.to.toLowerCase();
+        if (isTrustedForwarderV2Supported(engine.networkId)) {
+          let trustedForwarderNew = forwarderV2DomainData.verifyingContract;
+          let ethersProvider;
+          if (engine.isEthersProviderPresent) {
+            ethersProvider = engine.originalProvider;
+          } else {
+            ethersProvider = new ethers.providers.Web3Provider(
+              engine.originalProvider
+            );
+          }
+          let contract = new ethers.Contract(to, eip2771BaseAbi, ethersProvider);
+          let forwarder = await contract.trustedForwarder();
+          let isTrustedForwarder = await contract.isTrustedForwarder(trustedForwarderNew);
+  
+          if(isTrustedForwarder || (forwarder == trustedForwarderNew)){
+            useForwarderV2 = true;
+          }
+        }
         let methodInfo = decodeMethod(to, decodedTx.data);
         if (!methodInfo) {
           methodInfo = decodeMethod(config.SCW, decodedTx.data);
@@ -679,9 +709,16 @@ async function sendSignedTransaction(engine, payload, end) {
             paramArray.push(request);
 
             if (signatureType && signatureType == engine.EIP712_SIGN) {
-              const domainSeparator = getDomainSeperator(
-                forwarderDomainData
-              );
+              let domainSeparator;
+              if(useForwarderV2){
+                domainSeparator = getDomainSeperator(
+                  forwarderV2DomainData
+                );
+              } else {
+                domainSeparator = getDomainSeperator(
+                  forwarderDomainData
+                );
+              }
               _logMessage(domainSeparator);
               paramArray.push(domainSeparator);
             }
@@ -787,6 +824,24 @@ async function handleSendTransaction(engine, payload, end) {
     _logMessage(payload);
     if (payload.params && payload.params[0] && payload.params[0].to) {
       let to = payload.params[0].to.toLowerCase();
+      let useForwarderV2 = false;
+      if (isTrustedForwarderV2Supported(engine.networkId)) {
+        let trustedForwarderNew = forwarderV2DomainData.verifyingContract;
+        let ethersProvider;
+        if (engine.isEthersProviderPresent) {
+          ethersProvider = engine.originalProvider;
+        } else {
+          ethersProvider = new ethers.providers.Web3Provider(
+            engine.originalProvider
+          );
+        }
+        let contract = new ethers.Contract(to, eip2771BaseAbi, ethersProvider);
+        let forwarder = await contract.trustedFrowarder;
+        let isTrustedForwarder = await contract.isTrustedForwarder(trustedForwarderNew);
+        if (isTrustedForwarder || (forwarder == trustedForwarderNew)) {
+          useForwarderV2 = true;
+        }
+      }
       if (decoderMap[to] || decoderMap[config.SCW]) {
         let methodInfo = decodeMethod(to, payload.params[0].data);
 
@@ -912,13 +967,18 @@ async function handleSendTransaction(engine, payload, end) {
               _logMessage("gas limit number for txGas " + gasLimitNum);
             }
 
+            let trustedForwarderContract = biconomyForwarder;
+            if(useForwarderV2) {
+              trustedForwarderContract = biconomyForwarderV2;
+            }
+
             const request = (
               await buildForwardTxRequest(
                 account,
                 to,
                 parseInt(gasLimitNum), //txGas
                 forwardedData,
-                biconomyForwarder
+                trustedForwarderContract
               )
             ).request;
             _logMessage(request);
@@ -926,9 +986,16 @@ async function handleSendTransaction(engine, payload, end) {
             paramArray.push(request);
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               _logMessage("EIP712 signature flow");
-              const domainSeparator = getDomainSeperator(
-                forwarderDomainData
-              );
+              let domainSeparator;
+              if(useForwarderV2){
+                domainSeparator = getDomainSeperator(
+                  forwarderV2DomainData
+                );
+              } else {
+                domainSeparator = getDomainSeperator(
+                  forwarderDomainData
+                );
+              }
               _logMessage("Domain separator to be used:")
               _logMessage(domainSeparator);
               paramArray.push(domainSeparator);
@@ -940,7 +1007,8 @@ async function handleSendTransaction(engine, payload, end) {
                 signatureEIP712 = await getSignatureEIP712(
                   engine,
                   account,
-                  request
+                  request,
+                  useForwarderV2
                 );
                 _logMessage(`EIP712 signature is ${signatureEIP712}`);
               }
@@ -1048,9 +1116,14 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
   }
 }
 
-function _getEIP712ForwardMessageToSign(request) {
-  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData) {
+function _getEIP712ForwardMessageToSign(request,useForwarderV2) {
+  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData /*|| !forwarderV2DomainData*/) {
     throw new Error("Biconomy is not properly initialized");
+  }
+
+  let domainData = forwarderDomainData;
+  if(useForwarderV2 === true){
+    domainData = forwarderV2DomainData;
   }
 
   let dataToSign = JSON.stringify({
@@ -1058,7 +1131,7 @@ function _getEIP712ForwardMessageToSign(request) {
       EIP712Domain: forwarderDomainType,
       ERC20ForwardRequest: forwardRequestType,
     },
-    domain: forwarderDomainData,
+    domain: domainData,
     primaryType: "ERC20ForwardRequest",
     message: request,
   });
@@ -1125,10 +1198,10 @@ function getSignatureParameters(signature) {
 }
 
 //take parameter for chosen signature type V3 or V4
-function getSignatureEIP712(engine, account, request) {
+function getSignatureEIP712(engine, account, request, useForwarderV2) {
   //default V4 now   
   let signTypedDataType = "eth_signTypedData_v4";
-  const dataToSign = _getEIP712ForwardMessageToSign(request);
+  const dataToSign = _getEIP712ForwardMessageToSign(request, useForwarderV2);
   let targetProvider = getTargetProvider(engine);
   if(!targetProvider){
     throw new Error(`Unable to get provider information passed to Biconomy`);
@@ -1673,11 +1746,14 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           loginDomainData = systemInfo.loginDomainData;
           forwardRequestType = systemInfo.forwardRequestType;
           forwarderDomainData = systemInfo.forwarderDomainData;
+          forwarderV2DomainData = systemInfo.forwarderV2DomainData;
           trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
           daiPermitOverhead = systemInfo.overHeadDaiPermit;
           eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
           engine.forwarderAddress =
             systemInfo.biconomyForwarderAddress;
+          engine.forwarderV2Address =
+            systemInfo.biconomyForwarderV2Address;  
           engine.erc20ForwarderAddress =
             systemInfo.erc20ForwarderAddress;
           engine.transferHandlerAddress =
@@ -1717,6 +1793,15 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
         if (engine.forwarderAddress && engine.forwarderAddress != "") {
           biconomyForwarder = new ethers.Contract(
             engine.forwarderAddress,
+            biconomyForwarderAbi,
+            engine.ethersProvider
+          );
+        }
+
+
+        if (engine.forwarderV2Address && engine.forwarderV2Address != "") {
+          biconomyForwarderV2 = new ethers.Contract(
+            engine.forwarderV2Address,
             biconomyForwarderAbi,
             engine.ethersProvider
           );
