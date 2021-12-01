@@ -496,7 +496,7 @@ Biconomy.prototype._createJsonRpcResponse = function (payload, error, result) {
   response.jsonrpc = JSON_RPC_VERSION;
   if ((!error || error == null) && !result) {
     response.error =
-      "Unexpected error has occured. Please contact Biconomy Team";
+      "Unexpected error has occurred. Please contact Biconomy Team";
     return response;
   }
 
@@ -631,8 +631,8 @@ async function sendSignedTransaction(engine, payload, end) {
         /**
          * based on the api check contract meta transaction type
          * change paramArray accordingly
-         * build request EDIT : do not build the request again it will result in signature mismatch
-         * create domain seperator based on signature type
+         * build request EDIT: do not build the request again it will result in signature mismatch
+         * create domain separator based on signature type
          * use already available signature
          * send API call with appropriate parameters based on signature type
          *
