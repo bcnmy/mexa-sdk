@@ -16,8 +16,7 @@ var ZERO_ADDRESS = config.ZERO_ADDRESS;
 
 var buildForwardTxRequest = /*#__PURE__*/function () {
   var _ref = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee(account, to, gasLimitNum, data, biconomyForwarder) {
-    var newBatch,
-        batchId,
+    var batchId,
         batchNonce,
         req,
         _args = arguments;
@@ -25,7 +24,7 @@ var buildForwardTxRequest = /*#__PURE__*/function () {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            newBatch = _args.length > 5 && _args[5] !== undefined ? _args[5] : false;
+            batchId = _args.length > 5 && _args[5] !== undefined ? _args[5] : 0;
 
             if (biconomyForwarder) {
               _context.next = 3;
@@ -35,28 +34,10 @@ var buildForwardTxRequest = /*#__PURE__*/function () {
             throw new Error("Biconomy Forwarder is not defined for current network");
 
           case 3:
-            if (!newBatch) {
-              _context.next = 9;
-              break;
-            }
-
-            _context.next = 6;
-            return biconomyForwarder.getBatch(userAddress);
-
-          case 6:
-            _context.t0 = _context.sent;
-            _context.next = 10;
-            break;
-
-          case 9:
-            _context.t0 = 0;
-
-          case 10:
-            batchId = _context.t0;
-            _context.next = 13;
+            _context.next = 5;
             return biconomyForwarder.getNonce(account, batchId);
 
-          case 13:
+          case 5:
             batchNonce = _context.sent;
             req = {
               from: account,
@@ -73,7 +54,7 @@ var buildForwardTxRequest = /*#__PURE__*/function () {
               request: req
             });
 
-          case 16:
+          case 8:
           case "end":
             return _context.stop();
         }

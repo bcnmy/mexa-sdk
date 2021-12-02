@@ -276,6 +276,7 @@ Biconomy.prototype.getEthersProvider = function() {
 Biconomy.prototype.getForwardRequestAndMessageToSign = function (
   rawTransaction,
   tokenAddress,
+  customBatchId,
   cb
 ) {
   try {
@@ -377,7 +378,8 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
               to,
               gasLimitNum,
               decodedTx.data,
-              biconomyForwarder
+              biconomyForwarder,
+              customBatchId
             )
           ).request;
         } else if (metaTxApproach == engine.ERC20_FORWARDER) {
