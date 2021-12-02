@@ -340,7 +340,7 @@ Biconomy.prototype.getEthersProvider = function () {
 //Allow to provide custom txGas
 
 
-Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction, tokenAddress, cb) {
+Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction, tokenAddress, customBatchId, cb) {
   try {
     var engine = this;
     return new Promise( /*#__PURE__*/function () {
@@ -485,7 +485,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 }
 
                 _context3.next = 54;
-                return buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder);
+                return buildForwardTxRequest(account, to, gasLimitNum, decodedTx.data, biconomyForwarder, customBatchId);
 
               case 54:
                 request = _context3.sent.request;
