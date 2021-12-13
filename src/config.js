@@ -139,6 +139,8 @@ const STATUS = {
 };
 
 config.SCW = "SCW";
+//might make use of this
+//config.extendedForwardersSupportedNetworks = [137];
 
 module.exports = {
 	config,

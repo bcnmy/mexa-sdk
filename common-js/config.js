@@ -168,7 +168,9 @@ var STATUS = {
   BICONOMY_READY: 'biconomy_ready',
   NO_DATA: 'no_data'
 };
-config.SCW = "SCW";
+config.SCW = "SCW"; //might make use of this
+//config.extendedForwardersSupportedNetworks = [137];
+
 module.exports = {
   config: config,
   EVENTS: EVENTS,

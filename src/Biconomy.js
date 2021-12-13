@@ -3,6 +3,7 @@ const ethers = require("ethers");
 const txDecoder = require("ethereum-tx-decoder");
 const abi = require("ethereumjs-abi");
 const { toJSONRPCPayload } = require("./util");
+const { eip2771BaseAbi } = require("./abis");
 const {
   config,
   RESPONSE_CODES,
@@ -370,15 +371,21 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           return end(error);
         }
 
-        let request, cost;
+        let request, cost, forwarderToUse;
         if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+
+          forwarderToUse = await findTheRightForwarder(engine,to);
+
+          //Attach the forwarder with rigth address
+
+          
           request = (
             await buildForwardTxRequest(
               account,
               to,
               gasLimitNum,
               decodedTx.data,
-              biconomyForwarder,
+              biconomyForwarder.attach(forwarderToUse),
               customBatchId
             )
           ).request;
@@ -408,6 +415,11 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
 
         _logMessage("Forward Request is: ");
         _logMessage(request);
+
+
+
+        // Update the verifyingContract field of domain data based on the current request
+        forwarderDomainData.verifyingContract = forwarderToUse;
 
         const eip712DataToSign = {
           types: {
@@ -678,8 +690,15 @@ async function sendSignedTransaction(engine, payload, end) {
             }
             _logMessage(request);
 
+            // We would have the requests already in this case. It is upto the client to build this and have approriate forwarder(?)
             paramArray.push(request);
 
+            let forwarderToUse = await findTheRightForwarder(engine,to);
+
+            //Update the verifyingContract in domain data
+            forwarderDomainData.verifyingContract = forwarderToUse;
+
+            // Update the verifyingContract field of domain data based on the current request
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               const domainSeparator = getDomainSeperator(
                 forwarderDomainData
@@ -914,20 +933,27 @@ async function handleSendTransaction(engine, payload, end) {
               _logMessage("gas limit number for txGas " + gasLimitNum);
             }
 
+            let forwarderToAttach = await findTheRightForwarder(engine,to);
+
             const request = (
               await buildForwardTxRequest(
                 account,
                 to,
                 parseInt(gasLimitNum), //txGas
                 forwardedData,
-                biconomyForwarder
+                biconomyForwarder.attach(forwarderToAttach)
               )
             ).request;
             _logMessage(request);
 
             paramArray.push(request);
+
+            forwarderDomainData.verifyingContract = forwarderToAttach;
+            //Might want to updare version as well
+
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               _logMessage("EIP712 signature flow");
+              // Update the verifyingContract field of domain data based on the current request
               const domainSeparator = getDomainSeperator(
                 forwarderDomainData
               );
@@ -942,7 +968,8 @@ async function handleSendTransaction(engine, payload, end) {
                 signatureEIP712 = await getSignatureEIP712(
                   engine,
                   account,
-                  request
+                  request,
+                  forwarderToAttach
                 );
                 _logMessage(`EIP712 signature is ${signatureEIP712}`);
               }
@@ -1050,10 +1077,16 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
   }
 }
 
-function _getEIP712ForwardMessageToSign(request) {
-  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData) {
+// This might take a paramter which verifyingContract is this intended for
+function _getEIP712ForwardMessageToSign(request, forwarder) {
+  // Update the verifyingContract field of domain data based on the current request
+  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder) {
     throw new Error("Biconomy is not properly initialized");
   }
+
+  //Override domainData
+  forwarderDomainData.verifyingContract = forwarder;
+  //Might update version as well
 
   let dataToSign = JSON.stringify({
     types: {
@@ -1126,11 +1159,47 @@ function getSignatureParameters(signature) {
   };
 }
 
+//TODO
+//Review : for avoid calling this method with every transaction handleSend / sendSigned
+//A way of caching to identify which forwarder particular contract uses / maybe pick from the dashboard
+async function findTheRightForwarder(engine, to) {
+  let forwarderToUse;
+  let ethersProvider;
+  if (engine.isEthersProviderPresent) {
+    ethersProvider = engine.originalProvider;
+  } else {
+    ethersProvider = new ethers.providers.Web3Provider(
+      engine.originalProvider
+    );
+  }
+  let contract = new ethers.Contract(to, eip2771BaseAbi, ethersProvider);
+  let supportedForwarders = engine.forwarderAddresses;
+  forwarderToUse = supportedForwarders[0]; //default V1 forwarder is first element 
+
+  // Attempt to find out forwarder that 'to' contract trusts
+  let forwarder = await contract.trustedForwarder();
+  
+  for (var i = 0; i < supportedForwarders.length; i++) {
+    // Check if it matches above forwarder
+    if(supportedForwarders[i].toString() == forwarder.toString()){
+      forwarderToUse = supportedForwarders[i];
+      break;
+    }
+    // Another way to find out is isTrustedForwarder read method
+    let isTrustedForwarder = await contract.isTrustedForwarder(supportedForwarders[i]);
+    if(isTrustedForwarder) {
+      forwarderToUse = supportedForwarders[i];
+      break;
+    }
+  }
+  return forwarderToUse;
+}
+
 //take parameter for chosen signature type V3 or V4
-function getSignatureEIP712(engine, account, request) {
+function getSignatureEIP712(engine, account, request, forwarder) {
   //default V4 now   
   let signTypedDataType = "eth_signTypedData_v4";
-  const dataToSign = _getEIP712ForwardMessageToSign(request);
+  const dataToSign = _getEIP712ForwardMessageToSign(request, forwarder);
   let targetProvider = getTargetProvider(engine);
   if(!targetProvider){
     throw new Error(`Unable to get provider information passed to Biconomy`);
@@ -1315,6 +1384,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         erc20ForwarderAddress,
         engine.daiTokenAddress
       );
+      //TODO
+      //Review initialisation of ERC20 Forwarder as well!
       engine.erc20ForwarderClient = new ERC20ForwarderClient({
         forwarderClientOptions: biconomyAttributes,
         networkId: engine.networkId,
@@ -1678,8 +1749,8 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
           daiPermitOverhead = systemInfo.overHeadDaiPermit;
           eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
-          engine.forwarderAddress =
-            systemInfo.biconomyForwarderAddress;
+          engine.forwarderAddresses =
+            systemInfo.biconomyForwarderAddresses;
           engine.erc20ForwarderAddress =
             systemInfo.erc20ForwarderAddress;
           engine.transferHandlerAddress =
@@ -1716,9 +1787,13 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
         }
         
         // check if Valid trusted forwarder address is present from system info
-        if (engine.forwarderAddress && engine.forwarderAddress != "") {
+
+        if (engine.forwarderAddresses && engine.forwarderAddresses != "") {
+          let supportedForwarders = engine.forwarderAddresses;
+          // prevent initialising it here as system info could return an array of forwarder addresses
           biconomyForwarder = new ethers.Contract(
-            engine.forwarderAddress,
+            //pick up first forwarder address from the array by default then attach to an address accordingly
+            supportedForwarders[0],
             biconomyForwarderAbi,
             engine.ethersProvider
           );

@@ -4208,6 +4208,31 @@ var usdcAbi = [{
   "stateMutability": "nonpayable",
   "type": "function"
 }];
+var eip2771BaseAbi = [{
+  "inputs": [{
+    "internalType": "address",
+    "name": "forwarder",
+    "type": "address"
+  }],
+  "name": "isTrustedForwarder",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "trustedForwarder",
+  "outputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}];
 module.exports = {
   erc20ForwarderAbi: erc20ForwarderAbi,
   oracleAggregatorAbi: oracleAggregatorAbi,
@@ -4218,5 +4243,6 @@ module.exports = {
   usdtAbi: usdtAbi,
   tokenAbi: tokenAbi,
   erc20Eip2612Abi: erc20Eip2612Abi,
-  transferHandlerAbi: transferHandlerAbi
+  transferHandlerAbi: transferHandlerAbi,
+  eip2771BaseAbi: eip2771BaseAbi
 };
