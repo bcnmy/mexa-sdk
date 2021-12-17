@@ -1299,9 +1299,9 @@ function _handleSendTransaction() {
             break;
 
           case 147:
-            _logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
+            _logMessage("Smart contract not found on dashboard. Strict mode is off, so falling back to normal transaction mode");
 
-            return _context8.abrupt("return", callDefaultProvider(engine, payload, end, "Current provider can't send transactions and smart contract ".concat(to, " not found on Biconomy Dashbaord")));
+            return _context8.abrupt("return", callDefaultProvider(engine, payload, end, "Current provider can't send transactions and smart contract ".concat(to, " not found on Biconomy Dashboard")));
 
           case 149:
             _context8.next = 154;

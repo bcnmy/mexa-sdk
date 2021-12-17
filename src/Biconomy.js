@@ -1009,9 +1009,9 @@ async function handleSendTransaction(engine, payload, end) {
           end(error);
         } else {
           _logMessage(
-            "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
+            "Smart contract not found on dashboard. Strict mode is off, so falling back to normal transaction mode"
           );
-          return callDefaultProvider(engine, payload, end, `Current provider can't send transactions and smart contract ${to} not found on Biconomy Dashbaord`);
+          return callDefaultProvider(engine, payload, end, `Current provider can't send transactions and smart contract ${to} not found on Biconomy Dashboard`);
         }
       }
     } else {
