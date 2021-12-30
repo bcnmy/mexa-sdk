@@ -119,6 +119,7 @@ class PermitClient {
   async eip2612Permit(permitOptions) {
     try {
       const tokenDomainData = permitOptions.domainData;
+      const tokenDomainType = permitOptions.domainType || config.domainType;
       const spender = permitOptions.spender || this.erc20ForwarderAddress;
       const value = permitOptions.value;
       const deadline =
@@ -134,7 +135,7 @@ class PermitClient {
       const nonce = await token.nonces(userAddress);
       const permitDataToSign = {
         types: {
-          EIP712Domain: config.domainType,
+          EIP712Domain: tokenDomainType,
           Permit: config.eip2612PermitType,
         },
         domain: tokenDomainData,
