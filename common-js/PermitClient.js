@@ -180,40 +180,41 @@ var PermitClient = /*#__PURE__*/function () {
     key: "eip2612Permit",
     value: function () {
       var _eip2612Permit = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee2(permitOptions) {
-        var tokenDomainData, spender, value, deadline, userAddress, token, nonce, permitDataToSign, result, signature, r, s, v, tx;
+        var tokenDomainData, tokenDomainType, spender, value, deadline, userAddress, token, nonce, permitDataToSign, result, signature, r, s, v, tx;
         return _regenerator["default"].wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
                 _context2.prev = 0;
                 tokenDomainData = permitOptions.domainData;
+                tokenDomainType = permitOptions.domainType || config.domainType;
                 spender = permitOptions.spender || this.erc20ForwarderAddress;
                 value = permitOptions.value;
                 deadline = permitOptions.deadline || Math.floor(Date.now() / 1000 + 3600);
                 _context2.t0 = permitOptions.userAddress;
 
                 if (_context2.t0) {
-                  _context2.next = 10;
+                  _context2.next = 11;
                   break;
                 }
 
-                _context2.next = 9;
+                _context2.next = 10;
                 return this.provider.getSigner().getAddress();
 
-              case 9:
+              case 10:
                 _context2.t0 = _context2.sent;
 
-              case 10:
+              case 11:
                 userAddress = _context2.t0;
                 token = new ethers.Contract(tokenDomainData.verifyingContract, erc20Eip2612Abi, this.provider.getSigner());
-                _context2.next = 14;
+                _context2.next = 15;
                 return token.nonces(userAddress);
 
-              case 14:
+              case 15:
                 nonce = _context2.sent;
                 permitDataToSign = {
                   types: {
-                    EIP712Domain: config.domainType,
+                    EIP712Domain: tokenDomainType,
                     Permit: config.eip2612PermitType
                   },
                   domain: tokenDomainData,
@@ -226,10 +227,10 @@ var PermitClient = /*#__PURE__*/function () {
                     deadline: parseInt(deadline)
                   }
                 };
-                _context2.next = 18;
+                _context2.next = 19;
                 return this.provider.send("eth_signTypedData_v4", [userAddress, JSON.stringify(permitDataToSign)]);
 
-              case 18:
+              case 19:
                 result = _context2.sent;
 
                 _logMessage("success", result);
@@ -238,27 +239,27 @@ var PermitClient = /*#__PURE__*/function () {
                 r = "0x" + signature.substring(0, 64);
                 s = "0x" + signature.substring(64, 128);
                 v = parseInt(signature.substring(128, 130), 16);
-                _context2.next = 26;
+                _context2.next = 27;
                 return token.permit(userAddress, spender, value, parseInt(deadline.toString()), v, r, s);
 
-              case 26:
+              case 27:
                 tx = _context2.sent;
                 return _context2.abrupt("return", tx);
 
-              case 30:
-                _context2.prev = 30;
+              case 31:
+                _context2.prev = 31;
                 _context2.t1 = _context2["catch"](0);
 
                 _logMessage(_context2.t1);
 
                 throw _context2.t1;
 
-              case 34:
+              case 35:
               case "end":
                 return _context2.stop();
             }
           }
-        }, _callee2, this, [[0, 30]]);
+        }, _callee2, this, [[0, 31]]);
       }));
 
       function eip2612Permit(_x2) {
