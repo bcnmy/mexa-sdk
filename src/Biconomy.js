@@ -576,7 +576,14 @@ async function sendSignedTransaction(engine, payload, end) {
                 payload.params = [data.rawTransaction];
               }
 
+              try{
               return callDefaultProvider(engine, payload, end, `No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
+              }
+              catch(error){
+                debugger;
+                _logMessage("ever here?");
+                return end(error);
+              }
             }
           }
         }
@@ -790,6 +797,7 @@ async function handleSendTransaction(engine, payload, end) {
     if (payload.params && payload.params[0] && payload.params[0].to) {
       let to = payload.params[0].to.toLowerCase();
       if (decoderMap[to] || decoderMap[config.SCW]) {
+        debugger;
         let methodInfo = decodeMethod(to, payload.params[0].data);
 
         // Check if the Smart Contract Wallet is registered on dashboard
@@ -803,6 +811,7 @@ async function handleSendTransaction(engine, payload, end) {
           return end(error, null);
         }
         let methodName = methodInfo.name;
+        debugger;
         let api = engine.dappAPIMap[to]
           ? engine.dappAPIMap[to][methodName]
           : undefined;
@@ -818,6 +827,8 @@ async function handleSendTransaction(engine, payload, end) {
           metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         }
 
+        //TODO
+        //Sanitise gas limit here. big number / hex / number -> hex
         let gasLimit = payload.params[0].gas || payload.params[0].gasLimit;
         let txGas = payload.params[0].txGas;
         let signatureType = payload.params[0].signatureType;
@@ -828,6 +839,7 @@ async function handleSendTransaction(engine, payload, end) {
         _logMessage(`tx gas supplied : ${txGas}`);
 
         if (!api) {
+          debugger;
           _logMessage(`API not found for method ${methodName}`);
           _logMessage(`Strict mode ${engine.strictMode}`);
           if (engine.strictMode) {
@@ -839,7 +851,11 @@ async function handleSendTransaction(engine, payload, end) {
             _logMessage(
               `Falling back to default provider as strict mode is false in biconomy`
             );
+            try{
             return callDefaultProvider(engine, payload, end, `No registered API found for method ${methodName}. Please register API from developer dashboard.`);
+            } catch(error) {
+              return end(error);
+            }
           }
         }
         _logMessage("API found");
@@ -1008,6 +1024,7 @@ async function handleSendTransaction(engine, payload, end) {
           eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
           end(error);
         } else {
+          debugger;
           _logMessage(
             "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
           );
@@ -1031,6 +1048,8 @@ async function handleSendTransaction(engine, payload, end) {
 }
 
 async function callDefaultProvider(engine, payload, callback, errorMessage) {
+  debugger;
+  try{
   let targetProvider = engine.originalProvider;
   if(targetProvider) {
     if(!engine.canSignMessages) {
@@ -1048,6 +1067,12 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
   } else {
     throw new Error("Original provider not present in Biconomy");
   }
+} catch(e){
+  debugger;
+  _logMessage("But ever here?");
+  _logMessage(e);
+  return callback(e);
+}
 }
 
 function _getEIP712ForwardMessageToSign(request) {
@@ -1742,6 +1767,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
               smartContractList &&
               smartContractList.length > 0
             ) {
+              debugger;
               smartContractList.forEach((contract) => {
                 let abiDecoder = require("abi-decoder");
                 if (contract.type === config.SCW) {
