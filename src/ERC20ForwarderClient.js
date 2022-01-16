@@ -4,6 +4,7 @@ const abi = require("ethereumjs-abi");
 let { tokenAbi, erc20Eip2612Abi } = require("./abis");
 
 const erc20ForwardRequestType = config.forwardRequestType;
+const mainForwardRequestType = config.mainForwardRequestType;
 
 /**
  * Method to get the gas price for a given network that'll be used to
@@ -128,21 +129,21 @@ class ERC20ForwarderClient {
           "Biconomy is not initialized properly. 'decoderMap' is missing in ERC20ForwarderClient.biconomyAttributes"
         );
 
-      if (!req || !req.to || !req.data) {
+      if (!req.request || !req.request.to || !req.request.data) {
         throw new Error(
           "'to' and 'data' field is mandatory in the request object parameter"
         );
       }
 
-      let decoder = this.biconomyAttributes.decoderMap[req.to.toLowerCase()];
+      let decoder = this.biconomyAttributes.decoderMap[req.request.to.toLowerCase()];
       if (decoder) {
-        const method = decoder.decodeMethod(req.data);
+        const method = decoder.decodeMethod(req.request.data);
         const contractData = this.biconomyAttributes.dappAPIMap[
-          req.to.toLowerCase()
+          req.request.to.toLowerCase()
         ];
         if (method && method.name) {
           if (contractData) {
-            return this.biconomyAttributes.dappAPIMap[req.to.toLowerCase()][
+            return this.biconomyAttributes.dappAPIMap[req.request.to.toLowerCase()][
               method.name.toString()
             ];
           } else {
@@ -157,7 +158,7 @@ class ERC20ForwarderClient {
         }
       } else {
         throw new Error(
-          `Your smart contract with address ${req.to} might not be registered on Biconomy dashboard. Please check.`
+          `Your smart contract with address ${req.request.to} might not be registered on Biconomy dashboard. Please check.`
         );
       }
     } catch (error) {
@@ -225,6 +226,8 @@ class ERC20ForwarderClient {
           throw error;
         }
       }
+
+      debugger;
 
       const tokenPrice = await this.oracleAggregator.getTokenPrice(
         tokenAddress
@@ -433,7 +436,17 @@ class ERC20ForwarderClient {
         }
       }
 
-      return { request: req, cost: totalFees };
+      debugger;
+
+      const finalReq = {
+        info: `Estimated gas fee               ${totalFees.toString()} SAND`,
+        action: 'Demo',
+        request: req
+      }
+
+      debugger;
+
+      return { request: finalReq, cost: totalFees };
     } catch (error) {
       _logMessage(error);
       throw error;
@@ -506,6 +519,8 @@ class ERC20ForwarderClient {
     try {
       //possibly check allowance here
 
+      debugger;
+
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "bytes32", "bytes32", "address", "bytes32"],
@@ -541,16 +556,22 @@ class ERC20ForwarderClient {
         types: {
           EIP712Domain: this.forwarderDomainType,
           ERC20ForwardRequest: erc20ForwardRequestType,
+          ForwardRequest: mainForwardRequestType,
         },
         domain: this.forwarderDomainData,
-        primaryType: "ERC20ForwardRequest",
+        primaryType: "ForwardRequest",
         message: req,
       };
+
+      console.log("here");
+      console.log(JSON.stringify(dataToSign));
+
+      debugger;
 
       const sig =
         signature == null
           ? await this.provider.send("eth_signTypedData_v3", [
-              req.from,
+              req.request.from,
               JSON.stringify(dataToSign),
             ])
           : signature;
@@ -562,7 +583,7 @@ class ERC20ForwarderClient {
 
       const apiId = api.id;
       const metaTxBody = {
-        to: req.to,
+        to: req.request.to,
         from: userAddress,
         apiId: apiId,
         params: [req, domainSeparator, sig],

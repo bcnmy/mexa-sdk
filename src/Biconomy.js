@@ -1285,6 +1285,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
       const oracleAggregatorAddress = await erc20Forwarder.oracleAggregator();
       const feeManagerAddress = await erc20Forwarder.feeManager();
       const forwarderAddress = await erc20Forwarder.forwarder();
+      //let jsonRpcProvider = new ethers.providers.JsonRpcProvider("https://polygon-mainnet.g.alchemy.com/v2/s6bOKN9QDGXpVbsqzJMl_AHeZHNOCTcM");
       const oracleAggregator = new ethers.Contract(
         oracleAggregatorAddress,
         oracleAggregatorAbi,

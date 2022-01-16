@@ -23,6 +23,7 @@ var _require3 = require("./abis"),
     erc20Eip2612Abi = _require3.erc20Eip2612Abi;
 
 var erc20ForwardRequestType = config.forwardRequestType;
+var mainForwardRequestType = config.mainForwardRequestType;
 /**
  * Method to get the gas price for a given network that'll be used to
  * send the transaction by Biconomy Relayer Network.
@@ -217,19 +218,19 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
         if (!this.biconomyAttributes) throw new Error("Biconomy is not initialized properly. 'biconomyAttributes'  is missing in ERC20ForwarderClient");
         if (!this.biconomyAttributes.decoderMap) throw new Error("Biconomy is not initialized properly. 'decoderMap' is missing in ERC20ForwarderClient.biconomyAttributes");
 
-        if (!req || !req.to || !req.data) {
+        if (!req.request || !req.request.to || !req.request.data) {
           throw new Error("'to' and 'data' field is mandatory in the request object parameter");
         }
 
-        var decoder = this.biconomyAttributes.decoderMap[req.to.toLowerCase()];
+        var decoder = this.biconomyAttributes.decoderMap[req.request.to.toLowerCase()];
 
         if (decoder) {
-          var method = decoder.decodeMethod(req.data);
-          var contractData = this.biconomyAttributes.dappAPIMap[req.to.toLowerCase()];
+          var method = decoder.decodeMethod(req.request.data);
+          var contractData = this.biconomyAttributes.dappAPIMap[req.request.to.toLowerCase()];
 
           if (method && method.name) {
             if (contractData) {
-              return this.biconomyAttributes.dappAPIMap[req.to.toLowerCase()][method.name.toString()];
+              return this.biconomyAttributes.dappAPIMap[req.request.to.toLowerCase()][method.name.toString()];
             } else {
               throw new Error("Method ".concat(method.name, " is not registerd on Biconomy Dashboard. Please refer https://docs.biconomy.io to see how to register smart contract methods on dashboard."));
             }
@@ -237,7 +238,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
             throw new Error("Unable to decode the method. The method you are calling might not be registered on Biconomy dashboard. Please check.");
           }
         } else {
-          throw new Error("Your smart contract with address ".concat(req.to, " might not be registered on Biconomy dashboard. Please check."));
+          throw new Error("Your smart contract with address ".concat(req.request.to, " might not be registered on Biconomy dashboard. Please check."));
         }
       } catch (error) {
         _logMessage(error);
@@ -352,41 +353,42 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 throw _context3.t2;
 
               case 36:
-                _context3.next = 38;
+                debugger;
+                _context3.next = 39;
                 return this.oracleAggregator.getTokenPrice(tokenAddress);
 
-              case 38:
+              case 39:
                 tokenPrice = _context3.sent;
-                _context3.next = 41;
+                _context3.next = 42;
                 return this.oracleAggregator.getTokenOracleDecimals(tokenAddress);
 
-              case 41:
+              case 42:
                 tokenOracleDecimals = _context3.sent;
 
                 if (!(!tokenPrice || !tokenOracleDecimals)) {
-                  _context3.next = 44;
+                  _context3.next = 45;
                   break;
                 }
 
                 throw new Error("Invalid tokenPrice ".concat(tokenPrice, " or tokenOracleDecimals ").concat(tokenOracleDecimals, " from oracle aggregator contract"));
 
-              case 44:
+              case 45:
                 return _context3.abrupt("return", gasPrice.mul(ethers.BigNumber.from(10).pow(tokenOracleDecimals)).div(tokenPrice).toString());
 
-              case 47:
-                _context3.prev = 47;
+              case 48:
+                _context3.prev = 48;
                 _context3.t3 = _context3["catch"](0);
 
                 _logMessage(_context3.t3);
 
                 throw new Error("Error getting token gas price inside SDK");
 
-              case 51:
+              case 52:
               case "end":
                 return _context3.stop();
             }
           }
-        }, _callee3, this, [[0, 47], [15, 32]]);
+        }, _callee3, this, [[0, 48], [15, 32]]);
       }));
 
       function getTokenGasPrice(_x3) {
@@ -420,7 +422,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     key: "buildTx",
     value: function () {
       var _buildTx = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(_ref3) {
-        var to, token, txGas, data, _ref3$batchId, batchId, _ref3$deadlineInSec, deadlineInSec, userAddress, permitType, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, tokenContract, tokenDecimals, permitFees, overHead, permitCost, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend;
+        var to, token, txGas, data, _ref3$batchId, batchId, _ref3$deadlineInSec, deadlineInSec, userAddress, permitType, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, tokenContract, tokenDecimals, permitFees, overHead, permitCost, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend, finalReq;
 
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
@@ -624,25 +626,32 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 _logMessage("".concat(userAddress, " has given permission ").concat(this.erc20Forwarder.address, " to spend required amount of tokens"));
 
               case 69:
+                debugger;
+                finalReq = {
+                  info: "Estimated gas fee               ".concat(totalFees.toString(), " SAND"),
+                  action: 'Demo',
+                  request: req
+                };
+                debugger;
                 return _context4.abrupt("return", {
-                  request: req,
+                  request: finalReq,
                   cost: totalFees
                 });
 
-              case 72:
-                _context4.prev = 72;
+              case 75:
+                _context4.prev = 75;
                 _context4.t0 = _context4["catch"](1);
 
                 _logMessage(_context4.t0);
 
                 throw _context4.t0;
 
-              case 76:
+              case 79:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[1, 72]]);
+        }, _callee4, this, [[1, 75]]);
       }));
 
       function buildTx(_x4) {
@@ -798,86 +807,91 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 req = _ref5.req, _ref5$signature = _ref5.signature, signature = _ref5$signature === void 0 ? null : _ref5$signature, userAddress = _ref5.userAddress, gasLimit = _ref5.gasLimit;
                 _context7.prev = 1;
                 //possibly check allowance here
+                debugger;
                 domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.verifyingContract, this.forwarderDomainData.salt]));
 
                 if (!this.isSignerWithAccounts) {
-                  _context7.next = 9;
+                  _context7.next = 10;
                   break;
                 }
 
-                _context7.next = 6;
+                _context7.next = 7;
                 return this.provider.getSigner().getAddress();
 
-              case 6:
+              case 7:
                 userAddress = _context7.sent;
-                _context7.next = 11;
+                _context7.next = 12;
                 break;
 
-              case 9:
+              case 10:
                 if (signature) {
-                  _context7.next = 11;
+                  _context7.next = 12;
                   break;
                 }
 
                 throw new Error("Either pass signature param or pass a provider to Biconomy with user accounts information");
 
-              case 11:
+              case 12:
                 if (userAddress) {
-                  _context7.next = 13;
+                  _context7.next = 14;
                   break;
                 }
 
                 throw new Error("Either pass userAddress param or pass a provider to Biconomy with user accounts information");
 
-              case 13:
+              case 14:
                 dataToSign = {
                   types: {
                     EIP712Domain: this.forwarderDomainType,
-                    ERC20ForwardRequest: erc20ForwardRequestType
+                    ERC20ForwardRequest: erc20ForwardRequestType,
+                    ForwardRequest: mainForwardRequestType
                   },
                   domain: this.forwarderDomainData,
-                  primaryType: "ERC20ForwardRequest",
+                  primaryType: "ForwardRequest",
                   message: req
                 };
+                console.log("here");
+                console.log(JSON.stringify(dataToSign));
+                debugger;
 
                 if (!(signature == null)) {
-                  _context7.next = 20;
+                  _context7.next = 24;
                   break;
                 }
 
-                _context7.next = 17;
-                return this.provider.send("eth_signTypedData_v3", [req.from, JSON.stringify(dataToSign)]);
-
-              case 17:
-                _context7.t0 = _context7.sent;
                 _context7.next = 21;
-                break;
-
-              case 20:
-                _context7.t0 = signature;
+                return this.provider.send("eth_signTypedData_v3", [req.request.from, JSON.stringify(dataToSign)]);
 
               case 21:
+                _context7.t0 = _context7.sent;
+                _context7.next = 25;
+                break;
+
+              case 24:
+                _context7.t0 = signature;
+
+              case 25:
                 sig = _context7.t0;
                 api = this.getApiId(req);
 
                 if (!(!api || !api.id)) {
-                  _context7.next = 25;
+                  _context7.next = 29;
                   break;
                 }
 
                 throw new Error("Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard.");
 
-              case 25:
+              case 29:
                 apiId = api.id;
                 metaTxBody = {
-                  to: req.to,
+                  to: req.request.to,
                   from: userAddress,
                   apiId: apiId,
                   params: [req, domainSeparator, sig],
                   gasLimit: gasLimit,
                   signatureType: this.biconomyAttributes.signType.EIP712_SIGN
                 };
-                _context7.next = 29;
+                _context7.next = 33;
                 return fetch("".concat(config.baseURL, "/api/v2/meta-tx/native"), {
                   method: "POST",
                   headers: {
@@ -887,28 +901,28 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   body: JSON.stringify(metaTxBody)
                 });
 
-              case 29:
+              case 33:
                 txResponse = _context7.sent;
-                _context7.next = 32;
+                _context7.next = 36;
                 return txResponse.json();
 
-              case 32:
+              case 36:
                 return _context7.abrupt("return", _context7.sent);
 
-              case 35:
-                _context7.prev = 35;
+              case 39:
+                _context7.prev = 39;
                 _context7.t1 = _context7["catch"](1);
 
                 _logMessage(_context7.t1);
 
                 throw _context7.t1;
 
-              case 39:
+              case 43:
               case "end":
                 return _context7.stop();
             }
           }
-        }, _callee7, this, [[1, 35]]);
+        }, _callee7, this, [[1, 39]]);
       }));
 
       function sendTxEIP712(_x9) {
