@@ -498,7 +498,7 @@ Biconomy.prototype._createJsonRpcResponse = function (payload, error, result) {
   response.jsonrpc = JSON_RPC_VERSION;
   if ((!error || error == null) && !result) {
     response.error =
-      "Unexpected error has occured. Please contact Biconomy Team";
+      "Unexpected error has occurred. Please contact Biconomy Team";
     return response;
   }
 
@@ -576,12 +576,10 @@ async function sendSignedTransaction(engine, payload, end) {
                 payload.params = [data.rawTransaction];
               }
 
-              try{
-              return callDefaultProvider(engine, payload, end, `No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
+              try {
+                return callDefaultProvider(engine, payload, end, `No smart contract wallet or smart contract registered on dashboard with address (${decodedTx.to})`);
               }
-              catch(error){
-                
-                _logMessage("ever here?");
+              catch (error) {
                 return end(error);
               }
             }
@@ -617,7 +615,12 @@ async function sendSignedTransaction(engine, payload, end) {
             if (typeof data == "object" && data.rawTransaction) {
               payload.params = [data.rawTransaction];
             }
-            return callDefaultProvider(engine, payload, end, `Current provider can not sign transactions. Make sure to register method ${methodName} on Biconomy Dashboard`);
+            try {
+              return callDefaultProvider(engine, payload, end, `Current provider can not sign transactions. Make sure to register method ${methodName} on Biconomy Dashboard`);
+            }
+            catch (error) {
+              return end(error);
+            }
           }
         }
         _logMessage("API found");
@@ -641,7 +644,7 @@ async function sendSignedTransaction(engine, payload, end) {
          * based on the api check contract meta transaction type
          * change paramArray accordingly
          * build request EDIT : do not build the request again it will result in signature mismatch
-         * create domain seperator based on signature type
+         * create domain separator based on signature type
          * use already available signature
          * send API call with appropriate parameters based on signature type
          *
@@ -797,7 +800,6 @@ async function handleSendTransaction(engine, payload, end) {
     if (payload.params && payload.params[0] && payload.params[0].to) {
       let to = payload.params[0].to.toLowerCase();
       if (decoderMap[to] || decoderMap[config.SCW]) {
-        
         let methodInfo = decodeMethod(to, payload.params[0].data);
 
         // Check if the Smart Contract Wallet is registered on dashboard
@@ -811,12 +813,12 @@ async function handleSendTransaction(engine, payload, end) {
           return end(error, null);
         }
         let methodName = methodInfo.name;
-        
         let api = engine.dappAPIMap[to]
           ? engine.dappAPIMap[to][methodName]
           : undefined;
         // Information we get here is contractAddress, methodName, methodType, ApiId
         let metaTxApproach;
+        let customBatchId;
         if (!api) {
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
@@ -827,16 +829,21 @@ async function handleSendTransaction(engine, payload, end) {
           metaTxApproach = smartContractMetaTransactionMap[contractAddr];
         }
 
-        //TODO
         //Sanitise gas limit here. big number / hex / number -> hex
         let gasLimit = payload.params[0].gas || payload.params[0].gasLimit;
+        gasLimit = ethers.BigNumber.from(gasLimit.toString()).toHexString();
         let txGas = payload.params[0].txGas;
         let signatureType = payload.params[0].signatureType;
+        if(payload.params[0].batchId){
+        customBatchId = Number(payload.params[0].batchId);
+        }
 
         _logMessage(payload.params[0]);
         _logMessage(api);
         _logMessage(`gas limit : ${gasLimit}`);
+        if(txGas){
         _logMessage(`tx gas supplied : ${txGas}`);
+        }
 
         if (!api) {
           
@@ -851,9 +858,9 @@ async function handleSendTransaction(engine, payload, end) {
             _logMessage(
               `Falling back to default provider as strict mode is false in biconomy`
             );
-            try{
-            return callDefaultProvider(engine, payload, end, `No registered API found for method ${methodName}. Please register API from developer dashboard.`);
-            } catch(error) {
+            try {
+              return callDefaultProvider(engine, payload, end, `No registered API found for method ${methodName}. Please register API from developer dashboard.`);
+            } catch (error) {
               return end(error);
             }
           }
@@ -936,7 +943,8 @@ async function handleSendTransaction(engine, payload, end) {
                 to,
                 parseInt(gasLimitNum), //txGas
                 forwardedData,
-                biconomyForwarder
+                biconomyForwarder,
+                customBatchId
               )
             ).request;
             _logMessage(request);
@@ -1024,11 +1032,14 @@ async function handleSendTransaction(engine, payload, end) {
           eventEmitter.emit(EVENTS.BICONOMY_ERROR, error);
           end(error);
         } else {
-          
           _logMessage(
             "Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode"
           );
-          return callDefaultProvider(engine, payload, end, `Current provider can't send transactions and smart contract ${to} not found on Biconomy Dashbaord`);
+          try {
+            return callDefaultProvider(engine, payload, end, `Current provider can't send transactions and smart contract ${to} not found on Biconomy Dashbaord`);
+          } catch (error) {
+            return end(error);
+          }
         }
       }
     } else {
@@ -1048,14 +1059,11 @@ async function handleSendTransaction(engine, payload, end) {
 }
 
 async function callDefaultProvider(engine, payload, callback, errorMessage) {
-  try{
-  let targetProvider = engine.originalProvider;
-  if(targetProvider) {
-    if(!engine.canSignMessages) {
-      throw new Error(errorMessage);
-    } else {
-      if(engine.isEthersProviderPresent) {
-        let responseFromProvider = await engine.originalProvider.send(payload.method, payload.params);
+  try {
+    let targetProvider = getTargetProvider(engine);
+    if (targetProvider) {
+      if (isEthersProvider(targetProvider)) {
+        let responseFromProvider = await targetProvider.send(payload.method, payload.params);
         _logMessage("Response from original provider", responseFromProvider);
         callback(null, responseFromProvider);
         return responseFromProvider;
@@ -1063,15 +1071,15 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
         return engine.originalProvider.send(payload, callback);
       }
     }
-  } else {
-    throw new Error("Original provider not present in Biconomy");
+    else {
+      _logMessage("No provider present in Biconomy that can sign messages");
+      throw new Error(errorMessage);
+    }
+  } catch (e) {
+    _logMessage("Unexpected error occured when calling default provider");
+    _logMessage(e);
+    return callback(e);
   }
-} catch(e){
-  
-  _logMessage("But ever here?");
-  _logMessage(e);
-  return callback(e);
-}
 }
 
 function _getEIP712ForwardMessageToSign(request) {
@@ -1124,6 +1132,8 @@ function getTargetProvider(engine) {
     provider = engine.originalProvider;
     if(!engine.canSignMessages) {
       if(!engine.walletProvider) {
+        //TODO
+        //review maybe comment this out and just log
         throw new Error(`Please pass a provider connected to a wallet that can sign messages in Biconomy options.`);
       }
       provider = engine.walletProvider;
@@ -1522,6 +1532,14 @@ async function _sendTransaction(engine, account, api, data, cb) {
     let url = api.url;
     let fetchOption = getFetchOptions("POST", engine.apiKey);
     fetchOption.body = JSON.stringify(data);
+    //TODO
+    /*Before making API call to the core, Using other core APIs or sysinfi, sdk can check for customisation needs and pre flights like
+    1. Whitelisting of user addresses, conditional whitelisting
+    2. Gas price range validations
+    3. Dapp, User and Method limit breaches
+    etc
+    and make it fallback to default provider!
+    */
     fetch(`${baseURL}${url}`, fetchOption)
       .then((response) => response.json())
       .then(function (result) {
@@ -1531,6 +1549,9 @@ async function _sendTransaction(engine, account, api, data, cb) {
           result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE &&
           result.flag != BICONOMY_RESPONSE_CODES.SUCCESS
         ) {
+          //Any error from relayer infra
+          //TODO
+          //Involve fallback here with callDefaultProvider
           let error = {};
           error.code = result.flag || result.code;
           if (result.flag == BICONOMY_RESPONSE_CODES.USER_CONTRACT_NOT_FOUND) {
@@ -1539,6 +1560,8 @@ async function _sendTransaction(engine, account, api, data, cb) {
           error.message = result.log || result.message;
           if (cb) cb(error);
         } else {
+          //TODO
+          //Include listerner that will itself check for resubmitted hash api and serve over a socket?
           if (cb) cb(null, result.txHash);
         }
       })
