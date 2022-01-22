@@ -433,6 +433,21 @@ class ERC20ForwarderClient {
         }
       }
 
+      const userCanPay = await this.checkTokenBalance(
+        req.token,
+        userAddress,
+        spendValue
+      );
+      if (!userCanPay) {
+        throw new Error(
+          "User does not have enough token balance to pay for the fees"
+        );
+      } else {
+        _logMessage(
+          `${userAddress} has sufficient balance in tokens to cover the gas fees`
+        );
+      }
+
       return { request: req, cost: totalFees };
     } catch (error) {
       _logMessage(error);
@@ -487,6 +502,28 @@ class ERC20ForwarderClient {
       this.erc20Forwarder.address
     );
     if (allowance > spendValue) return true;
+    else return false;
+  }
+
+  async checkTokenBalance(tokenAddress, userAddress, spendValue) {
+    let providerOrSigner;
+    if(this.isSignerWithAccounts)
+    {
+      providerOrSigner = this.provider.getSigner();
+    }
+    else{
+      providerOrSigner = this.provider;
+    }
+    let token = new ethers.Contract(
+      tokenAddress,
+      tokenAbi,
+      providerOrSigner
+    );
+    spendValue = Number(spendValue);
+    const balance = await token.balanceOf(
+      userAddress,
+    );
+    if (balance > spendValue) return true;
     else return false;
   }
 
