@@ -1068,7 +1068,7 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
         callback(null, responseFromProvider);
         return responseFromProvider;
       } else {
-        return engine.originalProvider.send(payload, callback);
+        return targetProvider.send(payload, callback);
       }
     }
     else {

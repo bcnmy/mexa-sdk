@@ -1399,7 +1399,7 @@ function _callDefaultProvider() {
             return _context9.abrupt("return", responseFromProvider);
 
           case 12:
-            return _context9.abrupt("return", engine.originalProvider.send(payload, callback));
+            return _context9.abrupt("return", targetProvider.send(payload, callback));
 
           case 13:
             _context9.next = 17;
