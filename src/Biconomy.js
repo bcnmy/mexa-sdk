@@ -31,9 +31,8 @@ let fetch = require("cross-fetch");
 
 let decoderMap = {},
   smartContractMap = {},
-  // contract addresss -> contract attributes(metaTransactionType)
-  // could be contract address -> contract object
-  smartContractMetaTransactionMap = {};
+  smartContractMetaTransactionMap = {},
+  smartContractTrustedForwarderMap = {};
 let biconomyForwarder;
 const events = require("events");
 var eventEmitter = new events.EventEmitter();
@@ -48,6 +47,7 @@ let domainType,
   metaTransactionType,
   forwardRequestType;
 
+//domaindata would be sourced from forwarder -> domain details mapping
 let domainData = {
   name: config.eip712DomainName,
   version: config.eip712SigVersion,
@@ -1165,32 +1165,37 @@ function getSignatureParameters(signature) {
 async function findTheRightForwarder(engine, to) {
   let forwarderToUse;
   let ethersProvider;
-  if (engine.isEthersProviderPresent) {
-    ethersProvider = engine.originalProvider;
+  if (smartContractMetaTransactionMap[to]) {
+    forwarderToUse = smartContractMetaTransactionMap[to]
   } else {
-    ethersProvider = new ethers.providers.Web3Provider(
-      engine.originalProvider
-    );
-  }
-  let contract = new ethers.Contract(to, eip2771BaseAbi, ethersProvider);
-  let supportedForwarders = engine.forwarderAddresses;
-  forwarderToUse = supportedForwarders[0]; //default V1 forwarder is first element 
+    if (engine.isEthersProviderPresent) {
+      ethersProvider = engine.originalProvider;
+    } else {
+      ethersProvider = new ethers.providers.Web3Provider(
+        engine.originalProvider
+      );
+    }
+    let contract = new ethers.Contract(to, eip2771BaseAbi, ethersProvider);
+    let supportedForwarders = engine.forwarderAddresses;
+    forwarderToUse = supportedForwarders[0]; //default V1 forwarder is first element 
 
-  // Attempt to find out forwarder that 'to' contract trusts
-  let forwarder = await contract.trustedForwarder();
-  
-  for (var i = 0; i < supportedForwarders.length; i++) {
-    // Check if it matches above forwarder
-    if(supportedForwarders[i].toString() == forwarder.toString()){
-      forwarderToUse = supportedForwarders[i];
-      break;
+    // Attempt to find out forwarder that 'to' contract trusts
+    let forwarder = await contract.trustedForwarder();
+
+    for (var i = 0; i < supportedForwarders.length; i++) {
+      // Check if it matches above forwarder
+      if (supportedForwarders[i].toString() == forwarder.toString()) {
+        forwarderToUse = supportedForwarders[i];
+        break;
+      }
+      // Another way to find out is isTrustedForwarder read method
+      let isTrustedForwarder = await contract.isTrustedForwarder(supportedForwarders[i]);
+      if (isTrustedForwarder) {
+        forwarderToUse = supportedForwarders[i];
+        break;
+      }
     }
-    // Another way to find out is isTrustedForwarder read method
-    let isTrustedForwarder = await contract.isTrustedForwarder(supportedForwarders[i]);
-    if(isTrustedForwarder) {
-      forwarderToUse = supportedForwarders[i];
-      break;
-    }
+    smartContractMetaTransactionMap[to] = forwarderToUse;
   }
   return forwarderToUse;
 }
