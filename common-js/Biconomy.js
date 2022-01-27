@@ -53,9 +53,8 @@ var fetch = require("cross-fetch");
 
 var decoderMap = {},
     smartContractMap = {},
-    // contract addresss -> contract attributes(metaTransactionType)
-// could be contract address -> contract object
-smartContractMetaTransactionMap = {};
+    smartContractMetaTransactionMap = {},
+    smartContractTrustedForwarderMap = {};
 var biconomyForwarder;
 
 var events = require("events");
@@ -64,7 +63,8 @@ var eventEmitter = new events.EventEmitter();
 var trustedForwarderOverhead;
 var daiPermitOverhead;
 var eip2612PermitOverhead;
-var domainType, forwarderDomainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType;
+var domainType, forwarderDomainType, metaInfoType, relayerPaymentType, metaTransactionType, forwardRequestType; //domaindata would be sourced from forwarder -> domain details mapping
+
 var domainData = {
   name: config.eip712DomainName,
   version: config.eip712SigVersion,
@@ -74,7 +74,7 @@ var daiDomainData = {
   name: config.daiDomainName,
   version: config.daiVersion
 };
-var forwarderDomainData; // EIP712 format data for login
+var forwarderDomainData, forwarderDomainDetails; // EIP712 format data for login
 
 var loginDomainType, loginMessageType, loginDomainData;
 
@@ -348,21 +348,21 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
     var engine = this;
     return new Promise( /*#__PURE__*/function () {
       var _ref3 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(resolve, reject) {
-        var decodedTx, to, methodInfo, error, methodName, token, api, metaTxApproach, contractAddr, _error, params, typeString, paramArray, i, parsedTransaction, account, gasLimit, gasLimitNum, contractABI, contract, methodSignature, _contract$estimateGas, _error2, request, cost, forwarderToUse, buildTxResponse, _error3, eip712DataToSign, hashToSign, dataToSign, _error4;
+        var decodedTx, to, methodInfo, error, methodName, token, api, metaTxApproach, contractAddr, _error, params, typeString, paramArray, i, parsedTransaction, account, gasLimit, gasLimitNum, contractABI, contract, methodSignature, _contract$estimateGas, _error2, request, cost, forwarderToUse, buildTxResponse, _error3, domainDataToUse, eip712DataToSign, hashToSign, dataToSign, _error4;
 
         return _regenerator["default"].wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
                 if (!rawTransaction) {
-                  _context3.next = 83;
+                  _context3.next = 84;
                   break;
                 }
 
                 decodedTx = txDecoder.decodeTx(rawTransaction);
 
                 if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-                  _context3.next = 80;
+                  _context3.next = 81;
                   break;
                 }
 
@@ -540,12 +540,13 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
 
 
                 forwarderDomainData.verifyingContract = forwarderToUse;
+                domainDataToUse = forwarderDomainDetails[forwarderToUse];
                 eip712DataToSign = {
                   types: {
                     EIP712Domain: forwarderDomainType,
                     ERC20ForwardRequest: forwardRequestType
                   },
-                  domain: forwarderDomainData,
+                  domain: domainDataToUse,
                   primaryType: "ERC20ForwardRequest",
                   message: request
                 };
@@ -559,12 +560,12 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 if (cb) cb(null, dataToSign);
                 return _context3.abrupt("return", resolve(dataToSign));
 
-              case 80:
+              case 81:
                 _error4 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
                 if (cb) cb(_error4);
                 return _context3.abrupt("return", reject(_error4));
 
-              case 83:
+              case 84:
               case "end":
                 return _context3.stop();
             }
@@ -656,14 +657,14 @@ function sendSignedTransaction(_x5, _x6, _x7) {
 
 function _sendSignedTransaction() {
   _sendSignedTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(engine, payload, end) {
-    var data, rawTransaction, signature, request, signatureType, decodedTx, to, methodInfo, error, methodName, api, metaTxApproach, contractAddr, _error5, params, paramArray, parsedTransaction, account, _error6, forwardedData, gasLimitNum, gasLimit, paramArrayForGasCalculation, typeString, i, contractABI, _contract$estimateGas2, contract, methodSignature, forwarderToUse, domainSeparator, _data, _i, _data2, relayerPayment, _data3, _error7, _error8, _error9, _error10;
+    var data, rawTransaction, signature, request, signatureType, decodedTx, to, methodInfo, error, methodName, api, metaTxApproach, contractAddr, _error5, params, paramArray, parsedTransaction, account, _error6, forwardedData, gasLimitNum, gasLimit, paramArrayForGasCalculation, typeString, i, contractABI, _contract$estimateGas2, contract, methodSignature, forwarderToUse, domainDataToUse, domainSeparator, _data, _i, _data2, relayerPayment, _data3, _error7, _error8, _error9, _error10;
 
     return _regenerator["default"].wrap(function _callee7$(_context7) {
       while (1) {
         switch (_context7.prev = _context7.next) {
           case 0:
             if (!(payload && payload.params[0])) {
-              _context7.next = 105;
+              _context7.next = 106;
               break;
             }
 
@@ -685,14 +686,14 @@ function _sendSignedTransaction() {
             }
 
             if (!rawTransaction) {
-              _context7.next = 100;
+              _context7.next = 101;
               break;
             }
 
             decodedTx = txDecoder.decodeTx(rawTransaction);
 
             if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-              _context7.next = 95;
+              _context7.next = 96;
               break;
             }
 
@@ -788,12 +789,12 @@ function _sendSignedTransaction() {
             gasLimit = decodedTx.gasLimit;
 
             if (!(api.url == NATIVE_META_TX_URL)) {
-              _context7.next = 92;
+              _context7.next = 93;
               break;
             }
 
             if (!(metaTxApproach != engine.DEFAULT)) {
-              _context7.next = 81;
+              _context7.next = 82;
               break;
             }
 
@@ -855,10 +856,11 @@ function _sendSignedTransaction() {
           case 67:
             forwarderToUse = _context7.sent;
             //Update the verifyingContract in domain data
-            forwarderDomainData.verifyingContract = forwarderToUse; // Update the verifyingContract field of domain data based on the current request
+            forwarderDomainData.verifyingContract = forwarderToUse;
+            domainDataToUse = forwarderDomainDetails[forwarderToUse]; // Update the verifyingContract field of domain data based on the current request
 
             if (signatureType && signatureType == engine.EIP712_SIGN) {
-              domainSeparator = getDomainSeperator(forwarderDomainData);
+              domainSeparator = getDomainSeperator(domainDataToUse);
 
               _logMessage(domainSeparator);
 
@@ -876,14 +878,14 @@ function _sendSignedTransaction() {
               _data.signatureType = engine.EIP712_SIGN;
             }
 
-            _context7.next = 79;
+            _context7.next = 80;
             return _sendTransaction(engine, account, api, _data, end);
 
-          case 79:
-            _context7.next = 90;
+          case 80:
+            _context7.next = 91;
             break;
 
-          case 81:
+          case 82:
             for (_i = 0; _i < params.length; _i++) {
               paramArray.push(_getParamValue(params[_i]));
             }
@@ -895,14 +897,14 @@ function _sendSignedTransaction() {
             _data2.gasLimit = decodedTx.gasLimit.toString(); //verify
 
             _data2.to = decodedTx.to.toLowerCase();
-            _context7.next = 90;
+            _context7.next = 91;
             return _sendTransaction(engine, account, api, _data2, end);
 
-          case 90:
-            _context7.next = 93;
+          case 91:
+            _context7.next = 94;
             break;
 
-          case 92:
+          case 93:
             if (signature) {
               relayerPayment = {};
               relayerPayment.token = config.DEFAULT_RELAYER_PAYMENT_TOKEN_ADDRESS;
@@ -931,34 +933,34 @@ function _sendSignedTransaction() {
               end(_error7);
             }
 
-          case 93:
-            _context7.next = 98;
+          case 94:
+            _context7.next = 99;
             break;
 
-          case 95:
+          case 96:
             _error8 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Not able to deode the data in rawTransaction using ethereum-tx-decoder. Please check the data sent.");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error8);
             end(_error8);
 
-          case 98:
-            _context7.next = 103;
+          case 99:
+            _context7.next = 104;
             break;
 
-          case 100:
+          case 101:
             _error9 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload.params[0]), ".rawTransaction is required in param object"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error9);
             end(_error9);
 
-          case 103:
-            _context7.next = 108;
+          case 104:
+            _context7.next = 109;
             break;
 
-          case 105:
+          case 106:
             _error10 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload.params[0]), ". Non empty Array expected in params key"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error10);
             end(_error10);
 
-          case 108:
+          case 109:
           case "end":
             return _context7.stop();
         }
@@ -974,7 +976,7 @@ function handleSendTransaction(_x8, _x9, _x10) {
 
 function _handleSendTransaction() {
   _handleSendTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee8(engine, payload, end) {
-    var to, methodInfo, error, methodName, api, metaTxApproach, contractAddr, gasLimit, txGas, signatureType, _error11, account, params, paramArray, _error12, forwardedData, gasLimitNum, paramArrayForGasCalculation, typeString, signatureFromPayload, i, contractABI, _contract$estimateGas3, contract, methodSignature, _error13, forwarderToAttach, request, domainSeparator, signatureEIP712, signaturePersonal, data, _i2, _data4, _error14, _error15, _error16;
+    var to, methodInfo, error, methodName, api, metaTxApproach, contractAddr, gasLimit, txGas, signatureType, _error11, account, params, paramArray, _error12, forwardedData, gasLimitNum, paramArrayForGasCalculation, typeString, signatureFromPayload, i, contractABI, _contract$estimateGas3, contract, methodSignature, _error13, forwarderToAttach, request, domainDataToUse, domainSeparator, signatureEIP712, signaturePersonal, data, _i2, _data4, _error14, _error15, _error16;
 
     return _regenerator["default"].wrap(function _callee8$(_context8) {
       while (1) {
@@ -987,14 +989,14 @@ function _handleSendTransaction() {
             _logMessage(payload);
 
             if (!(payload.params && payload.params[0] && payload.params[0].to)) {
-              _context8.next = 155;
+              _context8.next = 156;
               break;
             }
 
             to = payload.params[0].to.toLowerCase();
 
             if (!(decoderMap[to] || decoderMap[config.SCW])) {
-              _context8.next = 145;
+              _context8.next = 146;
               break;
             }
 
@@ -1096,12 +1098,12 @@ function _handleSendTransaction() {
 
           case 48:
             if (!(api.url == NATIVE_META_TX_URL)) {
-              _context8.next = 140;
+              _context8.next = 141;
               break;
             }
 
             if (!(metaTxApproach == engine.TRUSTED_FORWARDER)) {
-              _context8.next = 130;
+              _context8.next = 131;
               break;
             }
 
@@ -1184,15 +1186,17 @@ function _handleSendTransaction() {
             paramArray.push(request);
             forwarderDomainData.verifyingContract = forwarderToAttach; //Might want to updare version as well
 
+            domainDataToUse = forwarderDomainDetails[forwarderToAttach];
+
             if (!(signatureType && signatureType == engine.EIP712_SIGN)) {
-              _context8.next = 104;
+              _context8.next = 105;
               break;
             }
 
             _logMessage("EIP712 signature flow"); // Update the verifyingContract field of domain data based on the current request
 
 
-            domainSeparator = getDomainSeperator(forwarderDomainData);
+            domainSeparator = getDomainSeperator(domainDataToUse);
 
             _logMessage("Domain separator to be used:");
 
@@ -1201,7 +1205,7 @@ function _handleSendTransaction() {
             paramArray.push(domainSeparator);
 
             if (!signatureFromPayload) {
-              _context8.next = 97;
+              _context8.next = 98;
               break;
             }
 
@@ -1209,28 +1213,28 @@ function _handleSendTransaction() {
 
             _logMessage("EIP712 signature from payload is ".concat(signatureEIP712));
 
-            _context8.next = 101;
+            _context8.next = 102;
             break;
 
-          case 97:
-            _context8.next = 99;
+          case 98:
+            _context8.next = 100;
             return getSignatureEIP712(engine, account, request, forwarderToAttach);
 
-          case 99:
+          case 100:
             signatureEIP712 = _context8.sent;
 
             _logMessage("EIP712 signature is ".concat(signatureEIP712));
 
-          case 101:
+          case 102:
             paramArray.push(signatureEIP712);
-            _context8.next = 119;
+            _context8.next = 120;
             break;
 
-          case 104:
+          case 105:
             _logMessage("Personal signature flow");
 
             if (!signatureFromPayload) {
-              _context8.next = 110;
+              _context8.next = 111;
               break;
             }
 
@@ -1238,32 +1242,32 @@ function _handleSendTransaction() {
 
             _logMessage("Personal signature from payload is ".concat(signaturePersonal));
 
-            _context8.next = 114;
+            _context8.next = 115;
             break;
 
-          case 110:
-            _context8.next = 112;
+          case 111:
+            _context8.next = 113;
             return getSignaturePersonal(engine, request);
 
-          case 112:
+          case 113:
             signaturePersonal = _context8.sent;
 
             _logMessage("Personal signature is ".concat(signaturePersonal));
 
-          case 114:
+          case 115:
             if (!signaturePersonal) {
-              _context8.next = 118;
+              _context8.next = 119;
               break;
             }
 
             paramArray.push(signaturePersonal);
-            _context8.next = 119;
+            _context8.next = 120;
             break;
 
-          case 118:
+          case 119:
             throw new Error("Could not get personal signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy");
 
-          case 119:
+          case 120:
             data = {};
             data.from = account;
             data.apiId = api.id;
@@ -1277,14 +1281,14 @@ function _handleSendTransaction() {
               data.signatureType = engine.EIP712_SIGN;
             }
 
-            _context8.next = 128;
+            _context8.next = 129;
             return _sendTransaction(engine, account, api, data, end);
 
-          case 128:
-            _context8.next = 138;
+          case 129:
+            _context8.next = 139;
             break;
 
-          case 130:
+          case 131:
             for (_i2 = 0; _i2 < params.length; _i2++) {
               paramArray.push(_getParamValue(params[_i2]));
             }
@@ -1298,60 +1302,60 @@ function _handleSendTransaction() {
 
             _sendTransaction(engine, account, api, _data4, end);
 
-          case 138:
-            _context8.next = 143;
+          case 139:
+            _context8.next = 144;
             break;
 
-          case 140:
+          case 141:
             _error14 = formatMessage(RESPONSE_CODES.INVALID_OPERATION, "Biconomy smart contract wallets are not supported now. On dashboard, re-register your smart contract methods with \"native meta tx\" checkbox selected.");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error14);
             return _context8.abrupt("return", end(_error14));
 
-          case 143:
-            _context8.next = 153;
+          case 144:
+            _context8.next = 154;
             break;
 
-          case 145:
+          case 146:
             if (!engine.strictMode) {
-              _context8.next = 151;
+              _context8.next = 152;
               break;
             }
 
             _error15 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error15);
             end(_error15);
-            _context8.next = 153;
+            _context8.next = 154;
             break;
 
-          case 151:
+          case 152:
             _logMessage("Smart contract not found on dashbaord. Strict mode is off, so falling back to normal transaction mode");
 
             return _context8.abrupt("return", callDefaultProvider(engine, payload, end, "Current provider can't send transactions and smart contract ".concat(to, " not found on Biconomy Dashbaord")));
 
-          case 153:
-            _context8.next = 158;
+          case 154:
+            _context8.next = 159;
             break;
 
-          case 155:
+          case 156:
             _error16 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload), ". Expecting params key to be an array with first element having a 'to' property"));
             eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error16);
             end(_error16);
 
-          case 158:
-            _context8.next = 163;
+          case 159:
+            _context8.next = 164;
             break;
 
-          case 160:
-            _context8.prev = 160;
+          case 161:
+            _context8.prev = 161;
             _context8.t0 = _context8["catch"](0);
             return _context8.abrupt("return", end(_context8.t0));
 
-          case 163:
+          case 164:
           case "end":
             return _context8.stop();
         }
       }
-    }, _callee8, null, [[0, 160]]);
+    }, _callee8, null, [[0, 161]]);
   }));
   return _handleSendTransaction.apply(this, arguments);
 }
@@ -1421,19 +1425,20 @@ function _callDefaultProvider() {
 
 function _getEIP712ForwardMessageToSign(request, forwarder) {
   // Update the verifyingContract field of domain data based on the current request
-  if (!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder) {
+  if (!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder || !forwarderDomainDetails) {
     throw new Error("Biconomy is not properly initialized");
   } //Override domainData
 
 
-  forwarderDomainData.verifyingContract = forwarder; //Might update version as well
+  forwarderDomainData.verifyingContract = forwarder;
+  var domainDataToUse = forwarderDomainDetails[forwarder]; //Might update version as well
 
   var dataToSign = JSON.stringify({
     types: {
       EIP712Domain: forwarderDomainType,
       ERC20ForwardRequest: forwardRequestType
     },
-    domain: forwarderDomainData,
+    domain: domainDataToUse,
     primaryType: "ERC20ForwardRequest",
     message: request
   });
@@ -1494,6 +1499,16 @@ function _findTheRightForwarder() {
       while (1) {
         switch (_context10.prev = _context10.next) {
           case 0:
+            if (!smartContractTrustedForwarderMap[to]) {
+              _context10.next = 4;
+              break;
+            }
+
+            forwarderToUse = smartContractTrustedForwarderMap[to];
+            _context10.next = 26;
+            break;
+
+          case 4:
             if (engine.isEthersProviderPresent) {
               ethersProvider = engine.originalProvider;
             } else {
@@ -1505,51 +1520,54 @@ function _findTheRightForwarder() {
             forwarderToUse = supportedForwarders[0]; //default V1 forwarder is first element 
             // Attempt to find out forwarder that 'to' contract trusts
 
-            _context10.next = 6;
+            _context10.next = 10;
             return contract.trustedForwarder();
 
-          case 6:
+          case 10:
             forwarder = _context10.sent;
             i = 0;
 
-          case 8:
+          case 12:
             if (!(i < supportedForwarders.length)) {
-              _context10.next = 21;
+              _context10.next = 25;
               break;
             }
 
             if (!(supportedForwarders[i].toString() == forwarder.toString())) {
-              _context10.next = 12;
+              _context10.next = 16;
               break;
             }
 
             forwarderToUse = supportedForwarders[i];
-            return _context10.abrupt("break", 21);
+            return _context10.abrupt("break", 25);
 
-          case 12:
-            _context10.next = 14;
+          case 16:
+            _context10.next = 18;
             return contract.isTrustedForwarder(supportedForwarders[i]);
 
-          case 14:
+          case 18:
             isTrustedForwarder = _context10.sent;
 
             if (!isTrustedForwarder) {
-              _context10.next = 18;
+              _context10.next = 22;
               break;
             }
 
             forwarderToUse = supportedForwarders[i];
-            return _context10.abrupt("break", 21);
-
-          case 18:
-            i++;
-            _context10.next = 8;
-            break;
-
-          case 21:
-            return _context10.abrupt("return", forwarderToUse);
+            return _context10.abrupt("break", 25);
 
           case 22:
+            i++;
+            _context10.next = 12;
+            break;
+
+          case 25:
+            smartContractTrustedForwarderMap[to] = forwarderToUse;
+
+          case 26:
+            return _context10.abrupt("return", forwarderToUse);
+
+          case 27:
           case "end":
             return _context10.stop();
         }
@@ -2305,6 +2323,7 @@ function _onNetworkId() {
                 loginDomainData = systemInfo.loginDomainData;
                 forwardRequestType = systemInfo.forwardRequestType;
                 forwarderDomainData = systemInfo.forwarderDomainData;
+                forwarderDomainDetails = systemInfo.forwarderDomainDetails;
                 trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
                 daiPermitOverhead = systemInfo.overHeadDaiPermit;
                 eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;

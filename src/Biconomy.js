@@ -59,7 +59,7 @@ let daiDomainData = {
   version: config.daiVersion,
 };
 
-let forwarderDomainData;
+let forwarderDomainData, forwarderDomainDetails;
 
 // EIP712 format data for login
 let loginDomainType, loginMessageType, loginDomainData;
@@ -376,7 +376,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
 
           forwarderToUse = await findTheRightForwarder(engine,to);
 
-          //Attach the forwarder with rigth address
+          //Attach the forwarder with right address
 
           
           request = (
@@ -420,13 +420,14 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
 
         // Update the verifyingContract field of domain data based on the current request
         forwarderDomainData.verifyingContract = forwarderToUse;
+        let domainDataToUse = forwarderDomainDetails[forwarderToUse];
 
         const eip712DataToSign = {
           types: {
             EIP712Domain: forwarderDomainType,
             ERC20ForwardRequest: forwardRequestType,
           },
-          domain: forwarderDomainData,
+          domain: domainDataToUse,
           primaryType: "ERC20ForwardRequest",
           message: request,
         };
@@ -697,11 +698,12 @@ async function sendSignedTransaction(engine, payload, end) {
 
             //Update the verifyingContract in domain data
             forwarderDomainData.verifyingContract = forwarderToUse;
+            let domainDataToUse = forwarderDomainDetails[forwarderToUse];
 
             // Update the verifyingContract field of domain data based on the current request
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               const domainSeparator = getDomainSeperator(
-                forwarderDomainData
+                domainDataToUse
               );
               _logMessage(domainSeparator);
               paramArray.push(domainSeparator);
@@ -950,12 +952,13 @@ async function handleSendTransaction(engine, payload, end) {
 
             forwarderDomainData.verifyingContract = forwarderToAttach;
             //Might want to updare version as well
+            let domainDataToUse = forwarderDomainDetails[forwarderToAttach];
 
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               _logMessage("EIP712 signature flow");
               // Update the verifyingContract field of domain data based on the current request
               const domainSeparator = getDomainSeperator(
-                forwarderDomainData
+                domainDataToUse
               );
               _logMessage("Domain separator to be used:")
               _logMessage(domainSeparator);
@@ -1080,12 +1083,13 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
 // This might take a paramter which verifyingContract is this intended for
 function _getEIP712ForwardMessageToSign(request, forwarder) {
   // Update the verifyingContract field of domain data based on the current request
-  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder) {
+  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder || !forwarderDomainDetails) {
     throw new Error("Biconomy is not properly initialized");
   }
 
   //Override domainData
   forwarderDomainData.verifyingContract = forwarder;
+  let domainDataToUse = forwarderDomainDetails[forwarder];
   //Might update version as well
 
   let dataToSign = JSON.stringify({
@@ -1093,7 +1097,7 @@ function _getEIP712ForwardMessageToSign(request, forwarder) {
       EIP712Domain: forwarderDomainType,
       ERC20ForwardRequest: forwardRequestType,
     },
-    domain: forwarderDomainData,
+    domain: domainDataToUse,
     primaryType: "ERC20ForwardRequest",
     message: request,
   });
@@ -1165,8 +1169,8 @@ function getSignatureParameters(signature) {
 async function findTheRightForwarder(engine, to) {
   let forwarderToUse;
   let ethersProvider;
-  if (smartContractMetaTransactionMap[to]) {
-    forwarderToUse = smartContractMetaTransactionMap[to]
+  if (smartContractTrustedForwarderMap[to]) {
+    forwarderToUse = smartContractTrustedForwarderMap[to]
   } else {
     if (engine.isEthersProviderPresent) {
       ethersProvider = engine.originalProvider;
@@ -1195,7 +1199,7 @@ async function findTheRightForwarder(engine, to) {
         break;
       }
     }
-    smartContractMetaTransactionMap[to] = forwarderToUse;
+    smartContractTrustedForwarderMap[to] = forwarderToUse;
   }
   return forwarderToUse;
 }
@@ -1751,6 +1755,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           loginDomainData = systemInfo.loginDomainData;
           forwardRequestType = systemInfo.forwardRequestType;
           forwarderDomainData = systemInfo.forwarderDomainData;
+          forwarderDomainDetails = systemInfo.forwarderDomainDetails;
           trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
           daiPermitOverhead = systemInfo.overHeadDaiPermit;
           eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
