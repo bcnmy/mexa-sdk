@@ -65,6 +65,20 @@ var RESPONSE_CODES = {
   INVALID_DATA: 'B514',
   INVALID_OPERATION: 'B515',
   WRONG_ABI: 'B516'
+}; //for extended forwarder support
+
+config.forwarderDomainData = {
+  80001: {
+    "0x14511D787F42695060307b21F6990A049B23dB84": {
+      name: 'Pwered by Biconomy',
+      version: '1'
+    },
+    "0xee7944Da5524Da1480bdc3C05450698756ded8Ef": {
+      name: "Biconomy Forwarder for The Sandbox" + '\n' + "This forwarder is used to let you pay gas fee in SAND rather than MATIC",
+      version: '1'
+    }
+  },
+  137: {}
 }; // could get these from sys info call
 
 config.forwardRequestType = [{
@@ -94,6 +108,19 @@ config.forwardRequestType = [{
 }, {
   name: 'data',
   type: 'bytes'
+}];
+config.customForwardRequestType = [{
+  name: 'warning',
+  type: 'string'
+}, {
+  name: 'info',
+  type: 'string'
+}, {
+  name: 'action',
+  type: 'string'
+}, {
+  name: 'request',
+  type: 'ERC20ForwardRequest'
 }];
 config.daiPermitType = [{
   name: "holder",
