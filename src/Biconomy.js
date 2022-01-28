@@ -831,7 +831,9 @@ async function handleSendTransaction(engine, payload, end) {
 
         //Sanitise gas limit here. big number / hex / number -> hex
         let gasLimit = payload.params[0].gas || payload.params[0].gasLimit;
+        if(gasLimit) {
         gasLimit = ethers.BigNumber.from(gasLimit.toString()).toHexString();
+        }
         let txGas = payload.params[0].txGas;
         let signatureType = payload.params[0].signatureType;
         if(payload.params[0].batchId){
@@ -1132,9 +1134,9 @@ function getTargetProvider(engine) {
     provider = engine.originalProvider;
     if(!engine.canSignMessages) {
       if(!engine.walletProvider) {
-        //TODO
-        //review maybe comment this out and just log
-        throw new Error(`Please pass a provider connected to a wallet that can sign messages in Biconomy options.`);
+        //comment this out and just log
+        //throw new Error(`Please pass a provider connected to a wallet that can sign messages in Biconomy options.`);
+        _logMessage("Please pass a provider connected to a wallet that can sign messages in Biconomy options");      
       }
       provider = engine.walletProvider;
     }
