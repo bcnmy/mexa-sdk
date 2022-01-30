@@ -95,7 +95,7 @@ class ERC20ForwarderClient {
 
     domainDataCustom.name = domainInfo[forwarder.address].name;
     domainDataCustom.version = domainInfo[forwarder.address].version;
-    domainDataCustom.salt = this.forwarderDomainData.salt;
+    domainDataCustom.salt = forwarderDomainData.salt;
     domainDataCustom.verifyingContract = forwarder.address;
 
     this.forwarderDomainDataCustom = domainDataCustom;
@@ -913,7 +913,7 @@ class ERC20ForwarderClient {
           ERC20ForwardRequest: erc20ForwardRequestType,
           CustomForwardRequest: customForwardRequestType,
         },
-        domain: this.forwarderDomainData,
+        domain: this.forwarderDomainDataCustom,
         primaryType: "CustomForwardRequest",
         message: req,
       };
@@ -921,7 +921,7 @@ class ERC20ForwarderClient {
       console.log("here");
       console.log(JSON.stringify(dataToSign));
 
-      
+
 
       const sig =
         signature == null
@@ -1044,7 +1044,6 @@ class ERC20ForwarderClient {
         throw new Error(
           "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
         );
-
       const apiId = api.id;
       const metaTxBody = {
         to: req.to,

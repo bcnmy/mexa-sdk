@@ -148,7 +148,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     var domainInfo = forwarderDomainDataInfo[networkId];
     domainDataCustom.name = domainInfo[forwarder.address].name;
     domainDataCustom.version = domainInfo[forwarder.address].version;
-    domainDataCustom.salt = this.forwarderDomainData.salt;
+    domainDataCustom.salt = forwarderDomainData.salt;
     domainDataCustom.verifyingContract = forwarder.address;
     this.forwarderDomainDataCustom = domainDataCustom;
   }
@@ -1314,7 +1314,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                     ERC20ForwardRequest: erc20ForwardRequestType,
                     CustomForwardRequest: customForwardRequestType
                   },
-                  domain: this.forwarderDomainData,
+                  domain: this.forwarderDomainDataCustom,
                   primaryType: "CustomForwardRequest",
                   message: req
                 };
