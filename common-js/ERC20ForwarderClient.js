@@ -24,6 +24,7 @@ var _require3 = require("./abis"),
 
 var erc20ForwardRequestType = config.forwardRequestType;
 var customForwardRequestType = config.customForwardRequestType;
+var forwarderDomainDataInfo = config.forwarderDomainDetails;
 /**
  * Method to get the gas price for a given network that'll be used to
  * send the transaction by Biconomy Relayer Network.
@@ -143,6 +144,13 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     this.trustedForwarderOverhead = trustedForwarderOverhead;
     this.daiPermitOverhead = daiPermitOverhead;
     this.eip2612PermitOverhead = eip2612PermitOverhead;
+    var domainDataCustom = {};
+    var domainInfo = forwarderDomainDataInfo[networkId];
+    domainDataCustom.name = domainInfo[forwarder.address].name;
+    domainDataCustom.version = domainInfo[forwarder.address].version;
+    domainDataCustom.salt = this.forwarderDomainData.salt;
+    domainDataCustom.verifyingContract = forwarder.address;
+    this.forwarderDomainDataCustom = domainDataCustom;
   }
   /**
    * Check if given token address is supported by Biconomy or not.
@@ -1268,8 +1276,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
               case 0:
                 req = _ref7.req, _ref7$signature = _ref7.signature, signature = _ref7$signature === void 0 ? null : _ref7$signature, userAddress = _ref7.userAddress, gasLimit = _ref7.gasLimit, metaInfo = _ref7.metaInfo;
                 _context10.prev = 1;
-                //possibly check allowance here
-                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.verifyingContract, this.forwarderDomainData.salt]));
+                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainDataCustom.name), ethers.utils.id(this.forwarderDomainDataCustom.version), this.forwarderDomainDataCustom.verifyingContract, this.forwarderDomainDataCustom.salt]));
 
                 if (!this.isSignerWithAccounts) {
                   _context10.next = 9;

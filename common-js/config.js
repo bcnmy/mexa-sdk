@@ -67,18 +67,17 @@ var RESPONSE_CODES = {
   WRONG_ABI: 'B516'
 }; //for extended forwarder support
 
-config.forwarderDomainData = {
+config.forwarderDomainDetails = {
   80001: {
     "0x14511D787F42695060307b21F6990A049B23dB84": {
-      name: 'Pwered by Biconomy',
+      name: 'Powered by Biconomy',
       version: '1'
     },
-    "0xee7944Da5524Da1480bdc3C05450698756ded8Ef": {
-      name: "Biconomy Forwarder for The Sandbox" + '\n' + "This forwarder is used to let you pay gas fee in SAND rather than MATIC",
+    "0x69015912AA33720b842dCD6aC059Ed623F28d9f7": {
+      name: "Biconomy Forwarder for The Sandbox :: This forwarder is used to let you pay gas fee in SAND rather than MATIC",
       version: '1'
     }
-  },
-  137: {}
+  }
 }; // could get these from sys info call
 
 config.forwardRequestType = [{

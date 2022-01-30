@@ -5,6 +5,7 @@ let { tokenAbi, erc20Eip2612Abi } = require("./abis");
 
 const erc20ForwardRequestType = config.forwardRequestType;
 const customForwardRequestType = config.customForwardRequestType;
+const forwarderDomainDataInfo = config.forwarderDomainDetails;
 
 /**
  * Method to get the gas price for a given network that'll be used to
@@ -87,6 +88,17 @@ class ERC20ForwarderClient {
     this.trustedForwarderOverhead = trustedForwarderOverhead;
     this.daiPermitOverhead = daiPermitOverhead;
     this.eip2612PermitOverhead = eip2612PermitOverhead;
+
+    let domainDataCustom = {};
+    
+    let domainInfo = forwarderDomainDataInfo[networkId];
+
+    domainDataCustom.name = domainInfo[forwarder.address].name;
+    domainDataCustom.version = domainInfo[forwarder.address].version;
+    domainDataCustom.salt = this.forwarderDomainData.salt;
+    domainDataCustom.verifyingContract = forwarder.address;
+
+    this.forwarderDomainDataCustom = domainDataCustom;
   }
 
   /**
@@ -863,9 +875,6 @@ class ERC20ForwarderClient {
 
   async sendSandboxTxEIP712({ req, signature = null, userAddress, gasLimit, metaInfo }) {
     try {
-      //possibly check allowance here
-
-      
 
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
@@ -874,10 +883,10 @@ class ERC20ForwarderClient {
             ethers.utils.id(
               "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
             ),
-            ethers.utils.id(this.forwarderDomainData.name),
-            ethers.utils.id(this.forwarderDomainData.version),
-            this.forwarderDomainData.verifyingContract,
-            this.forwarderDomainData.salt,
+            ethers.utils.id(this.forwarderDomainDataCustom.name),
+            ethers.utils.id(this.forwarderDomainDataCustom.version),
+            this.forwarderDomainDataCustom.verifyingContract,
+            this.forwarderDomainDataCustom.salt,
           ]
         )
       );
