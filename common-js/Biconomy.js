@@ -2327,6 +2327,7 @@ function _onNetworkId() {
                 trustedForwarderOverhead = systemInfo.overHeadEIP712Sign;
                 daiPermitOverhead = systemInfo.overHeadDaiPermit;
                 eip2612PermitOverhead = systemInfo.overHeadEIP2612Permit;
+                engine.forwarderAddress = systemInfo.biconomyForwarderAddress;
                 engine.forwarderAddresses = systemInfo.biconomyForwarderAddresses;
                 engine.erc20ForwarderAddress = systemInfo.erc20ForwarderAddress;
                 engine.transferHandlerAddress = systemInfo.transferHandlerAddress;
@@ -2353,7 +2354,8 @@ function _onNetworkId() {
                 var supportedForwarders = engine.forwarderAddresses; // prevent initialising it here as system info could return an array of forwarder addresses
 
                 biconomyForwarder = new ethers.Contract( //pick up first forwarder address from the array by default then attach to an address accordingly
-                supportedForwarders[0], biconomyForwarderAbi, engine.ethersProvider);
+                supportedForwarders[0], //TODO - could be engine.forwarderAddress 
+                biconomyForwarderAbi, engine.ethersProvider);
               } // Get dapps smart contract data from biconomy servers
 
 
