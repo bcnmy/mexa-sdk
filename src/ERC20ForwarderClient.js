@@ -60,6 +60,7 @@ class ERC20ForwarderClient {
     forwarderClientOptions,
     networkId,
     provider,
+    targetProvider,
     forwarderDomainData,
     forwarderDomainType,
     erc20Forwarder,
@@ -76,6 +77,7 @@ class ERC20ForwarderClient {
     this.biconomyAttributes = forwarderClientOptions;
     this.networkId = networkId;
     this.provider = provider;
+    this.targetProvider = targetProvider;
     this.forwarderDomainData = forwarderDomainData;
     this.forwarderDomainType = forwarderDomainType;
     this.erc20Forwarder = erc20Forwarder;
@@ -91,13 +93,16 @@ class ERC20ForwarderClient {
 
     let domainDataCustom = {};
     
+    // Notice : this would not be needed once extended forwarders are able to give domainDetails
     let domainInfo = forwarderDomainDataInfo[networkId];
-
+    if(domainInfo) {
     domainDataCustom.name = domainInfo[forwarder.address].name;
     domainDataCustom.version = domainInfo[forwarder.address].version;
     domainDataCustom.salt = forwarderDomainData.salt;
     domainDataCustom.verifyingContract = forwarder.address;
+    }
 
+    // Only applicable for Mumbai in this version of sdk
     this.forwarderDomainDataCustom = domainDataCustom;
   }
 
@@ -121,6 +126,54 @@ class ERC20ForwarderClient {
       throw new Error(
         `Token with address ${token} is not supported. Please refer https://docs.biconomy.io to see list of supported tokens`
       );
+  }
+
+  isEthersProvider(provider) {
+    return ethers.providers.Provider.isProvider(provider);
+  }
+
+  async callDefaultProvider(payload) {
+    try {
+      let targetProvider = this.targetProvider;
+      if (targetProvider) {
+        if (this.isEthersProvider(targetProvider)) {
+          _logMessage("default provider call");
+          //call using ethers provider using payload data, to, from
+          //return response;
+          let response = await targetProvider.send("eth_sendTransaction", [
+            payload,
+          ]);
+          return response;
+        } else {
+          // TODO : review else part for non ethers provider
+          let response = await targetProvider.send(
+            {
+              jsonrpc: "2.0",
+              id: 999999999999,
+              method: "eth_sendTransaction",
+              params: [payload],
+            },
+            function (error, res) {
+              if (error) {
+                reject(error);
+              } else {
+                let transactionHash = res.result;
+                resolve(transactionHash);
+              }
+            }
+          );
+          return response;
+        }
+      }
+      else {
+        _logMessage("No provider present in Biconomy that can sign messages");
+        throw new Error("No provider present in Biconomy that can sign messages");
+      }
+    } catch (e) {
+      _logMessage("Unexpected error occured when calling default provider");
+      _logMessage(e);
+      throw e;
+    }
   }
 
   /**
@@ -572,6 +625,8 @@ class ERC20ForwarderClient {
       await this.checkTokenSupport(token);
 
       if (!userAddress) {
+        // TODO : could remove this if else
+        // use this.targetProvider instead
         if (!this.isSignerWithAccounts) {
           throw new Error(
             "Provider object passed to Biconomy does neither have user account information nor userAddress is passed. Refer to docs or contact Biconomy team to know how to use ERC20ForwarderClient properly"
@@ -643,7 +698,7 @@ class ERC20ForwarderClient {
         permitCost = (
           parseFloat(permitCost) /
           parseFloat(ethers.BigNumber.from(10).pow(tokenDecimals))
-        ).toFixed(3);
+        ).toFixed(5);
 
         permitFees = parseFloat(permitCost.toString()); // Exact amount in tokens
         _logMessage(
@@ -661,7 +716,7 @@ class ERC20ForwarderClient {
       cost = (
         parseFloat(cost) /
         parseFloat(ethers.BigNumber.from(10).pow(tokenDecimals))
-      ).toFixed(3);
+      ).toFixed(5);
       let fee = parseFloat(cost.toString()); // Exact amount in tokens
       _logMessage(
         `Estimated Transaction Fee in token address ${token} is ${fee}`
@@ -669,7 +724,7 @@ class ERC20ForwarderClient {
 
       let totalFees = fee;
       if (permitFees) {
-        totalFees = parseFloat(fee + permitFees).toFixed(3);
+        totalFees = parseFloat(fee + permitFees).toFixed(5);
       }
 
       // if intended for permit chained execution then should not check allowance
@@ -891,6 +946,8 @@ class ERC20ForwarderClient {
         )
       );
 
+      // TODO : isSignerWithAccounts check could be removed
+      // Use this.targetProvider instead
       if (this.isSignerWithAccounts) {
         userAddress = await this.provider.getSigner().getAddress();
       } else {
@@ -918,8 +975,6 @@ class ERC20ForwarderClient {
         message: req,
       };
 
-      console.log("here");
-      console.log(JSON.stringify(dataToSign));
 
 
 
@@ -961,6 +1016,28 @@ class ERC20ForwarderClient {
 
       const response = await txResponse.json();
       //if fails .code would be 417
+      if(response.code != 200) {
+
+        let payload = {};
+
+        payload.from = userAddress;
+        payload.to = req.request.to;
+        payload.gasLimit = req.request.txGas;
+        payload.data = req.request.data;
+
+        try {
+          let hash = this.callDefaultProvider(payload);
+          let finalResponse = {};
+          finalResponse.code = 200;
+          finalResponse.txHash = hash;
+          finalResponse.message = "Transaction went successfully through default provider";
+          return finalResponse;
+        }
+        catch (error) {
+          _logMessage(error);
+          throw error;
+        }
+      }
 
       return response;
     } catch (error) {
@@ -1007,6 +1084,7 @@ class ERC20ForwarderClient {
       );
 
       if (this.isSignerWithAccounts) {
+        //TODO : could use this.targetProvider instead
         userAddress = await this.provider.getSigner().getAddress();
       } else {
         if (!signature) {
