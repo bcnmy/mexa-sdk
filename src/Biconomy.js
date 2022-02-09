@@ -1287,6 +1287,10 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         PERSONAL_SIGN: engine.PERSONAL_SIGN,
       },
     };
+    let targetProvider = getTargetProvider(engine);
+    /*if(!targetProvider) {
+      throw new Error(`Unable to get provider information passed to Biconomy`);
+    }*/
     let ethersProvider;
     if (engine.isEthersProviderPresent) {
       ethersProvider = engine.originalProvider;
@@ -1355,6 +1359,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         forwarderClientOptions: biconomyAttributes,
         networkId: engine.networkId,
         provider: ethersProvider,
+        targetProvider: targetProvider,
         forwarderDomainData,
         forwarderDomainType,
         erc20Forwarder,
