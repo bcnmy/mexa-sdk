@@ -66,6 +66,7 @@ var RESPONSE_CODES = {
   INVALID_OPERATION: 'B515',
   WRONG_ABI: 'B516'
 }; //for extended forwarder support
+//marked for deletion
 
 config.forwarderDomainDetails = {
   80001: {

@@ -70,6 +70,7 @@ const RESPONSE_CODES = {
 };
 
 //for extended forwarder support
+//marked for deletion
 config.forwarderDomainDetails = {
 	80001: {
 		"0x14511D787F42695060307b21F6990A049B23dB84" : {
@@ -159,6 +160,7 @@ const STATUS = {
 };
 
 config.SCW = "SCW";
+
 
 module.exports = {
 	config,
