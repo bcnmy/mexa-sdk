@@ -2405,7 +2405,7 @@ function _onNetworkId() {
               } // check if Valid trusted forwarder address is present from system info
 
 
-              if (engine.forwarderAddress != "") {
+              if (engine.forwarderAddress && engine.forwarderAddress != "") {
                 //let supportedForwarders = engine.forwarderAddresses;
                 // prevent initialising it here as system info could return an array of forwarder addresses
                 biconomyForwarder = new ethers.Contract( //pick up first forwarder address from the array by default then attach to an address accordingly

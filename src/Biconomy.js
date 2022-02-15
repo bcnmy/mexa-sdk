@@ -1844,7 +1844,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
         
         // check if Valid trusted forwarder address is present from system info
 
-        if (engine.forwarderAddress != "") {
+        if (engine.forwarderAddress && engine.forwarderAddress != "") {
           //let supportedForwarders = engine.forwarderAddresses;
           // prevent initialising it here as system info could return an array of forwarder addresses
           biconomyForwarder = new ethers.Contract(
