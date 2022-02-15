@@ -846,8 +846,7 @@ function _sendSignedTransaction() {
             gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
 
           case 63:
-            _logMessage(request); // We would have the requests already in this case. It is upto the client to build this and have approriate forwarder(?)
-
+            _logMessage(request);
 
             paramArray.push(request);
             _context7.next = 67;
@@ -1184,8 +1183,7 @@ function _handleSendTransaction() {
             _logMessage(request);
 
             paramArray.push(request);
-            forwarderDomainData.verifyingContract = forwarderToAttach; //Might want to updare version as well
-
+            forwarderDomainData.verifyingContract = forwarderToAttach;
             domainDataToUse = forwarderDomainDetails[forwarderToAttach];
 
             if (!(signatureType && signatureType == engine.EIP712_SIGN)) {
@@ -1362,8 +1360,7 @@ function _handleSendTransaction() {
 
 function callDefaultProvider(_x11, _x12, _x13, _x14) {
   return _callDefaultProvider.apply(this, arguments);
-} // This might take a paramter which verifyingContract is this intended for
-
+}
 
 function _callDefaultProvider() {
   _callDefaultProvider = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee9(engine, payload, callback, errorMessage) {
@@ -1482,10 +1479,7 @@ function getSignatureParameters(signature) {
     s: s,
     v: v
   };
-} //TODO
-//Review : for avoid calling this method with every transaction handleSend / sendSigned
-//A way of caching to identify which forwarder particular contract uses / maybe pick from the dashboard
-
+}
 
 function findTheRightForwarder(_x15, _x16) {
   return _findTheRightForwarder.apply(this, arguments);
@@ -2350,12 +2344,11 @@ function _onNetworkId() {
               } // check if Valid trusted forwarder address is present from system info
 
 
-              if (engine.forwarderAddresses && engine.forwarderAddresses != "") {
-                var supportedForwarders = engine.forwarderAddresses; // prevent initialising it here as system info could return an array of forwarder addresses
-
+              if (engine.forwarderAddress != "") {
+                //let supportedForwarders = engine.forwarderAddresses;
+                // prevent initialising it here as system info could return an array of forwarder addresses
                 biconomyForwarder = new ethers.Contract( //pick up first forwarder address from the array by default then attach to an address accordingly
-                supportedForwarders[0], //TODO - could be engine.forwarderAddress 
-                biconomyForwarderAbi, engine.ethersProvider);
+                engine.forwarderAddress, biconomyForwarderAbi, engine.ethersProvider);
               } // Get dapps smart contract data from biconomy servers
 
 

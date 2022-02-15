@@ -691,7 +691,6 @@ async function sendSignedTransaction(engine, payload, end) {
             }
             _logMessage(request);
 
-            // We would have the requests already in this case. It is upto the client to build this and have approriate forwarder(?)
             paramArray.push(request);
 
             let forwarderToUse = await findTheRightForwarder(engine,to);
@@ -951,7 +950,6 @@ async function handleSendTransaction(engine, payload, end) {
             paramArray.push(request);
 
             forwarderDomainData.verifyingContract = forwarderToAttach;
-            //Might want to updare version as well
             let domainDataToUse = forwarderDomainDetails[forwarderToAttach];
 
             if (signatureType && signatureType == engine.EIP712_SIGN) {
@@ -1080,7 +1078,7 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
   }
 }
 
-// This might take a paramter which verifyingContract is this intended for
+
 function _getEIP712ForwardMessageToSign(request, forwarder) {
   // Update the verifyingContract field of domain data based on the current request
   if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder || !forwarderDomainDetails) {
@@ -1163,14 +1161,11 @@ function getSignatureParameters(signature) {
   };
 }
 
-//TODO
-//Review : for avoid calling this method with every transaction handleSend / sendSigned
-//A way of caching to identify which forwarder particular contract uses / maybe pick from the dashboard
 async function findTheRightForwarder(engine, to) {
   let forwarderToUse;
   let ethersProvider;
   if (smartContractTrustedForwarderMap[to]) {
-    forwarderToUse = smartContractTrustedForwarderMap[to]
+    forwarderToUse = smartContractTrustedForwarderMap[to];
   } else {
     if (engine.isEthersProviderPresent) {
       ethersProvider = engine.originalProvider;
@@ -1800,12 +1795,12 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
         
         // check if Valid trusted forwarder address is present from system info
 
-        if (engine.forwarderAddresses && engine.forwarderAddresses != "") {
-          let supportedForwarders = engine.forwarderAddresses;
+        if (engine.forwarderAddress != "") {
+          //let supportedForwarders = engine.forwarderAddresses;
           // prevent initialising it here as system info could return an array of forwarder addresses
           biconomyForwarder = new ethers.Contract(
             //pick up first forwarder address from the array by default then attach to an address accordingly
-            supportedForwarders[0], //TODO - could be engine.forwarderAddress 
+            engine.forwarderAddress, 
             biconomyForwarderAbi,
             engine.ethersProvider
           );
