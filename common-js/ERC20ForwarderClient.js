@@ -24,7 +24,6 @@ var _require3 = require("./abis"),
 
 var erc20ForwardRequestType = config.forwardRequestType;
 var customForwardRequestType = config.customForwardRequestType;
-var forwarderDomainDataInfo = config.forwarderDomainDetails;
 /**
  * Method to get the gas price for a given network that'll be used to
  * send the transaction by Biconomy Relayer Network.
@@ -118,6 +117,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
         provider = _ref2.provider,
         targetProvider = _ref2.targetProvider,
         forwarderDomainData = _ref2.forwarderDomainData,
+        forwarderDomainDetails = _ref2.forwarderDomainDetails,
         forwarderDomainType = _ref2.forwarderDomainType,
         erc20Forwarder = _ref2.erc20Forwarder,
         transferHandler = _ref2.transferHandler,
@@ -135,6 +135,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     this.provider = provider;
     this.targetProvider = targetProvider;
     this.forwarderDomainData = forwarderDomainData;
+    this.forwarderDomainDetails = forwarderDomainDetails;
     this.forwarderDomainType = forwarderDomainType;
     this.erc20Forwarder = erc20Forwarder;
     this.oracleAggregator = oracleAggregator;
@@ -146,19 +147,6 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     this.trustedForwarderOverhead = trustedForwarderOverhead;
     this.daiPermitOverhead = daiPermitOverhead;
     this.eip2612PermitOverhead = eip2612PermitOverhead;
-    var domainDataCustom = {}; // Notice : this would not be needed once extended forwarders are able to give domainDetails
-
-    var domainInfo = forwarderDomainDataInfo[networkId];
-
-    if (domainInfo) {
-      domainDataCustom.name = domainInfo[forwarder.address].name;
-      domainDataCustom.version = domainInfo[forwarder.address].version;
-      domainDataCustom.salt = forwarderDomainData.salt;
-      domainDataCustom.verifyingContract = forwarder.address;
-    } // Only applicable for Mumbai in this version of sdk
-
-
-    this.forwarderDomainDataCustom = domainDataCustom;
   }
   /**
    * Check if given token address is supported by Biconomy or not.
@@ -359,8 +347,8 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
       }
     }
   }, {
-    key: "getSandboxApiId",
-    value: function getSandboxApiId(req) {
+    key: "getCustomApiId",
+    value: function getCustomApiId(req) {
       try {
         if (!this.biconomyAttributes) throw new Error("Biconomy is not initialized properly. 'biconomyAttributes'  is missing in ERC20ForwarderClient");
         if (!this.biconomyAttributes.decoderMap) throw new Error("Biconomy is not initialized properly. 'decoderMap' is missing in ERC20ForwarderClient.biconomyAttributes");
@@ -847,16 +835,16 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
       return checkTokenBalance;
     }()
   }, {
-    key: "buildSandboxTx",
+    key: "buildCustomTx",
     value: function () {
-      var _buildSandboxTx = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(_ref4) {
-        var to, token, txGas, data, _ref4$batchId, batchId, _ref4$deadlineInSec, deadlineInSec, userAddress, permitType, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, tokenContract, tokenDecimals, permitFees, overHead, permitCost, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend, finalReq, userCanPay;
+      var _buildCustomTx = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee7(_ref4) {
+        var to, token, txGas, data, _ref4$batchId, batchId, _ref4$deadlineInSec, deadlineInSec, userAddress, permitType, _ref4$forwardInfo, forwardInfo, nonce, tokenGasPrice, req, feeMultiplier, tokenOracleDecimals, transferHandlerGas, tokenContract, tokenDecimals, permitFees, overHead, permitCost, tokenSpendValue, cost, spendValue, fee, totalFees, allowedToSpend, tokenSymbol, finalReq, userCanPay;
 
         return _regenerator["default"].wrap(function _callee7$(_context7) {
           while (1) {
             switch (_context7.prev = _context7.next) {
               case 0:
-                to = _ref4.to, token = _ref4.token, txGas = _ref4.txGas, data = _ref4.data, _ref4$batchId = _ref4.batchId, batchId = _ref4$batchId === void 0 ? 0 : _ref4$batchId, _ref4$deadlineInSec = _ref4.deadlineInSec, deadlineInSec = _ref4$deadlineInSec === void 0 ? 3600 : _ref4$deadlineInSec, userAddress = _ref4.userAddress, permitType = _ref4.permitType;
+                to = _ref4.to, token = _ref4.token, txGas = _ref4.txGas, data = _ref4.data, _ref4$batchId = _ref4.batchId, batchId = _ref4$batchId === void 0 ? 0 : _ref4$batchId, _ref4$deadlineInSec = _ref4.deadlineInSec, deadlineInSec = _ref4$deadlineInSec === void 0 ? 3600 : _ref4$deadlineInSec, userAddress = _ref4.userAddress, permitType = _ref4.permitType, _ref4$forwardInfo = _ref4.forwardInfo, forwardInfo = _ref4$forwardInfo === void 0 ? {} : _ref4$forwardInfo;
                 _context7.prev = 1;
 
                 if (this.forwarder) {
@@ -1054,23 +1042,25 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                 _logMessage("".concat(userAddress, " has given permission ").concat(this.erc20Forwarder.address, " to spend required amount of tokens"));
 
               case 69:
+                tokenSymbol = forwardInfo.feeToken || 'SAND'; //call it fee token?
+
                 finalReq = {
-                  warning: '-',
-                  info: "Estimated gas fee               ".concat(totalFees.toString(), " SAND"),
-                  action: 'Stake',
+                  warning: forwardInfo.warning || '-',
+                  info: "Estimated gas fee                ".concat(totalFees.toString(), " ").concat(tokenSymbol),
+                  action: forwardInfo.action || 'Stake',
                   request: req
                 };
-                _context7.next = 72;
+                _context7.next = 73;
                 return this.checkTokenBalance(req.token, userAddress, spendValue);
 
-              case 72:
+              case 73:
                 userCanPay = _context7.sent;
 
                 if (!userCanPay) {
                   /*throw new Error(
                     "User does not have enough token balance to pay for the fees"
                   );*/
-                  finalReq.warning = "You don't have enough SAND in your wallet!";
+                  finalReq.warning = forwardInfo.warning || "You don't have enough ".concat(tokenSymbol, " in your wallet!");
                 } else {
                   _logMessage("".concat(userAddress, " has sufficient balance in tokens to cover the gas fees"));
                 }
@@ -1080,27 +1070,27 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                   cost: totalFees
                 });
 
-              case 77:
-                _context7.prev = 77;
+              case 78:
+                _context7.prev = 78;
                 _context7.t0 = _context7["catch"](1);
 
                 _logMessage(_context7.t0);
 
                 throw _context7.t0;
 
-              case 81:
+              case 82:
               case "end":
                 return _context7.stop();
             }
           }
-        }, _callee7, this, [[1, 77]]);
+        }, _callee7, this, [[1, 78]]);
       }));
 
-      function buildSandboxTx(_x9) {
-        return _buildSandboxTx.apply(this, arguments);
+      function buildCustomTx(_x9) {
+        return _buildCustomTx.apply(this, arguments);
       }
 
-      return buildSandboxTx;
+      return buildCustomTx;
     }()
   }, {
     key: "buildTransferTx",
@@ -1369,9 +1359,9 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
       return sendTxEIP712;
     }()
   }, {
-    key: "sendSandboxTxEIP712",
+    key: "sendCustomTxEIP712",
     value: function () {
-      var _sendSandboxTxEIP = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(_ref7) {
+      var _sendCustomTxEIP = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee11(_ref7) {
         var req, _ref7$signature, signature, userAddress, gasLimit, metaInfo, domainSeparator, dataToSign, sig, api, apiId, metaTxBody, txResponse, response, payload, hash, finalResponse;
 
         return _regenerator["default"].wrap(function _callee11$(_context11) {
@@ -1380,7 +1370,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
               case 0:
                 req = _ref7.req, _ref7$signature = _ref7.signature, signature = _ref7$signature === void 0 ? null : _ref7$signature, userAddress = _ref7.userAddress, gasLimit = _ref7.gasLimit, metaInfo = _ref7.metaInfo;
                 _context11.prev = 1;
-                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainDataCustom.name), ethers.utils.id(this.forwarderDomainDataCustom.version), this.forwarderDomainDataCustom.verifyingContract, this.forwarderDomainDataCustom.salt])); // TODO : isSignerWithAccounts check could be removed
+                domainSeparator = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32", "bytes32", "address", "bytes32"], [ethers.utils.id("EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"), ethers.utils.id(this.forwarderDomainData.name), ethers.utils.id(this.forwarderDomainData.version), this.forwarderDomainData.verifyingContract, this.forwarderDomainData.salt])); // TODO : isSignerWithAccounts check could be removed
                 // Use this.targetProvider instead
 
                 if (!this.isSignerWithAccounts) {
@@ -1419,7 +1409,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
                     ERC20ForwardRequest: erc20ForwardRequestType,
                     CustomForwardRequest: customForwardRequestType
                   },
-                  domain: this.forwarderDomainDataCustom,
+                  domain: this.forwarderDomainData,
                   primaryType: "CustomForwardRequest",
                   message: req
                 };
@@ -1442,7 +1432,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
 
               case 21:
                 sig = _context11.t0;
-                api = this.getSandboxApiId(req);
+                api = this.getCustomApiId(req);
 
                 if (!(!api || !api.id)) {
                   _context11.next = 25;
@@ -1526,11 +1516,11 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
         }, _callee11, this, [[1, 55], [39, 48]]);
       }));
 
-      function sendSandboxTxEIP712(_x15) {
-        return _sendSandboxTxEIP.apply(this, arguments);
+      function sendCustomTxEIP712(_x15) {
+        return _sendCustomTxEIP.apply(this, arguments);
       }
 
-      return sendSandboxTxEIP712;
+      return sendCustomTxEIP712;
     }()
     /**
      * Method gets the user signature in EIP712 format and send the transaction

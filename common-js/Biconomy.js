@@ -1546,7 +1546,7 @@ function _findTheRightForwarder() {
             }
 
             forwarderToUse = smartContractTrustedForwarderMap[to];
-            _context10.next = 26;
+            _context10.next = 41;
             break;
 
           case 4:
@@ -1558,62 +1558,93 @@ function _findTheRightForwarder() {
 
             contract = new ethers.Contract(to, eip2771BaseAbi, ethersProvider);
             supportedForwarders = engine.forwarderAddresses;
-            forwarderToUse = supportedForwarders[0]; //default V1 forwarder is first element 
+            forwarderToUse = engine.forwarderAddress; //default forwarder
             // Attempt to find out forwarder that 'to' contract trusts
 
-            _context10.next = 10;
+            _context10.prev = 8;
+            _context10.next = 11;
             return contract.trustedForwarder();
 
-          case 10:
+          case 11:
             forwarder = _context10.sent;
+            _context10.next = 18;
+            break;
+
+          case 14:
+            _context10.prev = 14;
+            _context10.t0 = _context10["catch"](8);
+
+            _logMessage("Could not find read method 'trustedForwarder' in the contract abi");
+
+            _logMessage(_context10.t0);
+
+          case 18:
             i = 0;
 
-          case 12:
+          case 19:
             if (!(i < supportedForwarders.length)) {
-              _context10.next = 25;
+              _context10.next = 40;
+              break;
+            }
+
+            if (!forwarder) {
+              _context10.next = 24;
               break;
             }
 
             if (!(supportedForwarders[i].toString() == forwarder.toString())) {
-              _context10.next = 16;
+              _context10.next = 24;
               break;
             }
 
             forwarderToUse = supportedForwarders[i];
-            return _context10.abrupt("break", 25);
+            return _context10.abrupt("break", 40);
 
-          case 16:
-            _context10.next = 18;
+          case 24:
+            _context10.prev = 24;
+            _context10.next = 27;
             return contract.isTrustedForwarder(supportedForwarders[i]);
 
-          case 18:
+          case 27:
             isTrustedForwarder = _context10.sent;
 
             if (!isTrustedForwarder) {
-              _context10.next = 22;
+              _context10.next = 31;
               break;
             }
 
             forwarderToUse = supportedForwarders[i];
-            return _context10.abrupt("break", 25);
+            return _context10.abrupt("break", 40);
 
-          case 22:
-            i++;
-            _context10.next = 12;
+          case 31:
+            _context10.next = 37;
             break;
 
-          case 25:
+          case 33:
+            _context10.prev = 33;
+            _context10.t1 = _context10["catch"](24);
+
+            _logMessage("Could not find read method 'isTrustedForwarder' in the contract abi");
+
+            _logMessage(_context10.t1);
+
+          case 37:
+            i++;
+            _context10.next = 19;
+            break;
+
+          case 40:
             smartContractTrustedForwarderMap[to] = forwarderToUse;
 
-          case 26:
+          case 41:
             return _context10.abrupt("return", forwarderToUse);
 
-          case 27:
+          case 42:
           case "end":
             return _context10.stop();
         }
       }
-    }, _callee10);
+    }, _callee10, null, [[8, 14], [24, 33]]);
   }));
   return _findTheRightForwarder.apply(this, arguments);
 }
@@ -1837,7 +1868,7 @@ eventEmitter.on(EVENTS.SMART_CONTRACT_DATA_READY, function (dappId, engine) {
 });
 eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
   var _ref5 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee5(engine) {
-    var biconomyAttributes, targetProvider, ethersProvider, signer, signerOrProvider, isSignerWithAccounts, erc20ForwarderAddress, transferHandlerAddress, erc20Forwarder, oracleAggregatorAddress, feeManagerAddress, forwarderAddress, oracleAggregator, feeManager, forwarder, transferHandler, tokenGasPriceV1SupportedNetworks;
+    var biconomyAttributes, targetProvider, ethersProvider, signer, signerOrProvider, isSignerWithAccounts, erc20ForwarderAddress, transferHandlerAddress, erc20Forwarder, oracleAggregatorAddress, feeManagerAddress, forwarderAddress, oracleAggregator, feeManager, forwarder, requiredDomainData, transferHandler, tokenGasPriceV1SupportedNetworks;
     return _regenerator["default"].wrap(function _callee5$(_context5) {
       while (1) {
         switch (_context5.prev = _context5.next) {
@@ -1890,7 +1921,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
             transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
             if (!erc20ForwarderAddress) {
-              _context5.next = 43;
+              _context5.next = 44;
               break;
             }
 
@@ -1914,6 +1945,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
             feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider); //If ERC20 Forwarder Address exits then it would have configured Forwarder 
 
             forwarder = new ethers.Contract(forwarderAddress, biconomyForwarderAbi, signerOrProvider);
+            requiredDomainData = forwarderDomainDetails[forwarderAddress];
             transferHandler = new ethers.Contract(transferHandlerAddress, transferHandlerAbi, signerOrProvider);
             tokenGasPriceV1SupportedNetworks = engine.tokenGasPriceV1SupportedNetworks;
             engine.permitClient = new PermitClient(engine, erc20ForwarderAddress, engine.daiTokenAddress); //TODO
@@ -1924,7 +1956,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               networkId: engine.networkId,
               provider: ethersProvider,
               targetProvider: targetProvider,
-              forwarderDomainData: forwarderDomainData,
+              forwarderDomainData: requiredDomainData,
+              forwarderDomainDetails: forwarderDomainDetails,
               forwarderDomainType: forwarderDomainType,
               erc20Forwarder: erc20Forwarder,
               transferHandler: transferHandler,
@@ -1942,31 +1975,31 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
 
             _logMessage(engine.erc20ForwarderClient);
 
-            _context5.next = 44;
+            _context5.next = 45;
             break;
 
-          case 43:
+          case 44:
             _logMessage("ERC20 Forwarder is not supported for this network"); //Warning : you would not be able to use ERC20ForwarderClient and PermitClient 
 
 
-          case 44:
+          case 45:
             engine.status = STATUS.BICONOMY_READY;
             eventEmitter.emit(STATUS.BICONOMY_READY);
-            _context5.next = 51;
+            _context5.next = 52;
             break;
 
-          case 48:
-            _context5.prev = 48;
+          case 49:
+            _context5.prev = 49;
             _context5.t1 = _context5["catch"](0);
 
             _logMessage(_context5.t1);
 
-          case 51:
+          case 52:
           case "end":
             return _context5.stop();
         }
       }
-    }, _callee5, null, [[0, 48], [7, 13]]);
+    }, _callee5, null, [[0, 49], [7, 13]]);
   }));
 
   return function (_x21) {

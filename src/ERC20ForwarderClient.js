@@ -5,7 +5,6 @@ let { tokenAbi, erc20Eip2612Abi } = require("./abis");
 
 const erc20ForwardRequestType = config.forwardRequestType;
 const customForwardRequestType = config.customForwardRequestType;
-const forwarderDomainDataInfo = config.forwarderDomainDetails;
 
 /**
  * Method to get the gas price for a given network that'll be used to
@@ -62,6 +61,7 @@ class ERC20ForwarderClient {
     provider,
     targetProvider,
     forwarderDomainData,
+    forwarderDomainDetails,
     forwarderDomainType,
     erc20Forwarder,
     transferHandler,
@@ -79,6 +79,7 @@ class ERC20ForwarderClient {
     this.provider = provider;
     this.targetProvider = targetProvider;
     this.forwarderDomainData = forwarderDomainData;
+    this.forwarderDomainDetails = forwarderDomainDetails;
     this.forwarderDomainType = forwarderDomainType;
     this.erc20Forwarder = erc20Forwarder;
     this.oracleAggregator = oracleAggregator;
@@ -90,20 +91,6 @@ class ERC20ForwarderClient {
     this.trustedForwarderOverhead = trustedForwarderOverhead;
     this.daiPermitOverhead = daiPermitOverhead;
     this.eip2612PermitOverhead = eip2612PermitOverhead;
-
-    let domainDataCustom = {};
-    
-    // Notice : this would not be needed once extended forwarders are able to give domainDetails
-    let domainInfo = forwarderDomainDataInfo[networkId];
-    if(domainInfo) {
-    domainDataCustom.name = domainInfo[forwarder.address].name;
-    domainDataCustom.version = domainInfo[forwarder.address].version;
-    domainDataCustom.salt = forwarderDomainData.salt;
-    domainDataCustom.verifyingContract = forwarder.address;
-    }
-
-    // Only applicable for Mumbai in this version of sdk
-    this.forwarderDomainDataCustom = domainDataCustom;
   }
 
   /**
@@ -232,7 +219,7 @@ class ERC20ForwarderClient {
     }
   }
 
-  getSandboxApiId(req) {
+  getCustomApiId(req) {
     try {
       if (!this.biconomyAttributes)
         throw new Error(
@@ -577,7 +564,7 @@ class ERC20ForwarderClient {
   }
 
 
-  async buildSandboxTx({
+  async buildCustomTx({
     to,
     token,
     txGas,
@@ -586,6 +573,7 @@ class ERC20ForwarderClient {
     deadlineInSec = 3600,
     userAddress,
     permitType,
+    forwardInfo = {}
   }) {
     try {
       if (!this.forwarder)
@@ -745,10 +733,12 @@ class ERC20ForwarderClient {
         }
       }
 
+      let tokenSymbol = forwardInfo.feeToken || 'SAND'; //call it fee token?
+
       const finalReq = {
-        warning: '-',
-        info: `Estimated gas fee               ${totalFees.toString()} SAND`,
-        action: 'Stake',
+        warning: forwardInfo.warning || '-',
+        info: `Estimated gas fee                ${totalFees.toString()} ${tokenSymbol}`,
+        action: forwardInfo.action || 'Stake',
         request: req
       }
 
@@ -761,16 +751,12 @@ class ERC20ForwarderClient {
         /*throw new Error(
           "User does not have enough token balance to pay for the fees"
         );*/
-        finalReq.warning = "You don't have enough SAND in your wallet!";
+        finalReq.warning = forwardInfo.warning || `You don't have enough ${tokenSymbol} in your wallet!`;
       } else {
         _logMessage(
           `${userAddress} has sufficient balance in tokens to cover the gas fees`
         );
       }
-
-      
-
-      
 
       return { request: finalReq, cost: totalFees };
     } catch (error) {
@@ -928,7 +914,7 @@ class ERC20ForwarderClient {
     }
   }
 
-  async sendSandboxTxEIP712({ req, signature = null, userAddress, gasLimit, metaInfo }) {
+  async sendCustomTxEIP712({ req, signature = null, userAddress, gasLimit, metaInfo }) {
     try {
 
       const domainSeparator = ethers.utils.keccak256(
@@ -938,10 +924,10 @@ class ERC20ForwarderClient {
             ethers.utils.id(
               "EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)"
             ),
-            ethers.utils.id(this.forwarderDomainDataCustom.name),
-            ethers.utils.id(this.forwarderDomainDataCustom.version),
-            this.forwarderDomainDataCustom.verifyingContract,
-            this.forwarderDomainDataCustom.salt,
+            ethers.utils.id(this.forwarderDomainData.name),
+            ethers.utils.id(this.forwarderDomainData.version),
+            this.forwarderDomainData.verifyingContract,
+            this.forwarderDomainData.salt,
           ]
         )
       );
@@ -970,13 +956,10 @@ class ERC20ForwarderClient {
           ERC20ForwardRequest: erc20ForwardRequestType,
           CustomForwardRequest: customForwardRequestType,
         },
-        domain: this.forwarderDomainDataCustom,
+        domain: this.forwarderDomainData,
         primaryType: "CustomForwardRequest",
         message: req,
       };
-
-
-
 
       const sig =
         signature == null
@@ -985,7 +968,7 @@ class ERC20ForwarderClient {
               JSON.stringify(dataToSign),
             ])
           : signature;
-      const api = this.getSandboxApiId(req);
+      const api = this.getCustomApiId(req);
       if (!api || !api.id)
         throw new Error(
           "Could not find the method information on Biconomy Dashboard. Check if you have registered your method on the Dashboard."
