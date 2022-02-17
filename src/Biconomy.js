@@ -1212,22 +1212,35 @@ async function findTheRightForwarder(engine, to) {
     }
     let contract = new ethers.Contract(to, eip2771BaseAbi, ethersProvider);
     let supportedForwarders = engine.forwarderAddresses;
-    forwarderToUse = supportedForwarders[0]; //default V1 forwarder is first element 
+    forwarderToUse = engine.forwarderAddress; //default forwarder
 
     // Attempt to find out forwarder that 'to' contract trusts
-    let forwarder = await contract.trustedForwarder();
+    let forwarder;
+    try {
+      forwarder = await contract.trustedForwarder();
+    } catch (error) {
+      _logMessage("Could not find read method 'trustedForwarder' in the contract abi");
+      _logMessage(error);
+    }
 
     for (var i = 0; i < supportedForwarders.length; i++) {
       // Check if it matches above forwarder
-      if (supportedForwarders[i].toString() == forwarder.toString()) {
-        forwarderToUse = supportedForwarders[i];
-        break;
+      if (forwarder) {
+        if (supportedForwarders[i].toString() == forwarder.toString()) {
+          forwarderToUse = supportedForwarders[i];
+          break;
+        }
       }
       // Another way to find out is isTrustedForwarder read method
-      let isTrustedForwarder = await contract.isTrustedForwarder(supportedForwarders[i]);
-      if (isTrustedForwarder) {
-        forwarderToUse = supportedForwarders[i];
-        break;
+      try {
+        let isTrustedForwarder = await contract.isTrustedForwarder(supportedForwarders[i]);
+        if (isTrustedForwarder) {
+          forwarderToUse = supportedForwarders[i];
+          break;
+        }
+      } catch (error) {
+        _logMessage("Could not find read method 'isTrustedForwarder' in the contract abi");
+        _logMessage(error);
       }
     }
     smartContractTrustedForwarderMap[to] = forwarderToUse;
@@ -1360,6 +1373,10 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         PERSONAL_SIGN: engine.PERSONAL_SIGN,
       },
     };
+    let targetProvider = getTargetProvider(engine);
+    /*if(!targetProvider) {
+      throw new Error(`Unable to get provider information passed to Biconomy`);
+    }*/
     let ethersProvider;
     if (engine.isEthersProviderPresent) {
       ethersProvider = engine.originalProvider;
@@ -1411,6 +1428,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         biconomyForwarderAbi,
         signerOrProvider
       );
+      const requiredDomainData = forwarderDomainDetails[forwarderAddress];
       const transferHandler = new ethers.Contract(
         transferHandlerAddress,
         transferHandlerAbi,
@@ -1430,7 +1448,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         forwarderClientOptions: biconomyAttributes,
         networkId: engine.networkId,
         provider: ethersProvider,
-        forwarderDomainData,
+        targetProvider: targetProvider,
+        forwarderDomainData : requiredDomainData,
+        forwarderDomainDetails,
         forwarderDomainType,
         erc20Forwarder,
         transferHandler,

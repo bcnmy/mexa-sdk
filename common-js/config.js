@@ -95,6 +95,19 @@ config.forwardRequestType = [{
   name: 'data',
   type: 'bytes'
 }];
+config.customForwardRequestType = [{
+  name: 'warning',
+  type: 'string'
+}, {
+  name: 'info',
+  type: 'string'
+}, {
+  name: 'action',
+  type: 'string'
+}, {
+  name: 'request',
+  type: 'ERC20ForwardRequest'
+}];
 config.daiPermitType = [{
   name: "holder",
   type: "address"

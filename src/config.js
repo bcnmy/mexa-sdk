@@ -69,7 +69,6 @@ const RESPONSE_CODES = {
 	WRONG_ABI: 'B516'
 };
 
-
 // could get these from sys info call
 config.forwardRequestType = [
     {name:'from',type:'address'},
@@ -82,6 +81,13 @@ config.forwardRequestType = [
     {name:'deadline',type:'uint256'},
     {name:'data',type:'bytes'}
 ];
+
+config.customForwardRequestType = [
+	{name:'warning',type:'string'},
+	{name:'info',type:'string'},
+    {name:'action',type:'string'},
+    {name:'request',type:'ERC20ForwardRequest'},
+]
 
 config.daiPermitType = [
 	{ name: "holder", type: "address" },
