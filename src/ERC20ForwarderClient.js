@@ -176,9 +176,9 @@ class ERC20ForwarderClient {
         throw new Error(
           "Biconomy is not initialized properly. 'biconomyAttributes'  is missing in ERC20ForwarderClient"
         );
-      if (!this.biconomyAttributes.decoderMap)
+      if (!this.biconomyAttributes.interfaceMap)
         throw new Error(
-          "Biconomy is not initialized properly. 'decoderMap' is missing in ERC20ForwarderClient.biconomyAttributes"
+          "Biconomy is not initialized properly. 'interfaceMap' is missing in ERC20ForwarderClient.biconomyAttributes"
         );
 
       if (!req || !req.to || !req.data) {
@@ -187,9 +187,9 @@ class ERC20ForwarderClient {
         );
       }
 
-      let decoder = this.biconomyAttributes.decoderMap[req.to.toLowerCase()];
-      if (decoder) {
-        const method = decoder.decodeMethod(req.data);
+      let interfacer = this.biconomyAttributes.interfaceMap[req.to.toLowerCase()];
+      if (interfacer) {
+        const method = interfacer.parseTransaction({ data: req.data });
         const contractData = this.biconomyAttributes.dappAPIMap[
           req.to.toLowerCase()
         ];
@@ -225,9 +225,9 @@ class ERC20ForwarderClient {
         throw new Error(
           "Biconomy is not initialized properly. 'biconomyAttributes'  is missing in ERC20ForwarderClient"
         );
-      if (!this.biconomyAttributes.decoderMap)
+      if (!this.biconomyAttributes.interfaceMap)
         throw new Error(
-          "Biconomy is not initialized properly. 'decoderMap' is missing in ERC20ForwarderClient.biconomyAttributes"
+          "Biconomy is not initialized properly. 'interfaceMap' is missing in ERC20ForwarderClient.biconomyAttributes"
         );
 
       if (!req.request || !req.request.to || !req.request.data) {
@@ -236,9 +236,9 @@ class ERC20ForwarderClient {
         );
       }
 
-      let decoder = this.biconomyAttributes.decoderMap[req.request.to.toLowerCase()];
-      if (decoder) {
-        const method = decoder.decodeMethod(req.request.data);
+      let interfacer = this.biconomyAttributes.interfaceMap[req.request.to.toLowerCase()];
+      if (interfacer) {
+        const method = interfacer.parseTransaction({ data: req.request.data });
         const contractData = this.biconomyAttributes.dappAPIMap[
           req.request.to.toLowerCase()
         ];
@@ -777,7 +777,7 @@ class ERC20ForwarderClient {
         userAddress = await this.provider.getSigner().getAddress();
 
       const gasLimit = await this.provider.estimateGas({from:userAddress,to:this.transferHandler.address,data:txCall.data});
-      
+
       _logMessage(`Transfer handler gas limit is ${gasLimit.toNumber()}`);
 
       return await this.buildTx({
