@@ -316,16 +316,18 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     value: function getApiId(req) {
       try {
         if (!this.biconomyAttributes) throw new Error("Biconomy is not initialized properly. 'biconomyAttributes'  is missing in ERC20ForwarderClient");
-        if (!this.biconomyAttributes.decoderMap) throw new Error("Biconomy is not initialized properly. 'decoderMap' is missing in ERC20ForwarderClient.biconomyAttributes");
+        if (!this.biconomyAttributes.interfaceMap) throw new Error("Biconomy is not initialized properly. 'interfaceMap' is missing in ERC20ForwarderClient.biconomyAttributes");
 
         if (!req || !req.to || !req.data) {
           throw new Error("'to' and 'data' field is mandatory in the request object parameter");
         }
 
-        var decoder = this.biconomyAttributes.decoderMap[req.to.toLowerCase()];
+        var interfacer = this.biconomyAttributes.interfaceMap[req.to.toLowerCase()];
 
-        if (decoder) {
-          var method = decoder.decodeMethod(req.data);
+        if (interfacer) {
+          var method = interfacer.parseTransaction({
+            data: req.data
+          });
           var contractData = this.biconomyAttributes.dappAPIMap[req.to.toLowerCase()];
 
           if (method && method.name) {
@@ -351,16 +353,18 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
     value: function getCustomApiId(req) {
       try {
         if (!this.biconomyAttributes) throw new Error("Biconomy is not initialized properly. 'biconomyAttributes'  is missing in ERC20ForwarderClient");
-        if (!this.biconomyAttributes.decoderMap) throw new Error("Biconomy is not initialized properly. 'decoderMap' is missing in ERC20ForwarderClient.biconomyAttributes");
+        if (!this.biconomyAttributes.interfaceMap) throw new Error("Biconomy is not initialized properly. 'interfaceMap' is missing in ERC20ForwarderClient.biconomyAttributes");
 
         if (!req.request || !req.request.to || !req.request.data) {
           throw new Error("'to' and 'data' field is mandatory in the request object parameter");
         }
 
-        var decoder = this.biconomyAttributes.decoderMap[req.request.to.toLowerCase()];
+        var interfacer = this.biconomyAttributes.interfaceMap[req.request.to.toLowerCase()];
 
-        if (decoder) {
-          var method = decoder.decodeMethod(req.request.data);
+        if (interfacer) {
+          var method = interfacer.parseTransaction({
+            data: req.request.data
+          });
           var contractData = this.biconomyAttributes.dappAPIMap[req.request.to.toLowerCase()];
 
           if (method && method.name) {

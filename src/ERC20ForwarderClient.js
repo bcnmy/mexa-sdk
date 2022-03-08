@@ -187,9 +187,9 @@ class ERC20ForwarderClient {
         );
       }
 
-      let interface = this.biconomyAttributes.interfaceMap[req.to.toLowerCase()];
-      if (interface) {
-        const method = interface.parseTransaction({ data: req.data }).name;
+      let interfacer = this.biconomyAttributes.interfaceMap[req.to.toLowerCase()];
+      if (interfacer) {
+        const method = interfacer.parseTransaction({ data: req.data });
         const contractData = this.biconomyAttributes.dappAPIMap[
           req.to.toLowerCase()
         ];
@@ -236,9 +236,9 @@ class ERC20ForwarderClient {
         );
       }
 
-      let interface = this.biconomyAttributes.interfaceMap[req.request.to.toLowerCase()];
-      if (interface) {
-        const method = interface.parseTransaction({ data: req.request.data }).name;
+      let interfacer = this.biconomyAttributes.interfaceMap[req.request.to.toLowerCase()];
+      if (interfacer) {
+        const method = interfacer.parseTransaction({ data: req.request.data });
         const contractData = this.biconomyAttributes.dappAPIMap[
           req.request.to.toLowerCase()
         ];
