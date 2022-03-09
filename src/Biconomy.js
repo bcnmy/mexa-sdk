@@ -29,7 +29,7 @@ let {
 
 let fetch = require("cross-fetch");
 
-let decoderMap = {},
+let interfaceMap = {},
   smartContractMap = {},
   smartContractMetaTransactionMap = {},
   smartContractTrustedForwarderMap = {};
@@ -325,16 +325,6 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           return reject(error);
         }
         _logMessage("API found");
-        let params = methodInfo.params;
-        let typeString = "";
-        let paramArray = [];
-        for (let i = 0; i < params.length; i++) {
-          paramArray.push(_getParamValue(params[i]));
-          typeString = typeString + params[i].type.toString()+",";
-        }
-        if(params.length > 0) {
-        typeString = typeString.substring(0,typeString.length - 1);
-        }
 
         let parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
         let account = parsedTransaction.from;
@@ -347,9 +337,8 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           let contractABI = smartContractMap[to];
           if (contractABI) {
             let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-            let methodSignature = methodName+"("+typeString+")";
             try {
-            gasLimit = await contract.estimateGas[methodSignature](...paramArray, { from: account });
+            gasLimit = await contract.estimateGas[methodInfo.signature](...methodInfo.args, { from: account });
             } catch(err) {
               return reject(err);
             }
@@ -528,8 +517,8 @@ Biconomy.prototype._createJsonRpcResponse = function (payload, error, result) {
 }
 
 function decodeMethod(to, data) {
-  if (to && data && decoderMap[to]) {
-    return decoderMap[to].decodeMethod(data);
+  if (to && data && interfaceMap[to]) {
+    return interfaceMap[to].parseTransaction({ data });
   }
   return;
 }
@@ -637,7 +626,6 @@ async function sendSignedTransaction(engine, payload, end) {
           }
         }
         _logMessage("API found");
-        let params = methodInfo.params;
         let paramArray = [];
         let parsedTransaction = ethers.utils.parseTransaction(
           rawTransaction
@@ -669,24 +657,11 @@ async function sendSignedTransaction(engine, payload, end) {
             // forwardedData = payload.params[0].data;
             forwardedData = decodedTx.data;
 
-            let paramArrayForGasCalculation = [];
-            let typeString = "";
-            for (let i = 0; i < params.length; i++) {
-              paramArrayForGasCalculation.push(
-                _getParamValue(params[i])
-              );
-              typeString = typeString + params[i].type.toString()+",";
-            }
-            if(params.length > 0) {
-            typeString = typeString.substring(0,typeString.length - 1);
-            }
-
             if (!gasLimit || parseInt(gasLimit) == 0) {
               let contractABI = smartContractMap[to];
               if (contractABI) {
                 let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-                let methodSignature = methodName+"("+typeString+")";
-                gasLimit = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
+                gasLimit = await contract.estimateGas[methodInfo.signature](...methodInfo.args, { from: account });
 
                 // do not send this value in API call. only meant for txGas
                 gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
@@ -730,9 +705,7 @@ async function sendSignedTransaction(engine, payload, end) {
             }
             await _sendTransaction(engine, account, api, data, end);
           } else {
-            for (let i = 0; i < params.length; i++) {
-              paramArray.push(_getParamValue(params[i]));
-            }
+            paramArray.push(...methodInfo.args);
 
             let data = {};
             data.from = account;
@@ -819,7 +792,7 @@ async function handleSendTransaction(engine, payload, end) {
     _logMessage(payload);
     if (payload.params && payload.params[0] && payload.params[0].to) {
       let to = payload.params[0].to.toLowerCase();
-      if (decoderMap[to] || decoderMap[config.SCW]) {
+      if (interfaceMap[to] || interfaceMap[config.SCW]) {
         let methodInfo = decodeMethod(to, payload.params[0].data);
 
         // Check if the Smart Contract Wallet is registered on dashboard
@@ -897,8 +870,7 @@ async function handleSendTransaction(engine, payload, end) {
         }
         _logMessage(`User account fetched`);
 
-        let params = methodInfo.params;
-        _logMessage(params);
+        _logMessage(methodInfo.args);
         let paramArray = [];
 
         if (metaTxApproach == engine.ERC20_FORWARDER) {
@@ -917,25 +889,14 @@ async function handleSendTransaction(engine, payload, end) {
             _logMessage("Smart contract is configured to use Trusted Forwarder as meta transaction type");
             forwardedData = payload.params[0].data;
 
-            let paramArrayForGasCalculation = [];
-            let typeString = "";
             let signatureFromPayload = payload.params[0].signature;
             // Check if txGas is present, if not calculate gas limit for txGas
             
             if (!txGas || parseInt(txGas) == 0) {
-              for (let i = 0; i < params.length; i++) {
-                paramArrayForGasCalculation.push(_getParamValue(params[i]));
-                typeString = typeString + params[i].type.toString()+",";
-              }
-              if(params.length > 0) {
-              typeString = typeString.substring(0,typeString.length - 1);
-              }
-
               let contractABI = smartContractMap[to];
               if (contractABI) {
                 let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-                let methodSignature = methodName+"("+typeString+")";
-                txGas = await contract.estimateGas[methodSignature](...paramArrayForGasCalculation, { from: account });
+                txGas = await contract.estimateGas[methodInfo.signature](...methodInfo.args, { from: account });
                  // do not send this value in API call. only meant for txGas
                 gasLimitNum = ethers.BigNumber.from(txGas.toString())
                  .add(ethers.BigNumber.from(5000))
@@ -1034,9 +995,8 @@ async function handleSendTransaction(engine, payload, end) {
             }
             await _sendTransaction(engine, account, api, data, end);
           } else {
-            for (let i = 0; i < params.length; i++) {
-              paramArray.push(_getParamValue(params[i]));
-            }
+            paramArray.push(...methodInfo.args);
+
             let data = {};
             data.from = account;
             data.apiId = api.id;
@@ -1367,7 +1327,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
     const biconomyAttributes = {
       apiKey: engine.apiKey,
       dappAPIMap: engine.dappAPIMap,
-      decoderMap: decoderMap,
+      interfaceMap: interfaceMap,
       signType: {
         EIP712_SIGN: engine.EIP712_SIGN,
         PERSONAL_SIGN: engine.PERSONAL_SIGN,
@@ -1539,78 +1499,6 @@ function _validate(options) {
   if (!options.apiKey) {
     throw new Error(
       `apiKey is required in options object when creating Biconomy object`
-    );
-  }
-}
-
-/**
- * Get paramter value from param object based on its type.
- **/
- function _getParamValue(paramObj) {
-  var value;
-  try {
-    if (paramObj && paramObj.type == "bytes" && (!paramObj.value || paramObj.value == undefined || paramObj.value == null)) {
-      value = "0x";
-      return value;
-    }
-    if (paramObj && paramObj.value) {
-      let type = paramObj.type;
-      switch (type) {
-        //only int/uint 1D arrays
-        case (type.match(/^uint.*\[\]^\[$/) || type.match(/^int.*\[\]^\[$/) || {})
-          .input:
-          let val = paramObj.value;
-          value = [];
-          for (let j = 0; j < val.length; j++) {
-            value[j] = scientificToDecimal(val[j]);
-            if (value[j])
-              value[j] = ethers.BigNumber.from(value[j]).toHexString();
-          }
-          break;
-        //only int/uint 2D arrays  
-        case (type.match(/^uint.*\[\]\[\]$/) || type.match(/^int.*\[\]\[\]$/) || {})
-          .input:
-          //verify if its altually alright to return as it is!
-          //value = paramObj.value;
-          //break;
-          let multiArray = paramObj.value;
-          value = new Array();
-          for (let j = 0; j < multiArray.length; j++) {
-            let innerArray = multiArray[j];
-            for(let k=0; k < innerArray.length; k++) {
-              var newInnerArray = new Array();
-              newInnerArray[k] = scientificToDecimal(innerArray[k]);
-              if (newInnerArray[k])
-              newInnerArray[k] = ethers.BigNumber.from(newInnerArray[k]).toHexString();
-            }
-            value.push(newInnerArray);
-          }
-          break;
-        //only uint/int 
-        case (type.match(/^uint[0-9]*$/) || type.match(/^int[0-9]*$/) || {})
-          .input:
-          value = scientificToDecimal(paramObj.value);
-          //https://docs.ethers.io/v5/api/utils/bignumber/#BigNumber--notes
-          if (value) value = ethers.BigNumber.from(value).toHexString();
-          break;
-        case "string":
-          if (typeof paramObj.value === "object") {
-            value = paramObj.value.toString();
-          } else {
-            value = paramObj.value;
-          }
-          break;
-
-        default:
-          value = paramObj.value;
-          break;
-      }
-    }
-    return value;
-  } catch (error) {
-    _logMessage(error);
-    throw new Error(
-      "Error occured while sanitizing paramters. Please verify your method parameters or contact support"
     );
   }
 }
@@ -1895,20 +1783,18 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
             ) {
               
               smartContractList.forEach((contract) => {
-                let abiDecoder = require("abi-decoder");
+                let contractInterface = new ethers.utils.Interface(JSON.parse(contract.abi));
                 if (contract.type === config.SCW) {
                   smartContractMetaTransactionMap[config.SCW] = contract.metaTransactionType;
-                  abiDecoder.addABI(JSON.parse(contract.abi));
-                  decoderMap[config.SCW] = abiDecoder;
+                  interfaceMap[config.SCW] = contractInterface;
                   smartContractMap[config.SCW] = contract.abi;
                 } else {
                   smartContractMetaTransactionMap[
                     contract.address.toLowerCase()
                   ] = contract.metaTransactionType;
-                  abiDecoder.addABI(JSON.parse(contract.abi));
-                  decoderMap[
+                  interfaceMap[
                     contract.address.toLowerCase()
-                  ] = abiDecoder;
+                  ] = contractInterface;
                   smartContractMap[
                     contract.address.toLowerCase()
                   ] = contract.abi;
@@ -1983,47 +1869,5 @@ function _logMessage(message) {
     console.log(message);
   }
 }
-
-var scientificToDecimal = function (num) {
-  var result;
-  // If the number is not in scientific notation return it as it is.
-  if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) {
-    result = num.toLocaleString('fullwide', { useGrouping: false });
-    return result.toString();
-  }
-  var nsign = Math.sign(Number(num));
-  // remove the sign
-  num = Math.abs(Number(num)).toString();
-  // if the number is in scientific notation remove it
-  var zero = "0",
-    parts = String(num).toLowerCase().split("e"), // split into coeff and exponent
-    e = parts.pop(), // store the exponential part
-    l = Math.abs(e), // get the number of zeros
-    sign = e / l,
-    coeff_array = parts[0].split(".");
-  if (sign === -1) {
-    l = l - coeff_array[0].length;
-    if (l < 0) {
-      num =
-        coeff_array[0].slice(0, l) +
-        "." +
-        coeff_array[0].slice(l) +
-        (coeff_array.length === 2 ? coeff_array[1] : "");
-    } else {
-      num = zero + "." + new Array(l + 1).join(zero) + coeff_array.join("");
-    }
-  } else {
-    var dec = coeff_array[1];
-    if (dec) l = l - dec.length;
-
-    if (l < 0) {
-      num = coeff_array[0] + dec.slice(0, l) + "." + dec.slice(l);
-    } else {
-      num = coeff_array.join("") + new Array(l + 1).join(zero);
-    }
-  }
-  result = nsign < 0 ? "-" + num : num;
-  return result.toString();
-};
 
 module.exports = Biconomy;
