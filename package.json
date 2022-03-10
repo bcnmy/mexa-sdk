@@ -27,7 +27,8 @@
   "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
   "files": [
     "*.js",
-    "/dist/*.js"
+    "/dist/*.js",
+    "/common-js/*.js"
   ],
   "dependencies": {
     "@babel/core": "^7.12.13",
