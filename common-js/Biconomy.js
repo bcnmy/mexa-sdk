@@ -1464,7 +1464,7 @@ function _getEIP712ForwardMessageToSign(request, forwarder, domainData) {
     throw new Error("Biconomy is not properly initialized");
   }
 
-  if (Object.keys(forwarderDomainDetails).length === 0) {
+  if (!forwarderDomainDetails || Object.keys(forwarderDomainDetails).length === 0) {
     throw new Error("Biconomy is not properly initialized");
   } //Override domainData
 
