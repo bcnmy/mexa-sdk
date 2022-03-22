@@ -1113,7 +1113,11 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
 
 function _getEIP712ForwardMessageToSign(request, forwarder, domainData) {
   // Update the verifyingContract field of domain data based on the current request
-  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder || !forwarderDomainDetails) {
+  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder) {
+    throw new Error("Biconomy is not properly initialized");
+  }
+
+  if(Object.keys(forwarderDomainDetails).length === 0) {
     throw new Error("Biconomy is not properly initialized");
   }
 
