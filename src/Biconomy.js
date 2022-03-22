@@ -278,6 +278,8 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
   rawTransaction,
   tokenAddress,
   customBatchId,
+  customDomainName,
+  customDomainVersion,
   cb
 ) {
   try {
@@ -411,6 +413,14 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
         forwarderDomainData.verifyingContract = forwarderToUse;
         let domainDataToUse = forwarderDomainDetails[forwarderToUse];
 
+        if(customDomainName) {
+          domainDataToUse.name = customDomainName.toString();
+        }
+
+        if(customDomainVersion) {
+          domainDataToUse.version = customDomainVersion.toString();
+        }
+
         const eip712DataToSign = {
           types: {
             EIP712Domain: forwarderDomainType,
@@ -538,7 +548,7 @@ function decodeMethod(to, data) {
 async function sendSignedTransaction(engine, payload, end) {
   if (payload && payload.params[0]) {
     let data = payload.params[0];
-    let rawTransaction, signature, request, signatureType;
+    let rawTransaction, signature, request, signatureType, customDomainName, customDomainVersion;
     // user would need to pass token address as well!
     // OR they could pass the symbol and engine will provide the address for you..
     // default is DAI
@@ -553,6 +563,8 @@ async function sendSignedTransaction(engine, payload, end) {
       rawTransaction = data.rawTransaction;
       signatureType = data.signatureType;
       request = data.forwardRequest;
+      customDomainName = data.domainName;
+      customDomainVersion = data.domainVersion;
     }
 
     if (rawTransaction) {
@@ -684,6 +696,14 @@ async function sendSignedTransaction(engine, payload, end) {
             forwarderDomainData.verifyingContract = forwarderToUse;
             let domainDataToUse = forwarderDomainDetails[forwarderToUse];
 
+            if(customDomainName) {
+              domainDataToUse.name = customDomainName.toString();
+            }
+    
+            if(customDomainVersion) {
+              domainDataToUse.version = customDomainVersion.toString();
+            }
+
             // Update the verifyingContract field of domain data based on the current request
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               const domainSeparator = getDomainSeperator(
@@ -812,6 +832,7 @@ async function handleSendTransaction(engine, payload, end) {
         // Information we get here is contractAddress, methodName, methodType, ApiId
         let metaTxApproach;
         let customBatchId;
+        let customDomainName, customDomainVersion;
         if (!api) {
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
@@ -831,6 +852,14 @@ async function handleSendTransaction(engine, payload, end) {
         let signatureType = payload.params[0].signatureType;
         if(payload.params[0].batchId){
         customBatchId = Number(payload.params[0].batchId);
+        }
+
+        if(payload.params[0].domainName){
+          customDomainName = payload.params[0].domainName;
+        }
+
+        if(payload.params[0].domainVersion){
+          customDomainVersion = payload.params[0].domainVersion;
         }
 
         _logMessage(payload.params[0]);
@@ -939,6 +968,14 @@ async function handleSendTransaction(engine, payload, end) {
             forwarderDomainData.verifyingContract = forwarderToAttach;
             let domainDataToUse = forwarderDomainDetails[forwarderToAttach];
 
+            if(customDomainName) {
+              domainDataToUse.name = customDomainName.toString();
+            }
+    
+            if(customDomainVersion) {
+              domainDataToUse.version = customDomainVersion.toString();
+            }
+
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               _logMessage("EIP712 signature flow");
               // Update the verifyingContract field of domain data based on the current request
@@ -957,7 +994,8 @@ async function handleSendTransaction(engine, payload, end) {
                   engine,
                   account,
                   request,
-                  forwarderToAttach
+                  forwarderToAttach,
+                  domainDataToUse
                 );
                 _logMessage(`EIP712 signature is ${signatureEIP712}`);
               }
@@ -1073,15 +1111,14 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
 }
 
 
-function _getEIP712ForwardMessageToSign(request, forwarder) {
+function _getEIP712ForwardMessageToSign(request, forwarder, domainData) {
   // Update the verifyingContract field of domain data based on the current request
   if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder || !forwarderDomainDetails) {
     throw new Error("Biconomy is not properly initialized");
   }
 
   //Override domainData
-  forwarderDomainData.verifyingContract = forwarder;
-  let domainDataToUse = forwarderDomainDetails[forwarder];
+  let domainDataToUse = domainData;
   //Might update version as well
 
   let dataToSign = JSON.stringify({
@@ -1209,10 +1246,10 @@ async function findTheRightForwarder(engine, to) {
 }
 
 //take parameter for chosen signature type V3 or V4
-function getSignatureEIP712(engine, account, request, forwarder) {
+function getSignatureEIP712(engine, account, request, forwarder, domainData) {
   //default V4 now   
   let signTypedDataType = "eth_signTypedData_v4";
-  const dataToSign = _getEIP712ForwardMessageToSign(request, forwarder);
+  const dataToSign = _getEIP712ForwardMessageToSign(request, forwarder, domainData);
   let targetProvider = getTargetProvider(engine);
   if(!targetProvider){
     throw new Error(`Unable to get provider information passed to Biconomy`);
