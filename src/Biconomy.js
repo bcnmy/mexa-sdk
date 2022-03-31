@@ -833,6 +833,7 @@ async function handleSendTransaction(engine, payload, end) {
         let metaTxApproach;
         let customBatchId;
         let customDomainName, customDomainVersion;
+        let signTypedDataType;
         if (!api) {
           api = engine.dappAPIMap[config.SCW]
             ? engine.dappAPIMap[config.SCW][methodName]
@@ -860,6 +861,10 @@ async function handleSendTransaction(engine, payload, end) {
 
         if(payload.params[0].domainVersion){
           customDomainVersion = payload.params[0].domainVersion;
+        }
+
+        if(payload.params[0].signTypedDataType) {
+          signTypedDataType = payload.params[0].signTypedDataType;
         }
 
         _logMessage(payload.params[0]);
@@ -995,7 +1000,8 @@ async function handleSendTransaction(engine, payload, end) {
                   account,
                   request,
                   forwarderToAttach,
-                  domainDataToUse
+                  domainDataToUse,
+                  signTypedDataType
                 );
                 _logMessage(`EIP712 signature is ${signatureEIP712}`);
               }
@@ -1250,9 +1256,12 @@ async function findTheRightForwarder(engine, to) {
 }
 
 //take parameter for chosen signature type V3 or V4
-function getSignatureEIP712(engine, account, request, forwarder, domainData) {
+function getSignatureEIP712(engine, account, request, forwarder, domainData, type) {
   //default V4 now   
   let signTypedDataType = "eth_signTypedData_v4";
+  if(type === "v3" || type === "V3") {
+    signTypedDataType = "eth_signTypedData_v3";
+  }
   const dataToSign = _getEIP712ForwardMessageToSign(request, forwarder, domainData);
   let targetProvider = getTargetProvider(engine);
   if(!targetProvider){
@@ -1323,7 +1332,10 @@ async function getSignaturePersonal(engine, req) {
   const promise = new Promise(async function (resolve, reject) {
     try {
       signature = await signer.signMessage(ethers.utils.arrayify(hashToSign));
-      resolve(signature);
+      let { r, s, v } = getSignatureParameters(signature);
+      v = ethers.BigNumber.from(v).toHexString();
+      let newSignature = r + s.slice(2) + v.slice(2);
+      resolve(newSignature);
     } catch (error) {
       reject(error);
     }

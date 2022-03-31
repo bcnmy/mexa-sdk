@@ -917,6 +917,14 @@ class ERC20ForwarderClient {
   async sendCustomTxEIP712({ req, signature = null, userAddress, gasLimit, metaInfo }) {
     try {
 
+      //default V3 now   
+      let signTypedDataType = "eth_signTypedData_v3";
+      if (metaInfo && metaInfo.type) {
+        if (metaInfo.type === "v4" || metaInfo.type === "V4") {
+          signTypedDataType = "eth_signTypedData_v4";
+        }
+      }
+
       const domainSeparator = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
           ["bytes32", "bytes32", "bytes32", "address", "bytes32"],
@@ -963,7 +971,7 @@ class ERC20ForwarderClient {
 
       const sig =
         signature == null
-          ? await this.provider.send("eth_signTypedData_v3", [
+          ? await this.provider.send(signTypedDataType, [
               req.request.from,
               JSON.stringify(dataToSign),
             ])
