@@ -16,8 +16,6 @@ var ethers = require("ethers");
 
 var txDecoder = require("ethereum-tx-decoder");
 
-var abi = require("ethereumjs-abi");
-
 var _require = require("./util"),
     toJSONRPCPayload = _require.toJSONRPCPayload;
 
@@ -357,14 +355,14 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
             switch (_context3.prev = _context3.next) {
               case 0:
                 if (!rawTransaction) {
-                  _context3.next = 80;
+                  _context3.next = 81;
                   break;
                 }
 
                 decodedTx = txDecoder.decodeTx(rawTransaction);
 
                 if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-                  _context3.next = 77;
+                  _context3.next = 78;
                   break;
                 }
 
@@ -547,7 +545,8 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                   primaryType: "ERC20ForwardRequest",
                   message: request
                 };
-                hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
+                hashToSign = ethers.utils.solidityKeccak256(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
+                debugger;
                 dataToSign = {
                   eip712Format: eip712DataToSign,
                   personalSignatureFormat: hashToSign,
@@ -557,12 +556,12 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 if (cb) cb(null, dataToSign);
                 return _context3.abrupt("return", resolve(dataToSign));
 
-              case 77:
+              case 78:
                 _error4 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
                 if (cb) cb(_error4);
                 return _context3.abrupt("return", reject(_error4));
 
-              case 80:
+              case 81:
               case "end":
                 return _context3.stop();
             }
