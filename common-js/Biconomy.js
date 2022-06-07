@@ -355,14 +355,14 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
             switch (_context3.prev = _context3.next) {
               case 0:
                 if (!rawTransaction) {
-                  _context3.next = 81;
+                  _context3.next = 80;
                   break;
                 }
 
                 decodedTx = txDecoder.decodeTx(rawTransaction);
 
                 if (!(decodedTx.to && decodedTx.data && decodedTx.value)) {
-                  _context3.next = 78;
+                  _context3.next = 77;
                   break;
                 }
 
@@ -546,7 +546,6 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                   message: request
                 };
                 hashToSign = ethers.utils.solidityKeccak256(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
-                debugger;
                 dataToSign = {
                   eip712Format: eip712DataToSign,
                   personalSignatureFormat: hashToSign,
@@ -556,12 +555,12 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                 if (cb) cb(null, dataToSign);
                 return _context3.abrupt("return", resolve(dataToSign));
 
-              case 78:
+              case 77:
                 _error4 = formatMessage(RESPONSE_CODES.BICONOMY_NOT_INITIALIZED, "Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard");
                 if (cb) cb(_error4);
                 return _context3.abrupt("return", reject(_error4));
 
-              case 81:
+              case 80:
               case "end":
                 return _context3.stop();
             }

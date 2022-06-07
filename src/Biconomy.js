@@ -454,7 +454,6 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
             ethers.utils.keccak256(request.data),
           ]
         );
-        debugger;
 
         const dataToSign = {
           eip712Format: eip712DataToSign,
