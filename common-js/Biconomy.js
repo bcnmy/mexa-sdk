@@ -40,6 +40,8 @@ var PermitClient = require("./PermitClient");
 
 var ERC20ForwarderClient = require("./ERC20ForwarderClient");
 
+var BiconomyWalletClient = require("./BiconomyWalletClient");
+
 var _require4 = require("./biconomyforwarder"),
     buildForwardTxRequest = _require4.buildForwardTxRequest,
     getDomainSeperator = _require4.getDomainSeperator;
@@ -1930,7 +1932,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
             transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
             if (!erc20ForwarderAddress) {
-              _context5.next = 44;
+              _context5.next = 46;
               break;
             }
 
@@ -1979,36 +1981,46 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               daiPermitOverhead: daiPermitOverhead,
               eip2612PermitOverhead: eip2612PermitOverhead
             });
+            engine.biconomyWalletClient = new BiconomyWalletClient({
+              ethersProvider: ethersProvider,
+              biconomyAttributes: biconomyAttributes,
+              walletFactoryAddress: engine.walletFactoryAddress,
+              baseWalletAddress: engine.baseWalletAddress,
+              entryPointAddress: engine.entryPointAddress,
+              networkId: engine.networkId
+            });
 
             _logMessage(engine.permitClient);
 
             _logMessage(engine.erc20ForwarderClient);
 
-            _context5.next = 45;
+            _logMessage(engine.biconomyWalletClient);
+
+            _context5.next = 47;
             break;
 
-          case 44:
+          case 46:
             _logMessage("ERC20 Forwarder is not supported for this network"); //Warning : you would not be able to use ERC20ForwarderClient and PermitClient 
 
 
-          case 45:
+          case 47:
             engine.status = STATUS.BICONOMY_READY;
             eventEmitter.emit(STATUS.BICONOMY_READY);
-            _context5.next = 52;
+            _context5.next = 54;
             break;
 
-          case 49:
-            _context5.prev = 49;
+          case 51:
+            _context5.prev = 51;
             _context5.t1 = _context5["catch"](0);
 
             _logMessage(_context5.t1);
 
-          case 52:
+          case 54:
           case "end":
             return _context5.stop();
         }
       }
-    }, _callee5, null, [[0, 49], [7, 13]]);
+    }, _callee5, null, [[0, 51], [7, 13]]);
   }));
 
   return function (_x21) {
@@ -2361,6 +2373,9 @@ function _onNetworkId() {
                 engine.EIP712_SIGN = systemInfo.eip712Sign;
                 engine.PERSONAL_SIGN = systemInfo.personalSign;
                 engine.tokenGasPriceV1SupportedNetworks = systemInfo.tokenGasPriceV1SupportedNetworks;
+                engine.walletFactoryAddress = systemInfo.walletFactoryAddress;
+                engine.baseWalletAddress = systemInfo.baseWalletAddress;
+                engine.entryPointAddress = systemInfo.entryPointAddress;
                 daiDomainData.verifyingContract = engine.daiTokenAddress;
 
                 if (systemInfo.relayHubAddress) {
@@ -2388,6 +2403,7 @@ function _onNetworkId() {
                 }
 
                 var smartContractList = result.smartContracts;
+                console.log('smartContractList', smartContractList);
 
                 if (smartContractList && smartContractList.length > 0) {
                   smartContractList.forEach(function (contract) {
@@ -2403,6 +2419,7 @@ function _onNetworkId() {
                       smartContractMap[contract.address.toLowerCase()] = contract.abi;
                     }
                   });
+                  console.log("interfaceMap", interfaceMap);
 
                   _logMessage(smartContractMetaTransactionMap);
 

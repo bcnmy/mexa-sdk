@@ -11,7 +11,7 @@ config.daiDomainName = "Dai Stablecoin";
 config.daiVersion = "1";
 config.forwarderDomainName = "Biconomy Forwarder";
 config.forwarderVersion = "1";
-config.baseURL = "https://api.biconomy.io";
+config.baseURL = "http://localhost:4000";
 config.nativeMetaTxUrl = `/api/${config.version2}/meta-tx/native`;
 config.userLoginPath = `/api/${config.version2}/dapp-user/login`;
 config.withdrawFundsUrl = `/api/${config.version2}/meta-tx/withdraw`;
@@ -35,7 +35,6 @@ config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.DAI = "DAI_Permit";
 config.EIP2612 = "EIP2612_Permit";
-
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;

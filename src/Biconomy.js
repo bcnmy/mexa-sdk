@@ -18,6 +18,7 @@ const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 
 let PermitClient = require("./PermitClient");
 let ERC20ForwarderClient = require("./ERC20ForwarderClient");
+let BiconomyWalletClient = require("./BiconomyWalletClient");
 let { buildForwardTxRequest, getDomainSeperator } = require("./biconomyforwarder");
 let {
   erc20ForwarderAbi,
@@ -1477,8 +1478,18 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         eip2612PermitOverhead
       });
 
+      engine.biconomyWalletClient = new BiconomyWalletClient({
+        ethersProvider,
+        biconomyAttributes,
+        walletFactoryAddress: engine.walletFactoryAddress,
+        baseWalletAddress: engine.baseWalletAddress,
+        entryPointAddress: engine.entryPointAddress,
+        networkId: engine.networkId
+      })
+
       _logMessage(engine.permitClient);
       _logMessage(engine.erc20ForwarderClient);
+      _logMessage(engine.biconomyWalletClient);
     }
     else {
       _logMessage("ERC20 Forwarder is not supported for this network");
@@ -1784,7 +1795,9 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           engine.PERSONAL_SIGN = systemInfo.personalSign;
           engine.tokenGasPriceV1SupportedNetworks =
             systemInfo.tokenGasPriceV1SupportedNetworks;
-
+          engine.walletFactoryAddress = systemInfo.walletFactoryAddress;
+          engine.baseWalletAddress = systemInfo.baseWalletAddress;
+          engine.entryPointAddress = systemInfo.entryPointAddress;
 
           daiDomainData.verifyingContract =
             engine.daiTokenAddress;
@@ -1830,6 +1843,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
               );
             }
             let smartContractList = result.smartContracts;
+            console.log('smartContractList', smartContractList);
             if (
               smartContractList &&
               smartContractList.length > 0
@@ -1853,6 +1867,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
                   ] = contract.abi;
                 }
               });
+              console.log("interfaceMap", interfaceMap);
               _logMessage(smartContractMetaTransactionMap);
               _checkUserLogin(engine, dappId);
             } else {

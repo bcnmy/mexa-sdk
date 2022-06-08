@@ -4233,6 +4233,1567 @@ var eip2771BaseAbi = [{
   "stateMutability": "view",
   "type": "function"
 }];
+var baseWalletAbi = [{
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "address",
+    "name": "module",
+    "type": "address"
+  }],
+  "name": "DisabledModule",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "address",
+    "name": "module",
+    "type": "address"
+  }],
+  "name": "EnabledModule",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "address",
+    "name": "oldEntryPoint",
+    "type": "address"
+  }, {
+    "indexed": false,
+    "internalType": "address",
+    "name": "newEntryPoint",
+    "type": "address"
+  }],
+  "name": "EntryPointChanged",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "bytes32",
+    "name": "txHash",
+    "type": "bytes32"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "payment",
+    "type": "uint256"
+  }],
+  "name": "ExecutionFailure",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "module",
+    "type": "address"
+  }],
+  "name": "ExecutionFromModuleFailure",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "module",
+    "type": "address"
+  }],
+  "name": "ExecutionFromModuleSuccess",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "bytes32",
+    "name": "txHash",
+    "type": "bytes32"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "payment",
+    "type": "uint256"
+  }],
+  "name": "ExecutionSuccess",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "address",
+    "name": "newImplementation",
+    "type": "address"
+  }],
+  "name": "ImplementationUpdated",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "uint8",
+    "name": "version",
+    "type": "uint8"
+  }],
+  "name": "Initialized",
+  "type": "event"
+}, {
+  "inputs": [],
+  "name": "VERSION",
+  "outputs": [{
+    "internalType": "string",
+    "name": "",
+    "type": "string"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_guardian",
+    "type": "address"
+  }],
+  "name": "addGuardian",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "bytes32",
+    "name": "dataHash",
+    "type": "bytes32"
+  }, {
+    "internalType": "bytes",
+    "name": "data",
+    "type": "bytes"
+  }, {
+    "internalType": "bytes",
+    "name": "signatures",
+    "type": "bytes"
+  }],
+  "name": "checkSignatures",
+  "outputs": [],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "prevModule",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "module",
+    "type": "address"
+  }],
+  "name": "disableModule",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "domainSeparator",
+  "outputs": [{
+    "internalType": "bytes32",
+    "name": "",
+    "type": "bytes32"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "module",
+    "type": "address"
+  }],
+  "name": "enableModule",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "to",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "value",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "data",
+    "type": "bytes"
+  }, {
+    "internalType": "enum Enum.Operation",
+    "name": "operation",
+    "type": "uint8"
+  }, {
+    "internalType": "uint256",
+    "name": "safeTxGas",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "baseGas",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "gasPrice",
+    "type": "uint256"
+  }, {
+    "internalType": "address",
+    "name": "gasToken",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "refundReceiver",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "_nonce",
+    "type": "uint256"
+  }],
+  "name": "encodeTransactionData",
+  "outputs": [{
+    "internalType": "bytes",
+    "name": "",
+    "type": "bytes"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "entryPoint",
+  "outputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "dest",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "value",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "func",
+    "type": "bytes"
+  }],
+  "name": "exec",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address[]",
+    "name": "dest",
+    "type": "address[]"
+  }, {
+    "internalType": "bytes[]",
+    "name": "func",
+    "type": "bytes[]"
+  }],
+  "name": "execBatch",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "dest",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "value",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "func",
+    "type": "bytes"
+  }],
+  "name": "execFromEntryPoint",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "to",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "value",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "data",
+    "type": "bytes"
+  }, {
+    "internalType": "enum Enum.Operation",
+    "name": "operation",
+    "type": "uint8"
+  }, {
+    "internalType": "uint256",
+    "name": "safeTxGas",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "baseGas",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "gasPrice",
+    "type": "uint256"
+  }, {
+    "internalType": "address",
+    "name": "gasToken",
+    "type": "address"
+  }, {
+    "internalType": "address payable",
+    "name": "refundReceiver",
+    "type": "address"
+  }, {
+    "internalType": "bytes",
+    "name": "signatures",
+    "type": "bytes"
+  }],
+  "name": "execTransaction",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }],
+  "stateMutability": "payable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "to",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "value",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "data",
+    "type": "bytes"
+  }, {
+    "internalType": "enum Enum.Operation",
+    "name": "operation",
+    "type": "uint8"
+  }],
+  "name": "execTransactionFromModule",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "to",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "value",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "data",
+    "type": "bytes"
+  }, {
+    "internalType": "enum Enum.Operation",
+    "name": "operation",
+    "type": "uint8"
+  }],
+  "name": "execTransactionFromModuleReturnData",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }, {
+    "internalType": "bytes",
+    "name": "returnData",
+    "type": "bytes"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "getChainId",
+  "outputs": [{
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "uint256",
+    "name": "batchId",
+    "type": "uint256"
+  }],
+  "name": "getNonce",
+  "outputs": [{
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "to",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "value",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "data",
+    "type": "bytes"
+  }, {
+    "internalType": "enum Enum.Operation",
+    "name": "operation",
+    "type": "uint8"
+  }, {
+    "internalType": "uint256",
+    "name": "safeTxGas",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "baseGas",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "gasPrice",
+    "type": "uint256"
+  }, {
+    "internalType": "address",
+    "name": "gasToken",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "refundReceiver",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "_nonce",
+    "type": "uint256"
+  }],
+  "name": "getTransactionHash",
+  "outputs": [{
+    "internalType": "bytes32",
+    "name": "",
+    "type": "bytes32"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }],
+  "name": "guardians",
+  "outputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_owner",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "_entryPoint",
+    "type": "address"
+  }],
+  "name": "init",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_guardian",
+    "type": "address"
+  }],
+  "name": "isGuardian",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "module",
+    "type": "address"
+  }],
+  "name": "isModuleEnabled",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }],
+  "name": "nonces",
+  "outputs": [{
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }, {
+    "internalType": "uint256[]",
+    "name": "",
+    "type": "uint256[]"
+  }, {
+    "internalType": "uint256[]",
+    "name": "",
+    "type": "uint256[]"
+  }, {
+    "internalType": "bytes",
+    "name": "",
+    "type": "bytes"
+  }],
+  "name": "onERC1155BatchReceived",
+  "outputs": [{
+    "internalType": "bytes4",
+    "name": "",
+    "type": "bytes4"
+  }],
+  "stateMutability": "pure",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "",
+    "type": "bytes"
+  }],
+  "name": "onERC1155Received",
+  "outputs": [{
+    "internalType": "bytes4",
+    "name": "",
+    "type": "bytes4"
+  }],
+  "stateMutability": "pure",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }, {
+    "internalType": "bytes",
+    "name": "",
+    "type": "bytes"
+  }],
+  "name": "onERC721Received",
+  "outputs": [{
+    "internalType": "bytes4",
+    "name": "",
+    "type": "bytes4"
+  }],
+  "stateMutability": "pure",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "owner",
+  "outputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_guardian",
+    "type": "address"
+  }],
+  "name": "revokeGuardian",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_newOwner",
+    "type": "address"
+  }],
+  "name": "setOwner",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "bytes4",
+    "name": "_interfaceID",
+    "type": "bytes4"
+  }],
+  "name": "supportsInterface",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+  }],
+  "stateMutability": "pure",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address payable",
+    "name": "dest",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "amount",
+    "type": "uint256"
+  }],
+  "name": "transfer",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_entryPoint",
+    "type": "address"
+  }],
+  "name": "updateEntryPoint",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_implementation",
+    "type": "address"
+  }],
+  "name": "updateImplementation",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "initCode",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "callData",
+      "type": "bytes"
+    }, {
+      "internalType": "uint256",
+      "name": "callGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "verificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "preVerificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxPriorityFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "address",
+      "name": "paymaster",
+      "type": "address"
+    }, {
+      "internalType": "bytes",
+      "name": "paymasterData",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "signature",
+      "type": "bytes"
+    }],
+    "internalType": "struct UserOperation",
+    "name": "userOp",
+    "type": "tuple"
+  }, {
+    "internalType": "bytes32",
+    "name": "requestId",
+    "type": "bytes32"
+  }, {
+    "internalType": "uint256",
+    "name": "requiredPrefund",
+    "type": "uint256"
+  }],
+  "name": "validateUserOp",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}];
+var walletFactoryAbi = [{
+  "inputs": [{
+    "internalType": "address",
+    "name": "_baseImpl",
+    "type": "address"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "constructor"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "_proxy",
+    "type": "address"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "_implementation",
+    "type": "address"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "_owner",
+    "type": "address"
+  }],
+  "name": "WalletCreated",
+  "type": "event"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_owner",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "_entryPoint",
+    "type": "address"
+  }],
+  "name": "deployCounterFactualWallet",
+  "outputs": [{
+    "internalType": "address",
+    "name": "proxy",
+    "type": "address"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_owner",
+    "type": "address"
+  }],
+  "name": "deployWallet",
+  "outputs": [{
+    "internalType": "address",
+    "name": "proxy",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "_entryPoint",
+    "type": "address"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_owner",
+    "type": "address"
+  }],
+  "name": "getAddressForCounterfactualWallet",
+  "outputs": [{
+    "internalType": "address",
+    "name": "_wallet",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "name": "isWalletExist",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}];
+var entryPointAbi = [{
+  "inputs": [{
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }, {
+    "internalType": "uint32",
+    "name": "_unstakeDelaySec",
+    "type": "uint32"
+  }],
+  "name": "addStakeTo",
+  "outputs": [],
+  "stateMutability": "payable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }],
+  "name": "depositTo",
+  "outputs": [],
+  "stateMutability": "payable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "_create2factory",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "_paymasterStake",
+    "type": "uint256"
+  }, {
+    "internalType": "uint32",
+    "name": "_unstakeDelaySec",
+    "type": "uint32"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "constructor"
+}, {
+  "inputs": [{
+    "internalType": "uint256",
+    "name": "opIndex",
+    "type": "uint256"
+  }, {
+    "internalType": "address",
+    "name": "paymaster",
+    "type": "address"
+  }, {
+    "internalType": "string",
+    "name": "reason",
+    "type": "string"
+  }],
+  "name": "FailedOp",
+  "type": "error"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "withdrawTime",
+    "type": "uint256"
+  }],
+  "name": "DepositUnstaked",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "totalDeposit",
+    "type": "uint256"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "unstakeDelaySec",
+    "type": "uint256"
+  }],
+  "name": "Deposited",
+  "type": "event"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "initCode",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "callData",
+      "type": "bytes"
+    }, {
+      "internalType": "uint256",
+      "name": "callGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "verificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "preVerificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxPriorityFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "address",
+      "name": "paymaster",
+      "type": "address"
+    }, {
+      "internalType": "bytes",
+      "name": "paymasterData",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "signature",
+      "type": "bytes"
+    }],
+    "internalType": "struct UserOperation",
+    "name": "op",
+    "type": "tuple"
+  }, {
+    "internalType": "address payable",
+    "name": "beneficiary",
+    "type": "address"
+  }],
+  "name": "handleOp",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "initCode",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "callData",
+      "type": "bytes"
+    }, {
+      "internalType": "uint256",
+      "name": "callGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "verificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "preVerificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxPriorityFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "address",
+      "name": "paymaster",
+      "type": "address"
+    }, {
+      "internalType": "bytes",
+      "name": "paymasterData",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "signature",
+      "type": "bytes"
+    }],
+    "internalType": "struct UserOperation[]",
+    "name": "ops",
+    "type": "tuple[]"
+  }, {
+    "internalType": "address payable",
+    "name": "beneficiary",
+    "type": "address"
+  }],
+  "name": "handleOps",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "initCode",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "callData",
+      "type": "bytes"
+    }, {
+      "internalType": "uint256",
+      "name": "callGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "verificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "preVerificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxPriorityFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "address",
+      "name": "paymaster",
+      "type": "address"
+    }, {
+      "internalType": "bytes",
+      "name": "paymasterData",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "signature",
+      "type": "bytes"
+    }],
+    "internalType": "struct UserOperation",
+    "name": "op",
+    "type": "tuple"
+  }, {
+    "components": [{
+      "internalType": "bytes32",
+      "name": "requestId",
+      "type": "bytes32"
+    }, {
+      "internalType": "uint256",
+      "name": "prefund",
+      "type": "uint256"
+    }, {
+      "internalType": "enum EntryPoint.PaymentMode",
+      "name": "paymentMode",
+      "type": "uint8"
+    }, {
+      "internalType": "uint256",
+      "name": "_context",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "preOpGas",
+      "type": "uint256"
+    }],
+    "internalType": "struct EntryPoint.UserOpInfo",
+    "name": "opInfo",
+    "type": "tuple"
+  }, {
+    "internalType": "bytes",
+    "name": "context",
+    "type": "bytes"
+  }],
+  "name": "internalHandleOp",
+  "outputs": [{
+    "internalType": "uint256",
+    "name": "actualGasCost",
+    "type": "uint256"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "initCode",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "callData",
+      "type": "bytes"
+    }, {
+      "internalType": "uint256",
+      "name": "callGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "verificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "preVerificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxPriorityFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "address",
+      "name": "paymaster",
+      "type": "address"
+    }, {
+      "internalType": "bytes",
+      "name": "paymasterData",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "signature",
+      "type": "bytes"
+    }],
+    "internalType": "struct UserOperation",
+    "name": "userOp",
+    "type": "tuple"
+  }],
+  "name": "simulateValidation",
+  "outputs": [{
+    "internalType": "uint256",
+    "name": "preOpGas",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "prefund",
+    "type": "uint256"
+  }],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "unstakeDeposit",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "requestId",
+    "type": "bytes32"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "sender",
+    "type": "address"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "paymaster",
+    "type": "address"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "nonce",
+    "type": "uint256"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "actualGasCost",
+    "type": "uint256"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "actualGasPrice",
+    "type": "uint256"
+  }, {
+    "indexed": false,
+    "internalType": "bool",
+    "name": "success",
+    "type": "bool"
+  }],
+  "name": "UserOperationEvent",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "bytes32",
+    "name": "requestId",
+    "type": "bytes32"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "sender",
+    "type": "address"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "nonce",
+    "type": "uint256"
+  }, {
+    "indexed": false,
+    "internalType": "bytes",
+    "name": "revertReason",
+    "type": "bytes"
+  }],
+  "name": "UserOperationRevertReason",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }, {
+    "indexed": false,
+    "internalType": "address",
+    "name": "withdrawAddress",
+    "type": "address"
+  }, {
+    "indexed": false,
+    "internalType": "uint256",
+    "name": "withdrawAmount",
+    "type": "uint256"
+  }],
+  "name": "Withdrawn",
+  "type": "event"
+}, {
+  "inputs": [{
+    "internalType": "address payable",
+    "name": "withdrawAddress",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "withdrawAmount",
+    "type": "uint256"
+  }],
+  "name": "withdrawTo",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "stateMutability": "payable",
+  "type": "receive"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }],
+  "name": "balanceOf",
+  "outputs": [{
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "create2factory",
+  "outputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "name": "deposits",
+  "outputs": [{
+    "internalType": "uint112",
+    "name": "amount",
+    "type": "uint112"
+  }, {
+    "internalType": "uint32",
+    "name": "unstakeDelaySec",
+    "type": "uint32"
+  }, {
+    "internalType": "uint64",
+    "name": "withdrawTime",
+    "type": "uint64"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }],
+  "name": "getDepositInfo",
+  "outputs": [{
+    "components": [{
+      "internalType": "uint112",
+      "name": "amount",
+      "type": "uint112"
+    }, {
+      "internalType": "uint32",
+      "name": "unstakeDelaySec",
+      "type": "uint32"
+    }, {
+      "internalType": "uint64",
+      "name": "withdrawTime",
+      "type": "uint64"
+    }],
+    "internalType": "struct StakeManager.DepositInfo",
+    "name": "info",
+    "type": "tuple"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "components": [{
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }, {
+      "internalType": "uint256",
+      "name": "nonce",
+      "type": "uint256"
+    }, {
+      "internalType": "bytes",
+      "name": "initCode",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "callData",
+      "type": "bytes"
+    }, {
+      "internalType": "uint256",
+      "name": "callGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "verificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "preVerificationGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "uint256",
+      "name": "maxPriorityFeePerGas",
+      "type": "uint256"
+    }, {
+      "internalType": "address",
+      "name": "paymaster",
+      "type": "address"
+    }, {
+      "internalType": "bytes",
+      "name": "paymasterData",
+      "type": "bytes"
+    }, {
+      "internalType": "bytes",
+      "name": "signature",
+      "type": "bytes"
+    }],
+    "internalType": "struct UserOperation",
+    "name": "userOp",
+    "type": "tuple"
+  }],
+  "name": "getRequestId",
+  "outputs": [{
+    "internalType": "bytes32",
+    "name": "",
+    "type": "bytes32"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "bytes",
+    "name": "initCode",
+    "type": "bytes"
+  }, {
+    "internalType": "uint256",
+    "name": "_salt",
+    "type": "uint256"
+  }],
+  "name": "getSenderAddress",
+  "outputs": [{
+    "internalType": "address",
+    "name": "",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "paymaster",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "stake",
+    "type": "uint256"
+  }],
+  "name": "isPaymasterStaked",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "account",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "requiredStake",
+    "type": "uint256"
+  }, {
+    "internalType": "uint256",
+    "name": "requiredDelaySec",
+    "type": "uint256"
+  }],
+  "name": "isStaked",
+  "outputs": [{
+    "internalType": "bool",
+    "name": "",
+    "type": "bool"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "paymasterStake",
+  "outputs": [{
+    "internalType": "uint256",
+    "name": "",
+    "type": "uint256"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [],
+  "name": "unstakeDelaySec",
+  "outputs": [{
+    "internalType": "uint32",
+    "name": "",
+    "type": "uint32"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}];
 module.exports = {
   erc20ForwarderAbi: erc20ForwarderAbi,
   oracleAggregatorAbi: oracleAggregatorAbi,
@@ -4244,5 +5805,8 @@ module.exports = {
   tokenAbi: tokenAbi,
   erc20Eip2612Abi: erc20Eip2612Abi,
   transferHandlerAbi: transferHandlerAbi,
-  eip2771BaseAbi: eip2771BaseAbi
+  eip2771BaseAbi: eip2771BaseAbi,
+  baseWalletAbi: baseWalletAbi,
+  walletFactoryAbi: walletFactoryAbi,
+  entryPointAbi: entryPointAbi
 };
