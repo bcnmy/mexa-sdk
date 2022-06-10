@@ -8,6 +8,8 @@ const {
     entryPointAbi
 } = require('./abis');
 
+// TODO
+// have to take to, waletAddress, data
 const EIP712_SAFE_TX_TYPE = {
     // "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
     SafeTx: [
@@ -49,6 +51,8 @@ class BiconomyWalletClient {
     }
 
     async checkIfWalletExists(walletOwner) {
+        // Check with new contract changes
+        // functions have changed
         const doesWalletExist = await this.walletFactory.isWalletExist[walletOwner];
         if(doesWalletExist) {
             const walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner);
@@ -72,6 +76,8 @@ class BiconomyWalletClient {
     }
 
     async _deployWallet(walletOwner) {
+        // Deploy contract directly from ethers Provoder
+        // Refer to line 95 dai permit
         const deployWalletMetaTxApiId = await this._getDeployWalletMetaTxApiId();
         const deployWalletRequest = await this._buildDeployWalletRequest(walletOwner);
         const metaTxDeployWalletBody = {
@@ -119,6 +125,7 @@ class BiconomyWalletClient {
     // build transaction
     // sign transaction
     // send transaction to backend
+    // Take flag for signatureType. Default EIP 712 Sign
     async sendBiconomyWalletTransaction(data, signature, walletOwner, walletAddress) {
         // const biconomyWalletMetaTransactionBody = {
         //     to: '0xB32992b4110257a451Af3c2ED6AC78776DD8C26b',
@@ -170,7 +177,8 @@ class BiconomyWalletClient {
         //     safeTx.refundReceiver,
         //     signature
         //   )
-    
+        
+        // call execTransction directly
         const txResponse = await fetch(
             `${config.baseURL}/api/v2/meta-tx/native`,
             {
