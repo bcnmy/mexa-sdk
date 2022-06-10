@@ -16,8 +16,6 @@ var ethers = require("ethers");
 
 var txDecoder = require("ethereum-tx-decoder");
 
-var abi = require("ethereumjs-abi");
-
 var _require = require("./util"),
     toJSONRPCPayload = _require.toJSONRPCPayload;
 
@@ -547,7 +545,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (rawTransaction,
                   primaryType: "ERC20ForwardRequest",
                   message: request
                 };
-                hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
+                hashToSign = ethers.utils.solidityKeccak256(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [request.from, request.to, request.token, request.txGas, request.tokenGasPrice, request.batchId, request.batchNonce, request.deadline, ethers.utils.keccak256(request.data)]);
                 dataToSign = {
                   eip712Format: eip712DataToSign,
                   personalSignatureFormat: hashToSign,

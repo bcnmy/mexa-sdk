@@ -1,6 +1,5 @@
 let { ethers } = require("ethers");
 const { config } = require("./config");
-const abi = require("ethereumjs-abi");
 let { tokenAbi, erc20Eip2612Abi } = require("./abis");
 
 const erc20ForwardRequestType = config.forwardRequestType;
@@ -1157,7 +1156,7 @@ class ERC20ForwarderClient {
    */
   async sendTxPersonalSign({ req, signature = null, userAddress, gasLimit }) {
     try {
-      const hashToSign = abi.soliditySHA3(
+      const hashToSign = ethers.utils.solidityKeccak256(
         [
           "address",
           "address",

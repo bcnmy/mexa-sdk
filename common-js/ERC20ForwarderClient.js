@@ -16,8 +16,6 @@ var _require = require("ethers"),
 var _require2 = require("./config"),
     config = _require2.config;
 
-var abi = require("ethereumjs-abi");
-
 var _require3 = require("./abis"),
     tokenAbi = _require3.tokenAbi,
     erc20Eip2612Abi = _require3.erc20Eip2612Abi;
@@ -1707,7 +1705,7 @@ var ERC20ForwarderClient = /*#__PURE__*/function () {
               case 0:
                 req = _ref9.req, _ref9$signature = _ref9.signature, signature = _ref9$signature === void 0 ? null : _ref9$signature, userAddress = _ref9.userAddress, gasLimit = _ref9.gasLimit;
                 _context13.prev = 1;
-                hashToSign = abi.soliditySHA3(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [req.from, req.to, req.token, req.txGas, req.tokenGasPrice, req.batchId, req.batchNonce, req.deadline, ethers.utils.keccak256(req.data)]);
+                hashToSign = ethers.utils.solidityKeccak256(["address", "address", "address", "uint256", "uint256", "uint256", "uint256", "uint256", "bytes32"], [req.from, req.to, req.token, req.txGas, req.tokenGasPrice, req.batchId, req.batchNonce, req.deadline, ethers.utils.keccak256(req.data)]);
                 signer = this.provider.getSigner();
 
                 if (!this.isSignerWithAccounts) {

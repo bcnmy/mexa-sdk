@@ -1,7 +1,6 @@
 const Promise = require("promise");
 const ethers = require("ethers");
 const txDecoder = require("ethereum-tx-decoder");
-const abi = require("ethereumjs-abi");
 const { toJSONRPCPayload } = require("./util");
 const { eip2771BaseAbi } = require("./abis");
 const {
@@ -431,7 +430,7 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
           message: request,
         };
 
-        const hashToSign = abi.soliditySHA3(
+        const hashToSign = ethers.utils.solidityKeccak256(
           [
             "address",
             "address",
