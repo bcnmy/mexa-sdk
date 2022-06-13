@@ -1980,9 +1980,10 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               trustedForwarderOverhead: trustedForwarderOverhead,
               daiPermitOverhead: daiPermitOverhead,
               eip2612PermitOverhead: eip2612PermitOverhead
-            });
+            }); // Has to be biconomy wrapped provider in order to make gasless calls!
+
             engine.biconomyWalletClient = new BiconomyWalletClient({
-              ethersProvider: ethersProvider,
+              provider: engine,
               biconomyAttributes: biconomyAttributes,
               walletFactoryAddress: engine.walletFactoryAddress,
               baseWalletAddress: engine.baseWalletAddress,

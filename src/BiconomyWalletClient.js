@@ -8,12 +8,16 @@ const {
     entryPointAbi
 } = require('./abis');
 
+function isEthersProvider(provider) {
+    return ethers.providers.Provider.isProvider(provider);
+  }
+
 /**
  * Class to provide methods for biconomy wallet deployment, signature building and sending the transaction
  */
 class BiconomyWalletClient {
     constructor({
-        ethersProvider,
+        provider, // notice we passed engine (Biconomy) here
         biconomyAttributes,
         walletFactoryAddress,
         baseWalletAddress,
@@ -21,15 +25,26 @@ class BiconomyWalletClient {
         networkId
     }) {
         this.biconomyAttributes = biconomyAttributes;
-        this.ethersProvider = ethersProvider;
+        // this.ethersProvider = ethersProvider;
         this.walletFactoryAddress = walletFactoryAddress;
         this.baseWalletAddress = baseWalletAddress;
         this.entryPointAddress = entryPointAddress;
-        this.signer = this.ethersProvider.getSigner();
+        
+        if (isEthersProvider(provider)) {
+            this.provider = provider;
+          } else {
+            this.provider = new ethers.providers.Web3Provider(provider);
+        }
+        // TODO
+        // handle signers carefully 
+        // depends on provider passed to biconomy has accounts information or not
+        this.signer = this.provider.getSigner();
         this.networkId = networkId;
-        this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, ethersProvider);
-        this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, ethersProvider);
-        this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, ethersProvider);
+         // has to be signer connected
+        this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.provider);
+        // has to be signer connected
+        this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.provider.getSigner());
+        this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, this.provider);
     }
 
     async checkIfWalletExists(walletOwner, index) {
@@ -46,7 +61,7 @@ class BiconomyWalletClient {
             walletAddress: null
         }
     }
-
+    
     async checkIfWalletExistsAndDeploy(walletOwner, index) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
@@ -56,6 +71,9 @@ class BiconomyWalletClient {
         return walletAddress;
     }
 
+    // Gasless transaction
+    // gasPrice and baseGas will always be zero
+    // we would add separate ERC20 (Forward) payment handlers in sdk
     async buildExecTransaction(data, to, batchId) {
         const nonce = this.walletFactory.getNonce(batchId);
         return {
@@ -64,7 +82,7 @@ class BiconomyWalletClient {
             data,
             operation: 0,
             safeTxGas: 0,
-            baseGas: 66909,
+            baseGas: 0,
             gasPrice: 0,
             gasToken: config.ZERO_ADDRESS,
             refundReceiver: config.ZERO_ADDRESS,
@@ -72,6 +90,7 @@ class BiconomyWalletClient {
         }
     }
 
+    // Todo : only take walletaddress fetched from login flow
     async sendBiconomyWalletTransaction(execTransactionBody, walletOwner, walletAddress, signatureType) {
 
         let signature;
@@ -88,6 +107,7 @@ class BiconomyWalletClient {
                 execTransactionBody.refundReceiver, 
                 execTransactionBody.nonce
             );
+            // Review and test
             signature = await this.signer.send("personal_sign", [walletOwner, transactionHash]);
         }
 
@@ -96,8 +116,13 @@ class BiconomyWalletClient {
             config.EIP712_SAFE_TX_TYPE,
             execTransactionBody
           )
+
+        // TODO
+        // neat way
+        // also test if the signer changes sdk does not have to be reinitialised for every new wallet and owner
+        this.baseWallet = this.baseWallet.attach(walletAddress);
         
-        await this.walletFactory.execTransaction(
+        let tx = await this.baseWallet.execTransaction(
             execTransactionBody.to,
             execTransactionBody.value,
             execTransactionBody.data,
@@ -109,6 +134,7 @@ class BiconomyWalletClient {
             execTransactionBody.refundReceiver,
             signature
         );
+        return tx;
 
     }
 

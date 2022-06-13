@@ -1478,8 +1478,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         eip2612PermitOverhead
       });
 
+      // Has to be biconomy wrapped provider in order to make gasless calls!
       engine.biconomyWalletClient = new BiconomyWalletClient({
-        ethersProvider,
+        provider: engine,
         biconomyAttributes,
         walletFactoryAddress: engine.walletFactoryAddress,
         baseWalletAddress: engine.baseWalletAddress,
