@@ -4238,10 +4238,40 @@ var baseWalletAbi = [{
   "inputs": [{
     "indexed": false,
     "internalType": "address",
+    "name": "handler",
+    "type": "address"
+  }],
+  "name": "ChangedFallbackHandler",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": false,
+    "internalType": "address",
     "name": "module",
     "type": "address"
   }],
   "name": "DisabledModule",
+  "type": "event"
+}, {
+  "anonymous": false,
+  "inputs": [{
+    "indexed": true,
+    "internalType": "address",
+    "name": "_scw",
+    "type": "address"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "_oldEOA",
+    "type": "address"
+  }, {
+    "indexed": true,
+    "internalType": "address",
+    "name": "_newEOA",
+    "type": "address"
+  }],
+  "name": "EOAChanged",
   "type": "event"
 }, {
   "anonymous": false,
@@ -4339,6 +4369,9 @@ var baseWalletAbi = [{
   "name": "Initialized",
   "type": "event"
 }, {
+  "stateMutability": "nonpayable",
+  "type": "fallback"
+}, {
   "inputs": [],
   "name": "VERSION",
   "outputs": [{
@@ -4347,16 +4380,6 @@ var baseWalletAbi = [{
     "type": "string"
   }],
   "stateMutability": "view",
-  "type": "function"
-}, {
-  "inputs": [{
-    "internalType": "address",
-    "name": "_guardian",
-    "type": "address"
-  }],
-  "name": "addGuardian",
-  "outputs": [],
-  "stateMutability": "nonpayable",
   "type": "function"
 }, {
   "inputs": [{
@@ -4638,6 +4661,28 @@ var baseWalletAbi = [{
   "type": "function"
 }, {
   "inputs": [{
+    "internalType": "address",
+    "name": "start",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "pageSize",
+    "type": "uint256"
+  }],
+  "name": "getModulesPaginated",
+  "outputs": [{
+    "internalType": "address[]",
+    "name": "array",
+    "type": "address[]"
+  }, {
+    "internalType": "address",
+    "name": "next",
+    "type": "address"
+  }],
+  "stateMutability": "view",
+  "type": "function"
+}, {
+  "inputs": [{
     "internalType": "uint256",
     "name": "batchId",
     "type": "uint256"
@@ -4702,20 +4747,6 @@ var baseWalletAbi = [{
   "type": "function"
 }, {
   "inputs": [{
-    "internalType": "uint256",
-    "name": "",
-    "type": "uint256"
-  }],
-  "name": "guardians",
-  "outputs": [{
-    "internalType": "address",
-    "name": "",
-    "type": "address"
-  }],
-  "stateMutability": "view",
-  "type": "function"
-}, {
-  "inputs": [{
     "internalType": "address",
     "name": "_owner",
     "type": "address"
@@ -4723,24 +4754,14 @@ var baseWalletAbi = [{
     "internalType": "address",
     "name": "_entryPoint",
     "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "_handler",
+    "type": "address"
   }],
   "name": "init",
   "outputs": [],
   "stateMutability": "nonpayable",
-  "type": "function"
-}, {
-  "inputs": [{
-    "internalType": "address",
-    "name": "_guardian",
-    "type": "address"
-  }],
-  "name": "isGuardian",
-  "outputs": [{
-    "internalType": "bool",
-    "name": "",
-    "type": "bool"
-  }],
-  "stateMutability": "view",
   "type": "function"
 }, {
   "inputs": [{
@@ -4771,92 +4792,6 @@ var baseWalletAbi = [{
   "stateMutability": "view",
   "type": "function"
 }, {
-  "inputs": [{
-    "internalType": "address",
-    "name": "",
-    "type": "address"
-  }, {
-    "internalType": "address",
-    "name": "",
-    "type": "address"
-  }, {
-    "internalType": "uint256[]",
-    "name": "",
-    "type": "uint256[]"
-  }, {
-    "internalType": "uint256[]",
-    "name": "",
-    "type": "uint256[]"
-  }, {
-    "internalType": "bytes",
-    "name": "",
-    "type": "bytes"
-  }],
-  "name": "onERC1155BatchReceived",
-  "outputs": [{
-    "internalType": "bytes4",
-    "name": "",
-    "type": "bytes4"
-  }],
-  "stateMutability": "pure",
-  "type": "function"
-}, {
-  "inputs": [{
-    "internalType": "address",
-    "name": "",
-    "type": "address"
-  }, {
-    "internalType": "address",
-    "name": "",
-    "type": "address"
-  }, {
-    "internalType": "uint256",
-    "name": "",
-    "type": "uint256"
-  }, {
-    "internalType": "uint256",
-    "name": "",
-    "type": "uint256"
-  }, {
-    "internalType": "bytes",
-    "name": "",
-    "type": "bytes"
-  }],
-  "name": "onERC1155Received",
-  "outputs": [{
-    "internalType": "bytes4",
-    "name": "",
-    "type": "bytes4"
-  }],
-  "stateMutability": "pure",
-  "type": "function"
-}, {
-  "inputs": [{
-    "internalType": "address",
-    "name": "",
-    "type": "address"
-  }, {
-    "internalType": "address",
-    "name": "",
-    "type": "address"
-  }, {
-    "internalType": "uint256",
-    "name": "",
-    "type": "uint256"
-  }, {
-    "internalType": "bytes",
-    "name": "",
-    "type": "bytes"
-  }],
-  "name": "onERC721Received",
-  "outputs": [{
-    "internalType": "bytes4",
-    "name": "",
-    "type": "bytes4"
-  }],
-  "stateMutability": "pure",
-  "type": "function"
-}, {
   "inputs": [],
   "name": "owner",
   "outputs": [{
@@ -4869,10 +4804,28 @@ var baseWalletAbi = [{
 }, {
   "inputs": [{
     "internalType": "address",
-    "name": "_guardian",
+    "name": "token",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "dest",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "amount",
+    "type": "uint256"
+  }],
+  "name": "pullTokens",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+}, {
+  "inputs": [{
+    "internalType": "address",
+    "name": "handler",
     "type": "address"
   }],
-  "name": "revokeGuardian",
+  "name": "setFallbackHandler",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"
@@ -4889,7 +4842,7 @@ var baseWalletAbi = [{
 }, {
   "inputs": [{
     "internalType": "bytes4",
-    "name": "_interfaceID",
+    "name": "interfaceId",
     "type": "bytes4"
   }],
   "name": "supportsInterface",
@@ -4898,7 +4851,7 @@ var baseWalletAbi = [{
     "name": "",
     "type": "bool"
   }],
-  "stateMutability": "pure",
+  "stateMutability": "view",
   "type": "function"
 }, {
   "inputs": [{
@@ -5039,6 +4992,14 @@ var walletFactoryAbi = [{
     "internalType": "address",
     "name": "_entryPoint",
     "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "_handler",
+    "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "_index",
+    "type": "uint256"
   }],
   "name": "deployCounterFactualWallet",
   "outputs": [{
@@ -5053,15 +5014,19 @@ var walletFactoryAbi = [{
     "internalType": "address",
     "name": "_owner",
     "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "_entryPoint",
+    "type": "address"
+  }, {
+    "internalType": "address",
+    "name": "_handler",
+    "type": "address"
   }],
   "name": "deployWallet",
   "outputs": [{
     "internalType": "address",
     "name": "proxy",
-    "type": "address"
-  }, {
-    "internalType": "address",
-    "name": "_entryPoint",
     "type": "address"
   }],
   "stateMutability": "nonpayable",
@@ -5071,6 +5036,10 @@ var walletFactoryAbi = [{
     "internalType": "address",
     "name": "_owner",
     "type": "address"
+  }, {
+    "internalType": "uint256",
+    "name": "_index",
+    "type": "uint256"
   }],
   "name": "getAddressForCounterfactualWallet",
   "outputs": [{

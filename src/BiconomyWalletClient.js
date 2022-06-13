@@ -41,10 +41,10 @@ class BiconomyWalletClient {
         this.signer = this.provider.getSigner();
         this.networkId = networkId;
          // has to be signer connected
-        this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.provider);
+        this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.provider.getSigner());
         // has to be signer connected
         this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.provider.getSigner());
-        this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, this.provider);
+        this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, this.provider.getSigner());
     }
 
     async checkIfWalletExists(walletOwner, index) {
