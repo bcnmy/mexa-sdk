@@ -1485,6 +1485,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         walletFactoryAddress: engine.walletFactoryAddress,
         baseWalletAddress: engine.baseWalletAddress,
         entryPointAddress: engine.entryPointAddress,
+        handlerAddress: engine.handlerAddress,
         networkId: engine.networkId
       })
 
@@ -1799,6 +1800,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           engine.walletFactoryAddress = systemInfo.walletFactoryAddress;
           engine.baseWalletAddress = systemInfo.baseWalletAddress;
           engine.entryPointAddress = systemInfo.entryPointAddress;
+          engine.handlerAddress = systemInfo.handlerAddress;
 
           daiDomainData.verifyingContract =
             engine.daiTokenAddress;

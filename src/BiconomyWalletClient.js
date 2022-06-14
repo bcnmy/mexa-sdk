@@ -22,6 +22,7 @@ class BiconomyWalletClient {
         walletFactoryAddress,
         baseWalletAddress,
         entryPointAddress,
+        handlerAddress,
         networkId
     }) {
         this.biconomyAttributes = biconomyAttributes;
@@ -29,7 +30,8 @@ class BiconomyWalletClient {
         this.walletFactoryAddress = walletFactoryAddress;
         this.baseWalletAddress = baseWalletAddress;
         this.entryPointAddress = entryPointAddress;
-        
+        this.handlerAddress = handlerAddress;
+
         if (isEthersProvider(provider)) {
             this.provider = provider;
           } else {
@@ -48,8 +50,12 @@ class BiconomyWalletClient {
     }
 
     async checkIfWalletExists(walletOwner, index) {
+        debugger;
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
+        console.log('walletAddress', walletAddress)
+        debugger;
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
+        console.log('doesWalletExist', doesWalletExist);
         if(doesWalletExist) {
             return {
                 doesWalletExist,
@@ -66,7 +72,7 @@ class BiconomyWalletClient {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
         if(!doesWalletExist) {
-            await this.walletFactory.deployCounterFactualWallet(walletOwner, this.entryPointAddress, index);
+            await this.walletFactory.deployCounterFactualWallet(walletOwner, this.entryPointAddress, this.handlerAddress, index);
         }
         return walletAddress;
     }

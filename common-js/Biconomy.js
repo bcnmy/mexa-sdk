@@ -1988,6 +1988,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               walletFactoryAddress: engine.walletFactoryAddress,
               baseWalletAddress: engine.baseWalletAddress,
               entryPointAddress: engine.entryPointAddress,
+              handlerAddress: engine.handlerAddress,
               networkId: engine.networkId
             });
 
@@ -2377,6 +2378,7 @@ function _onNetworkId() {
                 engine.walletFactoryAddress = systemInfo.walletFactoryAddress;
                 engine.baseWalletAddress = systemInfo.baseWalletAddress;
                 engine.entryPointAddress = systemInfo.entryPointAddress;
+                engine.handlerAddress = systemInfo.handlerAddress;
                 daiDomainData.verifyingContract = engine.daiTokenAddress;
 
                 if (systemInfo.relayHubAddress) {

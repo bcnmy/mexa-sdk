@@ -35,6 +35,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
         walletFactoryAddress = _ref.walletFactoryAddress,
         baseWalletAddress = _ref.baseWalletAddress,
         entryPointAddress = _ref.entryPointAddress,
+        handlerAddress = _ref.handlerAddress,
         networkId = _ref.networkId;
     (0, _classCallCheck2["default"])(this, BiconomyWalletClient);
     this.biconomyAttributes = biconomyAttributes; // this.ethersProvider = ethersProvider;
@@ -42,6 +43,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
     this.walletFactoryAddress = walletFactoryAddress;
     this.baseWalletAddress = baseWalletAddress;
     this.entryPointAddress = entryPointAddress;
+    this.handlerAddress = handlerAddress;
 
     if (isEthersProvider(provider)) {
       this.provider = provider;
@@ -70,19 +72,23 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                _context.next = 2;
+                debugger;
+                _context.next = 3;
                 return this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
 
-              case 2:
+              case 3:
                 walletAddress = _context.sent;
-                _context.next = 5;
+                console.log('walletAddress', walletAddress);
+                debugger;
+                _context.next = 8;
                 return this.walletFactory.isWalletExist[walletAddress];
 
-              case 5:
+              case 8:
                 doesWalletExist = _context.sent;
+                console.log('doesWalletExist', doesWalletExist);
 
                 if (!doesWalletExist) {
-                  _context.next = 8;
+                  _context.next = 12;
                   break;
                 }
 
@@ -91,13 +97,13 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   walletAddress: walletAddress
                 });
 
-              case 8:
+              case 12:
                 return _context.abrupt("return", {
                   doesWalletExist: doesWalletExist,
                   walletAddress: null
                 });
 
-              case 9:
+              case 13:
               case "end":
                 return _context.stop();
             }
@@ -137,7 +143,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 }
 
                 _context2.next = 9;
-                return this.walletFactory.deployCounterFactualWallet(walletOwner, this.entryPointAddress, index);
+                return this.walletFactory.deployCounterFactualWallet(walletOwner, this.entryPointAddress, this.handlerAddress, index);
 
               case 9:
                 return _context2.abrupt("return", walletAddress);
