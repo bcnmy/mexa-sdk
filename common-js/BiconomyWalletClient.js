@@ -162,13 +162,14 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
   }, {
     key: "buildExecTransaction",
     value: function () {
-      var _buildExecTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(data, to, batchId) {
+      var _buildExecTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(data, to, walletAddress, batchId) {
         var nonce;
         return _regenerator["default"].wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                nonce = this.walletFactory.getNonce(batchId);
+                this.baseWallet = this.baseWallet.attach(walletAddress);
+                nonce = this.baseWallet.getNonce(batchId);
                 return _context3.abrupt("return", {
                   to: to,
                   value: 0,
@@ -182,7 +183,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   nonce: nonce
                 });
 
-              case 2:
+              case 3:
               case "end":
                 return _context3.stop();
             }
@@ -190,7 +191,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
         }, _callee3, this);
       }));
 
-      function buildExecTransaction(_x5, _x6, _x7) {
+      function buildExecTransaction(_x5, _x6, _x7, _x8) {
         return _buildExecTransaction.apply(this, arguments);
       }
 
@@ -250,7 +251,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
         }, _callee4, this);
       }));
 
-      function sendBiconomyWalletTransaction(_x8, _x9, _x10, _x11) {
+      function sendBiconomyWalletTransaction(_x9, _x10, _x11, _x12) {
         return _sendBiconomyWalletTransaction.apply(this, arguments);
       }
 

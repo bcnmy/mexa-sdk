@@ -74,8 +74,10 @@ class BiconomyWalletClient {
     // Gasless transaction
     // gasPrice and baseGas will always be zero
     // we would add separate ERC20 (Forward) payment handlers in sdk
-    async buildExecTransaction(data, to, batchId) {
-        const nonce = this.walletFactory.getNonce(batchId);
+    async buildExecTransaction(data, to, walletAddress, batchId) {
+        this.baseWallet = this.baseWallet.attach(walletAddress);
+
+        const nonce = this.baseWallet.getNonce(batchId);
         return {
             to,
             value: 0,
