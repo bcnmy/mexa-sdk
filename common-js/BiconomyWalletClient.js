@@ -77,16 +77,14 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
 
               case 2:
                 walletAddress = _context.sent;
-                console.log('walletAddress', walletAddress);
-                _context.next = 6;
+                _context.next = 5;
                 return this.walletFactory.isWalletExist(walletAddress);
 
-              case 6:
+              case 5:
                 doesWalletExist = _context.sent;
-                console.log('doesWalletExist', doesWalletExist);
 
                 if (!doesWalletExist) {
-                  _context.next = 10;
+                  _context.next = 8;
                   break;
                 }
 
@@ -95,13 +93,13 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   walletAddress: walletAddress
                 });
 
-              case 10:
+              case 8:
                 return _context.abrupt("return", {
                   doesWalletExist: doesWalletExist,
                   walletAddress: null
                 });
 
-              case 11:
+              case 9:
               case "end":
                 return _context.stop();
             }
@@ -210,7 +208,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
     key: "sendBiconomyWalletTransaction",
     value: function () {
       var _sendBiconomyWalletTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(execTransactionBody, walletOwner, walletAddress, signatureType) {
-        var signature, transactionHash, tx;
+        var signature, transactionHash;
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
@@ -248,10 +246,9 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 return this.baseWallet.execTransaction(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, signature);
 
               case 13:
-                tx = _context4.sent;
-                return _context4.abrupt("return", tx);
+                return _context4.abrupt("return", _context4.sent);
 
-              case 15:
+              case 14:
               case "end":
                 return _context4.stop();
             }

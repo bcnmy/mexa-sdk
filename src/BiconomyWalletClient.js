@@ -51,9 +51,7 @@ class BiconomyWalletClient {
 
     async checkIfWalletExists(walletOwner, index) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
-        console.log('walletAddress', walletAddress)
         const doesWalletExist = await this.walletFactory.isWalletExist(walletAddress);
-        console.log('doesWalletExist', doesWalletExist);
         if(doesWalletExist) {
             return {
                 doesWalletExist,
@@ -98,7 +96,6 @@ class BiconomyWalletClient {
 
     // Todo : only take walletaddress fetched from login flow
     async sendBiconomyWalletTransaction(execTransactionBody, walletOwner, walletAddress, signatureType) {
-
         let signature;
         if(signatureType === 'PERSONAL_SIGN') {
             const transactionHash = await walletContract.getTransactionHash(
@@ -141,7 +138,6 @@ class BiconomyWalletClient {
             signature
         );
         return tx;
-
     }
 
 }
