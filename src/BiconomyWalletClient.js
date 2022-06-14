@@ -50,11 +50,9 @@ class BiconomyWalletClient {
     }
 
     async checkIfWalletExists(walletOwner, index) {
-        debugger;
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
         console.log('walletAddress', walletAddress)
-        debugger;
-        const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
+        const doesWalletExist = await this.walletFactory.isWalletExist(walletAddress);
         console.log('doesWalletExist', doesWalletExist);
         if(doesWalletExist) {
             return {
@@ -83,7 +81,7 @@ class BiconomyWalletClient {
     async buildExecTransaction(data, to, walletAddress, batchId) {
         this.baseWallet = this.baseWallet.attach(walletAddress);
 
-        const nonce = this.baseWallet.getNonce(batchId);
+        const nonce = await this.baseWallet.getNonce(batchId);
         return {
             to,
             value: 0,

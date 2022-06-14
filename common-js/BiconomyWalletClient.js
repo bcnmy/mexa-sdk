@@ -72,23 +72,21 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                debugger;
-                _context.next = 3;
+                _context.next = 2;
                 return this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
 
-              case 3:
+              case 2:
                 walletAddress = _context.sent;
                 console.log('walletAddress', walletAddress);
-                debugger;
-                _context.next = 8;
-                return this.walletFactory.isWalletExist[walletAddress];
+                _context.next = 6;
+                return this.walletFactory.isWalletExist(walletAddress);
 
-              case 8:
+              case 6:
                 doesWalletExist = _context.sent;
                 console.log('doesWalletExist', doesWalletExist);
 
                 if (!doesWalletExist) {
-                  _context.next = 12;
+                  _context.next = 10;
                   break;
                 }
 
@@ -97,13 +95,13 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   walletAddress: walletAddress
                 });
 
-              case 12:
+              case 10:
                 return _context.abrupt("return", {
                   doesWalletExist: doesWalletExist,
                   walletAddress: null
                 });
 
-              case 13:
+              case 11:
               case "end":
                 return _context.stop();
             }
@@ -175,7 +173,11 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
             switch (_context3.prev = _context3.next) {
               case 0:
                 this.baseWallet = this.baseWallet.attach(walletAddress);
-                nonce = this.baseWallet.getNonce(batchId);
+                _context3.next = 3;
+                return this.baseWallet.getNonce(batchId);
+
+              case 3:
+                nonce = _context3.sent;
                 return _context3.abrupt("return", {
                   to: to,
                   value: 0,
@@ -189,7 +191,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   nonce: nonce
                 });
 
-              case 3:
+              case 5:
               case "end":
                 return _context3.stop();
             }
