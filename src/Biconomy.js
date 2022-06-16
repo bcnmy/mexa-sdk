@@ -1480,7 +1480,10 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
 
       // Has to be biconomy wrapped provider in order to make gasless calls!
       engine.biconomyWalletClient = new BiconomyWalletClient({
-        provider: engine,
+        biconomyProvider: engine,
+        provider: ethersProvider,
+        targetProvider: targetProvider,
+        isSignerWithAccounts,
         biconomyAttributes,
         walletFactoryAddress: engine.walletFactoryAddress,
         baseWalletAddress: engine.baseWalletAddress,
