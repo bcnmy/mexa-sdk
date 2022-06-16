@@ -1,7 +1,7 @@
 const ethers = require("ethers");
 const {
     config,
-  } = require("./config");
+} = require("./config");
 const {
     baseWalletAbi,
     walletFactoryAbi,
@@ -10,7 +10,25 @@ const {
 
 function isEthersProvider(provider) {
     return ethers.providers.Provider.isProvider(provider);
-  }
+}
+
+function getSignatureParameters(signature) {
+    if (!ethers.utils.isHexString(signature)) {
+        throw new Error(
+            'Given value "'.concat(signature, '" is not a valid hex string.')
+        );
+    }
+    var r = signature.slice(0, 66);
+    var s = "0x".concat(signature.slice(66, 130));
+    var v = "0x".concat(signature.slice(130, 132));
+    v = ethers.BigNumber.from(v).toNumber();
+    if (![27, 28].includes(v)) v += 27;
+    return {
+        r: r,
+        s: s,
+        v: v
+    };
+}
 
 /**
  * Class to provide methods for biconomy wallet deployment, signature building and sending the transaction
@@ -34,7 +52,7 @@ class BiconomyWalletClient {
 
         if (isEthersProvider(provider)) {
             this.provider = provider;
-          } else {
+        } else {
             this.provider = new ethers.providers.Web3Provider(provider);
         }
         // TODO
@@ -42,7 +60,7 @@ class BiconomyWalletClient {
         // depends on provider passed to biconomy has accounts information or not
         this.signer = this.provider.getSigner();
         this.networkId = networkId;
-         // has to be signer connected
+        // has to be signer connected
         this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.provider.getSigner());
         // has to be signer connected
         this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.provider.getSigner());
@@ -52,7 +70,7 @@ class BiconomyWalletClient {
     async checkIfWalletExists(walletOwner, index) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
         const doesWalletExist = await this.walletFactory.isWalletExist(walletAddress);
-        if(doesWalletExist) {
+        if (doesWalletExist) {
             return {
                 doesWalletExist,
                 walletAddress
@@ -63,11 +81,11 @@ class BiconomyWalletClient {
             walletAddress: null
         }
     }
-    
+
     async checkIfWalletExistsAndDeploy(walletOwner, index) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
-        if(!doesWalletExist) {
+        if (!doesWalletExist) {
             await this.walletFactory.deployCounterFactualWallet(walletOwner, this.entryPointAddress, this.handlerAddress, index);
         }
         return walletAddress;
@@ -94,11 +112,13 @@ class BiconomyWalletClient {
         }
     }
 
-    // Todo : only take walletaddress fetched from login flow
+    // ToDo : only take walletaddress fetched from login flow
+    // TODO : keep a method to send with signature seperately
+    // or have signature as optional param and take a single param as object
     async sendBiconomyWalletTransaction(execTransactionBody, walletOwner, walletAddress, signatureType) {
         let signature;
-        if(signatureType === 'PERSONAL_SIGN') {
-            const transactionHash = await walletContract.getTransactionHash(
+        if (signatureType === 'PERSONAL_SIGN') {
+            const transactionHash = await this.baseWallet.getTransactionHash(
                 execTransactionBody.to,
                 execTransactionBody.value,
                 execTransactionBody.data,
@@ -107,24 +127,26 @@ class BiconomyWalletClient {
                 execTransactionBody.baseGas,
                 execTransactionBody.gasPrice,
                 execTransactionBody.gasToken,
-                execTransactionBody.refundReceiver, 
+                execTransactionBody.refundReceiver,
                 execTransactionBody.nonce
             );
             // Review and test
-            signature = await this.signer.send("personal_sign", [walletOwner, transactionHash]);
+            signature = await this.signer.signMessage(ethers.utils.arrayify(transactionHash));
+            let { r, s, v } = getSignatureParameters(signature);
+            v += 4;
+            v = ethers.BigNumber.from(v).toHexString();
+            signature = r + s.slice(2) + v.slice(2);
+        } else {
+
+            signature = await this.signer._signTypedData(
+                { verifyingContract: walletAddress, chainId: this.networkId },
+                config.EIP712_SAFE_TX_TYPE,
+                execTransactionBody
+            )
         }
 
-        signature = await this.signer._signTypedData(
-            { verifyingContract: walletAddress, chainId: this.networkId },
-            config.EIP712_SAFE_TX_TYPE,
-            execTransactionBody
-          )
-
-        // TODO
-        // neat way
-        // also test if the signer changes sdk does not have to be reinitialised for every new wallet and owner
         this.baseWallet = this.baseWallet.attach(walletAddress);
-        
+
         let tx = await this.baseWallet.execTransaction(
             execTransactionBody.to,
             execTransactionBody.value,

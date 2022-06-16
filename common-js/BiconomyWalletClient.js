@@ -23,6 +23,23 @@ var _require2 = require('./abis'),
 function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
+
+function getSignatureParameters(signature) {
+  if (!ethers.utils.isHexString(signature)) {
+    throw new Error('Given value "'.concat(signature, '" is not a valid hex string.'));
+  }
+
+  var r = signature.slice(0, 66);
+  var s = "0x".concat(signature.slice(66, 130));
+  var v = "0x".concat(signature.slice(130, 132));
+  v = ethers.BigNumber.from(v).toNumber();
+  if (![27, 28].includes(v)) v += 27;
+  return {
+    r: r,
+    s: s,
+    v: v
+  };
+}
 /**
  * Class to provide methods for biconomy wallet deployment, signature building and sending the transaction
  */
@@ -202,53 +219,62 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
       }
 
       return buildExecTransaction;
-    }() // Todo : only take walletaddress fetched from login flow
+    }() // ToDo : only take walletaddress fetched from login flow
+    // TODO : keep a method to send with signature seperately
+    // or have signature as optional param and take a single param as object
 
   }, {
     key: "sendBiconomyWalletTransaction",
     value: function () {
       var _sendBiconomyWalletTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(execTransactionBody, walletOwner, walletAddress, signatureType) {
-        var signature, transactionHash;
+        var signature, transactionHash, _getSignatureParamete, r, s, v, tx;
+
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
                 if (!(signatureType === 'PERSONAL_SIGN')) {
-                  _context4.next = 7;
+                  _context4.next = 13;
                   break;
                 }
 
                 _context4.next = 3;
-                return walletContract.getTransactionHash(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, execTransactionBody.nonce);
+                return this.baseWallet.getTransactionHash(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, execTransactionBody.nonce);
 
               case 3:
                 transactionHash = _context4.sent;
                 _context4.next = 6;
-                return this.signer.send("personal_sign", [walletOwner, transactionHash]);
+                return this.signer.signMessage(ethers.utils.arrayify(transactionHash));
 
               case 6:
                 signature = _context4.sent;
+                _getSignatureParamete = getSignatureParameters(signature), r = _getSignatureParamete.r, s = _getSignatureParamete.s, v = _getSignatureParamete.v;
+                v += 4;
+                v = ethers.BigNumber.from(v).toHexString();
+                signature = r + s.slice(2) + v.slice(2);
+                _context4.next = 16;
+                break;
 
-              case 7:
-                _context4.next = 9;
+              case 13:
+                _context4.next = 15;
                 return this.signer._signTypedData({
                   verifyingContract: walletAddress,
                   chainId: this.networkId
                 }, config.EIP712_SAFE_TX_TYPE, execTransactionBody);
 
-              case 9:
+              case 15:
                 signature = _context4.sent;
-                // TODO
-                // neat way
-                // also test if the signer changes sdk does not have to be reinitialised for every new wallet and owner
+
+              case 16:
                 this.baseWallet = this.baseWallet.attach(walletAddress);
-                _context4.next = 13;
+                _context4.next = 19;
                 return this.baseWallet.execTransaction(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, signature);
 
-              case 13:
-                return _context4.abrupt("return", _context4.sent);
+              case 19:
+                tx = _context4.sent;
+                return _context4.abrupt("return", tx);
 
-              case 14:
+              case 21:
               case "end":
                 return _context4.stop();
             }
