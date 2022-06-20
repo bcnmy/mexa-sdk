@@ -23,6 +23,23 @@ var _require2 = require('./abis'),
 function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
+
+function getSignatureParameters(signature) {
+  if (!ethers.utils.isHexString(signature)) {
+    throw new Error('Given value "'.concat(signature, '" is not a valid hex string.'));
+  }
+
+  var r = signature.slice(0, 66);
+  var s = "0x".concat(signature.slice(66, 130));
+  var v = "0x".concat(signature.slice(130, 132));
+  v = ethers.BigNumber.from(v).toNumber();
+  if (![27, 28].includes(v)) v += 27;
+  return {
+    r: r,
+    s: s,
+    v: v
+  };
+}
 /**
  * Class to provide methods for biconomy wallet deployment, signature building and sending the transaction
  */
@@ -30,61 +47,66 @@ function isEthersProvider(provider) {
 
 var BiconomyWalletClient = /*#__PURE__*/function () {
   function BiconomyWalletClient(_ref) {
-    var provider = _ref.provider,
+    var biconomyProvider = _ref.biconomyProvider,
+        provider = _ref.provider,
+        targetProvider = _ref.targetProvider,
         biconomyAttributes = _ref.biconomyAttributes,
+        isSignerWithAccounts = _ref.isSignerWithAccounts,
         walletFactoryAddress = _ref.walletFactoryAddress,
         baseWalletAddress = _ref.baseWalletAddress,
         entryPointAddress = _ref.entryPointAddress,
         handlerAddress = _ref.handlerAddress,
         networkId = _ref.networkId;
     (0, _classCallCheck2["default"])(this, BiconomyWalletClient);
-    this.biconomyAttributes = biconomyAttributes; // this.ethersProvider = ethersProvider;
+    this.engine = biconomyProvider; // Marked for removal
 
+    this.biconomyAttributes = biconomyAttributes;
+    this.isSignerWithAccounts = isSignerWithAccounts;
+    this.provider = provider;
+    this.targetProvider = targetProvider;
     this.walletFactoryAddress = walletFactoryAddress;
     this.baseWalletAddress = baseWalletAddress;
     this.entryPointAddress = entryPointAddress;
     this.handlerAddress = handlerAddress;
+    var providerOrSigner;
 
-    if (isEthersProvider(provider)) {
-      this.provider = provider;
+    if (this.isSignerWithAccounts) {
+      providerOrSigner = this.provider.getSigner();
     } else {
-      this.provider = new ethers.providers.Web3Provider(provider);
-    } // TODO
-    // handle signers carefully 
-    // depends on provider passed to biconomy has accounts information or not
+      providerOrSigner = this.provider;
+    }
 
-
-    this.signer = this.provider.getSigner();
-    this.networkId = networkId; // has to be signer connected
-
-    this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.provider.getSigner()); // has to be signer connected
-
-    this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.provider.getSigner());
-    this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, this.provider.getSigner());
+    this.providerOrSigner = providerOrSigner;
+    this.networkId = networkId;
+    this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.providerOrSigner);
+    this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.providerOrSigner);
+    this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, this.providerOrSigner);
   }
 
   (0, _createClass2["default"])(BiconomyWalletClient, [{
     key: "checkIfWalletExists",
     value: function () {
-      var _checkIfWalletExists = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee(walletOwner, index) {
-        var walletAddress, doesWalletExist;
+      var _checkIfWalletExists = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee(_ref2) {
+        var eoa, _ref2$index, index, walletAddress, doesWalletExist;
+
         return _regenerator["default"].wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                _context.next = 2;
-                return this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
+                eoa = _ref2.eoa, _ref2$index = _ref2.index, index = _ref2$index === void 0 ? 0 : _ref2$index;
+                _context.next = 3;
+                return this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
 
-              case 2:
+              case 3:
                 walletAddress = _context.sent;
-                _context.next = 5;
+                _context.next = 6;
                 return this.walletFactory.isWalletExist(walletAddress);
 
-              case 5:
+              case 6:
                 doesWalletExist = _context.sent;
 
                 if (!doesWalletExist) {
-                  _context.next = 8;
+                  _context.next = 9;
                   break;
                 }
 
@@ -93,13 +115,13 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   walletAddress: walletAddress
                 });
 
-              case 8:
+              case 9:
                 return _context.abrupt("return", {
                   doesWalletExist: doesWalletExist,
                   walletAddress: null
                 });
 
-              case 9:
+              case 10:
               case "end":
                 return _context.stop();
             }
@@ -107,7 +129,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
         }, _callee, this);
       }));
 
-      function checkIfWalletExists(_x, _x2) {
+      function checkIfWalletExists(_x) {
         return _checkIfWalletExists.apply(this, arguments);
       }
 
@@ -116,35 +138,37 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
   }, {
     key: "checkIfWalletExistsAndDeploy",
     value: function () {
-      var _checkIfWalletExistsAndDeploy = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee2(walletOwner, index) {
-        var walletAddress, doesWalletExist;
+      var _checkIfWalletExistsAndDeploy = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee2(_ref3) {
+        var eoa, _ref3$index, index, walletAddress, doesWalletExist;
+
         return _regenerator["default"].wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                _context2.next = 2;
-                return this.walletFactory.getAddressForCounterfactualWallet(walletOwner, index);
+                eoa = _ref3.eoa, _ref3$index = _ref3.index, index = _ref3$index === void 0 ? 0 : _ref3$index;
+                _context2.next = 3;
+                return this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
 
-              case 2:
+              case 3:
                 walletAddress = _context2.sent;
-                _context2.next = 5;
+                _context2.next = 6;
                 return this.walletFactory.isWalletExist[walletAddress];
 
-              case 5:
+              case 6:
                 doesWalletExist = _context2.sent;
 
                 if (doesWalletExist) {
-                  _context2.next = 9;
+                  _context2.next = 10;
                   break;
                 }
 
-                _context2.next = 9;
-                return this.walletFactory.deployCounterFactualWallet(walletOwner, this.entryPointAddress, this.handlerAddress, index);
-
-              case 9:
-                return _context2.abrupt("return", walletAddress);
+                _context2.next = 10;
+                return this.walletFactory.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
 
               case 10:
+                return _context2.abrupt("return", walletAddress);
+
+              case 11:
               case "end":
                 return _context2.stop();
             }
@@ -152,7 +176,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
         }, _callee2, this);
       }));
 
-      function checkIfWalletExistsAndDeploy(_x3, _x4) {
+      function checkIfWalletExistsAndDeploy(_x2) {
         return _checkIfWalletExistsAndDeploy.apply(this, arguments);
       }
 
@@ -164,17 +188,19 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
   }, {
     key: "buildExecTransaction",
     value: function () {
-      var _buildExecTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(data, to, walletAddress, batchId) {
-        var nonce;
+      var _buildExecTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(_ref4) {
+        var data, to, walletAddress, _ref4$batchId, batchId, nonce;
+
         return _regenerator["default"].wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
+                data = _ref4.data, to = _ref4.to, walletAddress = _ref4.walletAddress, _ref4$batchId = _ref4.batchId, batchId = _ref4$batchId === void 0 ? 0 : _ref4$batchId;
                 this.baseWallet = this.baseWallet.attach(walletAddress);
-                _context3.next = 3;
+                _context3.next = 4;
                 return this.baseWallet.getNonce(batchId);
 
-              case 3:
+              case 4:
                 nonce = _context3.sent;
                 return _context3.abrupt("return", {
                   to: to,
@@ -189,7 +215,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   nonce: nonce
                 });
 
-              case 5:
+              case 6:
               case "end":
                 return _context3.stop();
             }
@@ -197,58 +223,85 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
         }, _callee3, this);
       }));
 
-      function buildExecTransaction(_x5, _x6, _x7, _x8) {
+      function buildExecTransaction(_x3) {
         return _buildExecTransaction.apply(this, arguments);
       }
 
       return buildExecTransaction;
-    }() // Todo : only take walletaddress fetched from login flow
-
+    }()
   }, {
     key: "sendBiconomyWalletTransaction",
     value: function () {
-      var _sendBiconomyWalletTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(execTransactionBody, walletOwner, walletAddress, signatureType) {
-        var signature, transactionHash;
+      var _sendBiconomyWalletTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(_ref5) {
+        var execTransactionBody, walletAddress, signatureType, _ref5$signature, signature, transactionHash, _getSignatureParamete, r, s, v, tx;
+
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
-                if (!(signatureType === 'PERSONAL_SIGN')) {
-                  _context4.next = 7;
+                execTransactionBody = _ref5.execTransactionBody, walletAddress = _ref5.walletAddress, signatureType = _ref5.signatureType, _ref5$signature = _ref5.signature, signature = _ref5$signature === void 0 ? null : _ref5$signature;
+
+                if (this.isSignerWithAccounts) {
+                  _context4.next = 4;
                   break;
                 }
 
-                _context4.next = 3;
-                return walletContract.getTransactionHash(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, execTransactionBody.nonce);
+                if (signature) {
+                  _context4.next = 4;
+                  break;
+                }
 
-              case 3:
+                throw new Error("Either pass signature param or pass a provider to Biconomy with user accounts information");
+
+              case 4:
+                if (signature) {
+                  _context4.next = 21;
+                  break;
+                }
+
+                if (!(signatureType === 'PERSONAL_SIGN')) {
+                  _context4.next = 18;
+                  break;
+                }
+
+                _context4.next = 8;
+                return this.baseWallet.getTransactionHash(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, execTransactionBody.nonce);
+
+              case 8:
                 transactionHash = _context4.sent;
-                _context4.next = 6;
-                return this.signer.send("personal_sign", [walletOwner, transactionHash]);
+                _context4.next = 11;
+                return this.targetProvider.getSigner().signMessage(ethers.utils.arrayify(transactionHash));
 
-              case 6:
+              case 11:
                 signature = _context4.sent;
+                _getSignatureParamete = getSignatureParameters(signature), r = _getSignatureParamete.r, s = _getSignatureParamete.s, v = _getSignatureParamete.v;
+                v += 4;
+                v = ethers.BigNumber.from(v).toHexString();
+                signature = r + s.slice(2) + v.slice(2);
+                _context4.next = 21;
+                break;
 
-              case 7:
-                _context4.next = 9;
-                return this.signer._signTypedData({
+              case 18:
+                _context4.next = 20;
+                return this.targetProvider.getSigner()._signTypedData({
                   verifyingContract: walletAddress,
                   chainId: this.networkId
                 }, config.EIP712_SAFE_TX_TYPE, execTransactionBody);
 
-              case 9:
+              case 20:
                 signature = _context4.sent;
-                // TODO
-                // neat way
-                // also test if the signer changes sdk does not have to be reinitialised for every new wallet and owner
+
+              case 21:
                 this.baseWallet = this.baseWallet.attach(walletAddress);
-                _context4.next = 13;
+                this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
+                _context4.next = 25;
                 return this.baseWallet.execTransaction(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, signature);
 
-              case 13:
-                return _context4.abrupt("return", _context4.sent);
+              case 25:
+                tx = _context4.sent;
+                return _context4.abrupt("return", tx);
 
-              case 14:
+              case 27:
               case "end":
                 return _context4.stop();
             }
@@ -256,7 +309,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
         }, _callee4, this);
       }));
 
-      function sendBiconomyWalletTransaction(_x9, _x10, _x11, _x12) {
+      function sendBiconomyWalletTransaction(_x4) {
         return _sendBiconomyWalletTransaction.apply(this, arguments);
       }
 
