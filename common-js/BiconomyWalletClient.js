@@ -156,19 +156,20 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
 
               case 6:
                 doesWalletExist = _context2.sent;
+                this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
 
                 if (doesWalletExist) {
-                  _context2.next = 10;
+                  _context2.next = 11;
                   break;
                 }
 
-                _context2.next = 10;
+                _context2.next = 11;
                 return this.walletFactory.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
 
-              case 10:
+              case 11:
                 return _context2.abrupt("return", walletAddress);
 
-              case 11:
+              case 12:
               case "end":
                 return _context2.stop();
             }

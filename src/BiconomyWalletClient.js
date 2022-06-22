@@ -93,6 +93,7 @@ class BiconomyWalletClient {
     async checkIfWalletExistsAndDeploy({eoa, index = 0}) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
+        this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa)); 
         if (!doesWalletExist) {
             await this.walletFactory.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
         }
