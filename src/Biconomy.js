@@ -76,7 +76,6 @@ function Biconomy(provider, options) {
   this.strictMode = options.strictMode || false;
   this.providerId = options.providerId || 0;
   this.readViaContract = options.readViaContract || false;
-  this.webHookAttributes = options.webHookAttributes || {};
 
   this.READY = STATUS.BICONOMY_READY;
   this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
@@ -716,7 +715,6 @@ async function sendSignedTransaction(engine, payload, end) {
             }
 
             paramArray.push(signature);
-            paramArray.push(engine.webHookAttributes);
             let data = {};
             data.from = account;
             data.apiId = api.id;
@@ -728,7 +726,6 @@ async function sendSignedTransaction(engine, payload, end) {
             await _sendTransaction(engine, account, api, data, end);
           } else {
             paramArray.push(...methodInfo.args);
-            paramArray.push(engine.webHookAttributes);
 
             let data = {};
             data.from = account;

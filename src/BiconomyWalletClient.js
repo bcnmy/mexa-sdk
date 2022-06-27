@@ -121,7 +121,7 @@ class BiconomyWalletClient {
         }
     }
 
-    async sendBiconomyWalletTransaction({ execTransactionBody, walletAddress, signatureType, signature = null }) {
+    async sendBiconomyWalletTransaction({ execTransactionBody, walletAddress, signatureType, signature = null, webHookAttributes }) {
         // let signature;
 
         if (!this.isSignerWithAccounts) {
@@ -162,6 +162,16 @@ class BiconomyWalletClient {
 
         this.baseWallet = this.baseWallet.attach(walletAddress);
         this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress)); 
+
+        // let txParams = {
+        //     data: execTransactionBody,
+        //     to: execTransactionBody.to,
+        //     from: walletAddress,
+        //     signatureType,
+        //     webHookAttributes
+        // };
+
+        // tx = await this.providerOrSigner.send("eth_sendTransaction", [txParams])
 
         let tx = await this.baseWallet.execTransaction(
             execTransactionBody.to,
