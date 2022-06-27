@@ -90,12 +90,30 @@ class BiconomyWalletClient {
         }
     }
 
-    async checkIfWalletExistsAndDeploy({eoa, index = 0}) {
+    async checkIfWalletExistsAndDeploy({ eoa, index = 0, webHookAttributes }) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
-        this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa)); 
+        this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
         if (!doesWalletExist) {
-            await this.walletFactory.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+            let executionData = await this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+            let dispatchProvider = this.engine.getEthersProvider();
+
+            let txParams = {
+                data: executionData.data,
+                to: this.walletFactory.address,
+                from: eoa,
+                webHookAttributes: webHookAttributes
+            };
+
+            let tx;
+            try {
+                tx = await dispatchProvider.send("eth_sendTransaction", [txParams])
+            }
+            catch (err) {
+                // handle conditional rejections in this stack trace
+                console.log(err);
+                throw err;
+            }
         }
         return walletAddress;
     }
@@ -147,13 +165,14 @@ class BiconomyWalletClient {
                     execTransactionBody.refundReceiver,
                     execTransactionBody.nonce
                 );
-                signature = await this.targetProvider.getSigner().signMessage(ethers.utils.arrayify(transactionHash));
+                // Review targetProvider vs provider
+                signature = await this.provider.getSigner().signMessage(ethers.utils.arrayify(transactionHash));
                 let { r, s, v } = getSignatureParameters(signature);
                 v += 4;
                 v = ethers.BigNumber.from(v).toHexString();
                 signature = r + s.slice(2) + v.slice(2);
             } else {
-                signature = await this.targetProvider.getSigner()._signTypedData(
+                signature = await this.provider.getSigner()._signTypedData(
                     { verifyingContract: walletAddress, chainId: this.networkId },
                     config.EIP712_SAFE_TX_TYPE,
                     execTransactionBody
@@ -162,19 +181,9 @@ class BiconomyWalletClient {
         }
 
         this.baseWallet = this.baseWallet.attach(walletAddress);
-        this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress)); 
-
-        // let txParams = {
-        //     data: execTransactionBody,
-        //     to: execTransactionBody.to,
-        //     from: walletAddress,
-        //     signatureType,
-        //     webHookAttributes
-        // };
-
-        // tx = await this.providerOrSigner.send("eth_sendTransaction", [txParams])
-
-        let tx = await this.baseWallet.execTransaction(
+        this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
+        
+        let executionData = await this.baseWallet.populateTransaction.execTransaction(
             execTransactionBody.to,
             execTransactionBody.value,
             execTransactionBody.data,
@@ -186,6 +195,27 @@ class BiconomyWalletClient {
             execTransactionBody.refundReceiver,
             signature
         );
+        let dispatchProvider = this.engine.getEthersProvider();
+
+        //TODO
+        //Check if webhook attributes are passed before forwarding ?
+
+        let txParams = {
+             data: executionData.data,
+             to: this.baseWallet.address,
+             from: walletAddress,
+             webHookAttributes: webHookAttributes
+        };
+
+        let tx;
+        try {
+            tx = await dispatchProvider.send("eth_sendTransaction", [txParams])
+        }
+        catch (err) {
+            // handle conditional rejections in this stack trace
+            console.log(err);
+            throw err;
+        }
         return tx;
     }
 

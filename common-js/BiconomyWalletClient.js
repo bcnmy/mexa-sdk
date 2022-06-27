@@ -139,13 +139,13 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
     key: "checkIfWalletExistsAndDeploy",
     value: function () {
       var _checkIfWalletExistsAndDeploy = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee2(_ref3) {
-        var eoa, _ref3$index, index, walletAddress, doesWalletExist;
+        var eoa, _ref3$index, index, webHookAttributes, walletAddress, doesWalletExist, executionData, dispatchProvider, txParams, tx;
 
         return _regenerator["default"].wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                eoa = _ref3.eoa, _ref3$index = _ref3.index, index = _ref3$index === void 0 ? 0 : _ref3$index;
+                eoa = _ref3.eoa, _ref3$index = _ref3.index, index = _ref3$index === void 0 ? 0 : _ref3$index, webHookAttributes = _ref3.webHookAttributes;
                 _context2.next = 3;
                 return this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
 
@@ -159,22 +159,47 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
 
                 if (doesWalletExist) {
-                  _context2.next = 11;
+                  _context2.next = 24;
                   break;
                 }
 
                 _context2.next = 11;
-                return this.walletFactory.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+                return this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
 
               case 11:
+                executionData = _context2.sent;
+                dispatchProvider = this.engine.getEthersProvider();
+                txParams = {
+                  data: executionData.data,
+                  to: this.walletFactory.address,
+                  from: eoa,
+                  webHookAttributes: webHookAttributes
+                };
+                _context2.prev = 14;
+                _context2.next = 17;
+                return dispatchProvider.send("eth_sendTransaction", [txParams]);
+
+              case 17:
+                tx = _context2.sent;
+                _context2.next = 24;
+                break;
+
+              case 20:
+                _context2.prev = 20;
+                _context2.t0 = _context2["catch"](14);
+                // handle conditional rejections in this stack trace
+                console.log(_context2.t0);
+                throw _context2.t0;
+
+              case 24:
                 return _context2.abrupt("return", walletAddress);
 
-              case 12:
+              case 25:
               case "end":
                 return _context2.stop();
             }
           }
-        }, _callee2, this);
+        }, _callee2, this, [[14, 20]]);
       }));
 
       function checkIfWalletExistsAndDeploy(_x2) {
@@ -234,13 +259,13 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
     key: "sendBiconomyWalletTransaction",
     value: function () {
       var _sendBiconomyWalletTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(_ref5) {
-        var execTransactionBody, walletAddress, signatureType, _ref5$signature, signature, transactionHash, _getSignatureParamete, r, s, v, tx;
+        var execTransactionBody, walletAddress, signatureType, _ref5$signature, signature, webHookAttributes, transactionHash, _getSignatureParamete, r, s, v, executionData, dispatchProvider, txParams, tx;
 
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
-                execTransactionBody = _ref5.execTransactionBody, walletAddress = _ref5.walletAddress, signatureType = _ref5.signatureType, _ref5$signature = _ref5.signature, signature = _ref5$signature === void 0 ? null : _ref5$signature;
+                execTransactionBody = _ref5.execTransactionBody, walletAddress = _ref5.walletAddress, signatureType = _ref5.signatureType, _ref5$signature = _ref5.signature, signature = _ref5$signature === void 0 ? null : _ref5$signature, webHookAttributes = _ref5.webHookAttributes;
 
                 if (this.isSignerWithAccounts) {
                   _context4.next = 4;
@@ -271,7 +296,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
               case 8:
                 transactionHash = _context4.sent;
                 _context4.next = 11;
-                return this.targetProvider.getSigner().signMessage(ethers.utils.arrayify(transactionHash));
+                return this.provider.getSigner().signMessage(ethers.utils.arrayify(transactionHash));
 
               case 11:
                 signature = _context4.sent;
@@ -284,7 +309,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
 
               case 18:
                 _context4.next = 20;
-                return this.targetProvider.getSigner()._signTypedData({
+                return this.provider.getSigner()._signTypedData({
                   verifyingContract: walletAddress,
                   chainId: this.networkId
                 }, config.EIP712_SAFE_TX_TYPE, execTransactionBody);
@@ -296,18 +321,44 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 this.baseWallet = this.baseWallet.attach(walletAddress);
                 this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
                 _context4.next = 25;
-                return this.baseWallet.execTransaction(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, signature);
+                return this.baseWallet.populateTransaction.execTransaction(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, signature);
 
               case 25:
+                executionData = _context4.sent;
+                dispatchProvider = this.engine.getEthersProvider(); //TODO
+                //Check if webhook attributes are passed before forwarding ?
+
+                txParams = {
+                  data: executionData.data,
+                  to: this.baseWallet.address,
+                  from: walletAddress,
+                  webHookAttributes: webHookAttributes
+                };
+                _context4.prev = 28;
+                _context4.next = 31;
+                return dispatchProvider.send("eth_sendTransaction", [txParams]);
+
+              case 31:
                 tx = _context4.sent;
+                _context4.next = 38;
+                break;
+
+              case 34:
+                _context4.prev = 34;
+                _context4.t0 = _context4["catch"](28);
+                // handle conditional rejections in this stack trace
+                console.log(_context4.t0);
+                throw _context4.t0;
+
+              case 38:
                 return _context4.abrupt("return", tx);
 
-              case 27:
+              case 39:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this);
+        }, _callee4, this, [[28, 34]]);
       }));
 
       function sendBiconomyWalletTransaction(_x4) {

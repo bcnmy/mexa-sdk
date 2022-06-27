@@ -832,6 +832,7 @@ async function handleSendTransaction(engine, payload, end) {
         // Information we get here is contractAddress, methodName, methodType, ApiId
         let metaTxApproach;
         let customBatchId;
+        let webHookAttributes;
         let customDomainName, customDomainVersion;
         let signTypedDataType;
         if (!api) {
@@ -853,6 +854,10 @@ async function handleSendTransaction(engine, payload, end) {
         let signatureType = payload.params[0].signatureType;
         if(payload.params[0].batchId){
         customBatchId = Number(payload.params[0].batchId);
+        }
+
+        if(payload.params[0].webHookAttributes){
+        webHookAttributes = payload.params[0].webHookAttributes;
         }
 
         if(payload.params[0].domainName){
@@ -1047,6 +1052,7 @@ async function handleSendTransaction(engine, payload, end) {
             data.params = paramArray;
             data.gasLimit = gasLimit;
             data.to = to;
+            data.webHookAttributes = webHookAttributes;
             _sendTransaction(engine, account, api, data, end);
           }
         } else {
@@ -1179,8 +1185,9 @@ function getTargetProvider(engine) {
         //comment this out and just log
         //throw new Error(`Please pass a provider connected to a wallet that can sign messages in Biconomy options.`);
         _logMessage("Please pass a provider connected to a wallet that can sign messages in Biconomy options");      
+      } else {
+        provider = engine.walletProvider;
       }
-      provider = engine.walletProvider;
     }
   }
   return provider;
@@ -1481,7 +1488,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
       engine.biconomyWalletClient = new BiconomyWalletClient({
         biconomyProvider: engine,
         provider: ethersProvider,
-        targetProvider: targetProvider,
+        targetProvider,
         isSignerWithAccounts,
         biconomyAttributes,
         walletFactoryAddress: engine.walletFactoryAddress,
