@@ -889,7 +889,7 @@ function _sendSignedTransaction() {
             }
 
             _context7.next = 88;
-            return _sendTransaction(engine, account, api, _data, end);
+            return _sendTransaction(engine, account, api, _data, end, payload);
 
           case 88:
             _context7.next = 99;
@@ -905,7 +905,7 @@ function _sendSignedTransaction() {
 
             _data2.to = decodedTx.to.toLowerCase();
             _context7.next = 99;
-            return _sendTransaction(engine, account, api, _data2, end);
+            return _sendTransaction(engine, account, api, _data2, end, payload);
 
           case 99:
             _context7.next = 102;
@@ -933,7 +933,7 @@ function _sendSignedTransaction() {
                 amount: relayerPayment.amount
               };
 
-              _sendTransaction(engine, account, api, _data3, end);
+              _sendTransaction(engine, account, api, _data3, end, payload);
             } else {
               _error7 = formatMessage(RESPONSE_CODES.INVALID_PAYLOAD, "Invalid payload data ".concat(JSON.stringify(payload.params[0]), ". message and signature are required in param object"));
               eventEmitter.emit(EVENTS.BICONOMY_ERROR, _error7);
@@ -1316,7 +1316,7 @@ function _handleSendTransaction() {
             }
 
             _context8.next = 137;
-            return _sendTransaction(engine, account, api, data, end);
+            return _sendTransaction(engine, account, api, data, end, payload);
 
           case 137:
             _context8.next = 148;
@@ -1332,7 +1332,7 @@ function _handleSendTransaction() {
             _data4.to = to;
             _data4.webHookAttributes = webHookAttributes;
 
-            _sendTransaction(engine, account, api, _data4, end);
+            _sendTransaction(engine, account, api, _data4, end, payload);
 
           case 148:
             _context8.next = 153;
@@ -1833,7 +1833,7 @@ function _getSignaturePersonal() {
                 }, _callee11, null, [[0, 10]]);
               }));
 
-              return function (_x33, _x34) {
+              return function (_x34, _x35) {
                 return _ref8.apply(this, arguments);
               };
             }());
@@ -2106,7 +2106,7 @@ function _validate(options) {
  **/
 
 
-function _sendTransaction(_x22, _x23, _x24, _x25, _x26) {
+function _sendTransaction(_x22, _x23, _x24, _x25, _x26, _x27) {
   return _sendTransaction2.apply(this, arguments);
 }
 /**
@@ -2120,7 +2120,7 @@ function _sendTransaction(_x22, _x23, _x24, _x25, _x26) {
 
 
 function _sendTransaction2() {
-  _sendTransaction2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee13(engine, account, api, data, cb) {
+  _sendTransaction2 = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee13(engine, account, api, data, cb, payload) {
     var url, fetchOption;
     return _regenerator["default"].wrap(function _callee13$(_context13) {
       while (1) {
@@ -2145,9 +2145,28 @@ function _sendTransaction2() {
                 _logMessage(result);
 
                 if (!result.txHash && result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE && result.flag != BICONOMY_RESPONSE_CODES.SUCCESS) {
-                  //Any error from relayer infra
+                  // check if conditions not met error code
+                  console.log('result', result);
+
+                  if (result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
+                    if (engine.strictMode) {
+                      var _error17 = formatMessage(RESPONSE_CODES.CONDITIONS_NOT_SATISFIED, "Conditions not met for given webhook attributes");
+
+                      return cb(_error17);
+                    } else {
+                      _logMessage("Strict mode is off so falling back to default provider for handling transaction");
+
+                      try {
+                        return callDefaultProvider(engine, payload, cb, "Conditions not met for given webhook attributes");
+                      } catch (error) {
+                        return cb(error);
+                      }
+                    }
+                  } //Any error from relayer infra
                   //TODO
                   //Involve fallback here with callDefaultProvider
+
+
                   var error = {};
                   error.code = result.flag || result.code;
 
@@ -2183,7 +2202,7 @@ function _sendTransaction2() {
   return _sendTransaction2.apply(this, arguments);
 }
 
-function _init(_x27, _x28) {
+function _init(_x28, _x29) {
   return _init2.apply(this, arguments);
 }
 
@@ -2298,7 +2317,7 @@ function _init2() {
                 }, _callee14);
               }));
 
-              return function (_x35) {
+              return function (_x36) {
                 return _ref9.apply(this, arguments);
               };
             }())["catch"](function (error) {
@@ -2326,7 +2345,7 @@ function isEthersProvider(provider) {
   return ethers.providers.Provider.isProvider(provider);
 }
 
-function onNetworkId(_x29, _x30) {
+function onNetworkId(_x30, _x31) {
   return _onNetworkId.apply(this, arguments);
 }
 
@@ -2458,7 +2477,7 @@ function _onNetworkId() {
   return _onNetworkId.apply(this, arguments);
 }
 
-function _checkUserLogin(_x31, _x32) {
+function _checkUserLogin(_x32, _x33) {
   return _checkUserLogin2.apply(this, arguments);
 }
 

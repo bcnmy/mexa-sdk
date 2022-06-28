@@ -13,7 +13,7 @@ config.daiDomainName = "Dai Stablecoin";
 config.daiVersion = "1";
 config.forwarderDomainName = "Biconomy Forwarder";
 config.forwarderVersion = "1";
-config.baseURL = "https://staging-api.biconomy.io";
+config.baseURL = "http://localhost:4000";
 config.nativeMetaTxUrl = "/api/".concat(config.version2, "/meta-tx/native");
 config.userLoginPath = "/api/".concat(config.version2, "/dapp-user/login");
 config.withdrawFundsUrl = "/api/".concat(config.version2, "/meta-tx/withdraw");
@@ -98,7 +98,8 @@ var RESPONSE_CODES = {
   EVENT_NOT_SUPPORTED: 'B513',
   INVALID_DATA: 'B514',
   INVALID_OPERATION: 'B515',
-  WRONG_ABI: 'B516'
+  WRONG_ABI: 'B516',
+  CONDITIONS_NOT_SATISFIED: 'B517'
 }; // could get these from sys info call
 
 config.forwardRequestType = [{
@@ -192,7 +193,8 @@ var BICONOMY_RESPONSE_CODES = {
   SUCCESS: 200,
   ACTION_COMPLETE: 143,
   USER_CONTRACT_NOT_FOUND: 148,
-  ERROR_RESPONSE: 144
+  ERROR_RESPONSE: 144,
+  CONDITIONS_NOT_SATISFIED: 400
 };
 var HTTP_CODES = {
   OK: 200,

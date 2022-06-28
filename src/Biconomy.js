@@ -723,7 +723,7 @@ async function sendSignedTransaction(engine, payload, end) {
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               data.signatureType = engine.EIP712_SIGN;
             }
-            await _sendTransaction(engine, account, api, data, end);
+            await _sendTransaction(engine, account, api, data, end, payload);
           } else {
             paramArray.push(...methodInfo.args);
 
@@ -733,7 +733,7 @@ async function sendSignedTransaction(engine, payload, end) {
             data.params = paramArray;
             data.gasLimit = decodedTx.gasLimit.toString(); //verify
             data.to = decodedTx.to.toLowerCase();
-            await _sendTransaction(engine, account, api, data, end);
+            await _sendTransaction(engine, account, api, data, end, payload);
           }
         } else {
           if (signature) {
@@ -757,7 +757,7 @@ async function sendSignedTransaction(engine, payload, end) {
               token: relayerPayment.token,
               amount: relayerPayment.amount,
             };
-            _sendTransaction(engine, account, api, data, end);
+            _sendTransaction(engine, account, api, data, end, payload);
           } else {
             let error = formatMessage(
               RESPONSE_CODES.INVALID_PAYLOAD,
@@ -1042,7 +1042,7 @@ async function handleSendTransaction(engine, payload, end) {
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               data.signatureType = engine.EIP712_SIGN;
             }
-            await _sendTransaction(engine, account, api, data, end);
+            await _sendTransaction(engine, account, api, data, end, payload);
           } else {
             paramArray.push(...methodInfo.args);
 
@@ -1053,7 +1053,7 @@ async function handleSendTransaction(engine, payload, end) {
             data.gasLimit = gasLimit;
             data.to = to;
             data.webHookAttributes = webHookAttributes;
-            _sendTransaction(engine, account, api, data, end);
+            _sendTransaction(engine, account, api, data, end, payload);
           }
         } else {
           let error = formatMessage(
@@ -1587,7 +1587,7 @@ function _validate(options) {
  * @param data Data to be sent to biconomy server having transaction data
  * @param cb Callback method to be called to pass result or send error
  **/
-async function _sendTransaction(engine, account, api, data, cb) {
+async function _sendTransaction(engine, account, api, data, cb, payload) {
   if (engine && account && api && data) {
     let url = api.url;
     let fetchOption = getFetchOptions("POST", engine.apiKey);
@@ -1609,6 +1609,28 @@ async function _sendTransaction(engine, account, api, data, cb) {
           result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE &&
           result.flag != BICONOMY_RESPONSE_CODES.SUCCESS
         ) {
+          // check if conditions not met error code
+          console.log('result', result);
+          if(result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
+            if (engine.strictMode) {
+              let error = formatMessage(
+                RESPONSE_CODES.CONDITIONS_NOT_SATISFIED,
+                `Conditions not met for given webhook attributes`
+              );
+              return cb(error);
+            } else {
+              _logMessage(
+                "Strict mode is off so falling back to default provider for handling transaction"
+              );
+
+              try {
+                return callDefaultProvider(engine, payload, cb, `Conditions not met for given webhook attributes`);
+              }
+              catch (error) {
+                return cb(error);
+              }
+            }
+          }
           //Any error from relayer infra
           //TODO
           //Involve fallback here with callDefaultProvider
