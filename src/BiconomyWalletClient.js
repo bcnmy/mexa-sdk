@@ -140,7 +140,7 @@ class BiconomyWalletClient {
         }
     }
 
-    async sendBiconomyWalletTransaction({ execTransactionBody, walletAddress, signatureType, signature = null, webHookAttributes }) {
+    async sendBiconomyWalletTransaction({ execTransactionBody, batchId, walletAddress, signatureType, signature = null, webHookAttributes }) {
         // let signature;
 
         if (!this.isSignerWithAccounts) {
@@ -183,12 +183,16 @@ class BiconomyWalletClient {
         this.baseWallet = this.baseWallet.attach(walletAddress);
         this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
         
+        const transaction = {
+            to: execTransactionBody.to,
+            value: execTransactionBody.value,
+            data: execTransactionBody.data,
+            operation: execTransactionBody.operation,
+            safeTxGas: execTransactionBody.safeTxGas,
+          };
+
         let executionData = await this.baseWallet.populateTransaction.execTransaction(
-            execTransactionBody.to,
-            execTransactionBody.value,
-            execTransactionBody.data,
-            execTransactionBody.operation,
-            execTransactionBody.safeTxGas,
+            transaction,
             execTransactionBody.baseGas,
             execTransactionBody.gasPrice,
             execTransactionBody.gasToken,
