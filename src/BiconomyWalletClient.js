@@ -130,7 +130,7 @@ class BiconomyWalletClient {
             value: 0,
             data,
             operation: 0,
-            safeTxGas: 0,
+            targetTxGas: 0,
             baseGas: 0,
             gasPrice: 0,
             gasToken: config.ZERO_ADDRESS,
@@ -155,7 +155,7 @@ class BiconomyWalletClient {
             value: execTransactionBody.value,
             data: execTransactionBody.data,
             operation: execTransactionBody.operation,
-            safeTxGas: execTransactionBody.safeTxGas,
+            targetTxGas: execTransactionBody.targetTxGas,
           };
 
         const refundInfo = {
@@ -167,14 +167,15 @@ class BiconomyWalletClient {
 
         if (!signature) {
             if (signatureType === 'PERSONAL_SIGN') {
-                // TODO
+                // @review
                 // @chirag can you check signatures when transaction and refundInfo structs are used
+                // There shouldn't be any difference here. check the test cases
                 const transactionHash = await this.baseWallet.getTransactionHash(
                     execTransactionBody.to,
                     execTransactionBody.value,
                     execTransactionBody.data,
                     execTransactionBody.operation,
-                    execTransactionBody.safeTxGas,
+                    execTransactionBody.targetTxGas,
                     execTransactionBody.baseGas,
                     execTransactionBody.gasPrice,
                     execTransactionBody.gasToken,
@@ -190,13 +191,19 @@ class BiconomyWalletClient {
             } else {
                 signature = await this.provider.getSigner()._signTypedData(
                     { verifyingContract: walletAddress, chainId: this.networkId },
-                    config.EIP712_SAFE_TX_TYPE,
+                    config.EIP712_WALLET_TX_TYPE,
                     execTransactionBody
                 )
             }
         }
 
         this.baseWallet = this.baseWallet.attach(walletAddress);
+
+
+        //append webwallet_address key in this object webHookAttributes
+        const owner = await this.baseWallet.owner(); //eoa
+        webHookAttributes.webwallet_address = owner;
+
         this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
         
 
