@@ -90,7 +90,7 @@ class BiconomyWalletClient {
         }
     }
 
-    async checkIfWalletExistsAndDeploy({ eoa, index = 0, webHookAttributes }) {
+    async checkIfWalletExistsAndDeploy({ eoa, index = 0 }) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
         this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
@@ -102,7 +102,6 @@ class BiconomyWalletClient {
                 data: executionData.data,
                 to: this.walletFactory.address,
                 from: eoa,
-                webHookAttributes: webHookAttributes
             };
 
             let tx;
@@ -140,7 +139,7 @@ class BiconomyWalletClient {
         }
     }
 
-    async sendBiconomyWalletTransaction({ execTransactionBody, batchId, walletAddress, signatureType, signature = null, webHookAttributes }) {
+    async sendBiconomyWalletTransaction({ execTransactionBody, batchId = 0, walletAddress, signatureType, signature = null, webHookAttributes }) {
         // let signature;
 
         if (!this.isSignerWithAccounts) {
@@ -151,8 +150,25 @@ class BiconomyWalletClient {
             }
         }
 
+        const transaction = {
+            to: execTransactionBody.to,
+            value: execTransactionBody.value,
+            data: execTransactionBody.data,
+            operation: execTransactionBody.operation,
+            safeTxGas: execTransactionBody.safeTxGas,
+          };
+
+        const refundInfo = {
+            baseGas: execTransactionBody.baseGas,
+            gasPrice: execTransactionBody.gasPrice,
+            gasToken: execTransactionBody.gasToken,
+            refundReceiver: execTransactionBody.refundReceiver,
+          };
+
         if (!signature) {
             if (signatureType === 'PERSONAL_SIGN') {
+                // TODO
+                // @chirag can you check signatures when transaction and refundInfo structs are used
                 const transactionHash = await this.baseWallet.getTransactionHash(
                     execTransactionBody.to,
                     execTransactionBody.value,
@@ -183,20 +199,11 @@ class BiconomyWalletClient {
         this.baseWallet = this.baseWallet.attach(walletAddress);
         this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
         
-        const transaction = {
-            to: execTransactionBody.to,
-            value: execTransactionBody.value,
-            data: execTransactionBody.data,
-            operation: execTransactionBody.operation,
-            safeTxGas: execTransactionBody.safeTxGas,
-          };
 
         let executionData = await this.baseWallet.populateTransaction.execTransaction(
             transaction,
-            execTransactionBody.baseGas,
-            execTransactionBody.gasPrice,
-            execTransactionBody.gasToken,
-            execTransactionBody.refundReceiver,
+            batchId,
+            refundInfo,
             signature
         );
         let dispatchProvider = this.engine.getEthersProvider();
@@ -205,10 +212,10 @@ class BiconomyWalletClient {
         //Check if webhook attributes are passed before forwarding ?
 
         let txParams = {
-             data: executionData.data,
-             to: this.baseWallet.address,
-             from: walletAddress,
-             webHookAttributes: webHookAttributes
+            data: executionData.data,
+            to: this.baseWallet.address,
+            from: walletAddress,
+            webHookAttributes: webHookAttributes
         };
 
         let tx;
