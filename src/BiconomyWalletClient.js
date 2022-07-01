@@ -210,6 +210,7 @@ class BiconomyWalletClient {
 
         //TODO
         //Check if webhook attributes are passed before forwarding ?
+        webHookAttributes.webHookData.webwallet_address = walletAddress;
 
         let txParams = {
             data: executionData.data,

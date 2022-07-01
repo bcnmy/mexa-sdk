@@ -1498,9 +1498,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         networkId: engine.networkId
       })
 
-      _logMessage(engine.permitClient);
-      _logMessage(engine.erc20ForwarderClient);
-      _logMessage(engine.biconomyWalletClient);
+      console.log(engine.permitClient);
+      console.log(engine.erc20ForwarderClient);
+      console.log(engine.biconomyWalletClient);
     }
     else {
       _logMessage("ERC20 Forwarder is not supported for this network");
@@ -1610,7 +1610,6 @@ async function _sendTransaction(engine, account, api, data, cb, payload) {
           result.flag != BICONOMY_RESPONSE_CODES.SUCCESS
         ) {
           // check if conditions not met error code
-          console.log('result', result);
           if(result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
             if (engine.strictMode) {
               let error = formatMessage(
@@ -1877,7 +1876,6 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
               );
             }
             let smartContractList = result.smartContracts;
-            console.log('smartContractList', smartContractList);
             if (
               smartContractList &&
               smartContractList.length > 0
@@ -1901,7 +1899,6 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
                   ] = contract.abi;
                 }
               });
-              console.log("interfaceMap", interfaceMap);
               _logMessage(smartContractMetaTransactionMap);
               _checkUserLogin(engine, dappId);
             } else {

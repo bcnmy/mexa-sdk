@@ -1999,13 +1999,9 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               handlerAddress: engine.handlerAddress,
               networkId: engine.networkId
             });
-
-            _logMessage(engine.permitClient);
-
-            _logMessage(engine.erc20ForwarderClient);
-
-            _logMessage(engine.biconomyWalletClient);
-
+            console.log(engine.permitClient);
+            console.log(engine.erc20ForwarderClient);
+            console.log(engine.biconomyWalletClient);
             _context5.next = 47;
             break;
 
@@ -2146,8 +2142,6 @@ function _sendTransaction2() {
 
                 if (!result.txHash && result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE && result.flag != BICONOMY_RESPONSE_CODES.SUCCESS) {
                   // check if conditions not met error code
-                  console.log('result', result);
-
                   if (result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
                     if (engine.strictMode) {
                       var _error17 = formatMessage(RESPONSE_CODES.CONDITIONS_NOT_SATISFIED, "Conditions not met for given webhook attributes");
@@ -2433,7 +2427,6 @@ function _onNetworkId() {
                 }
 
                 var smartContractList = result.smartContracts;
-                console.log('smartContractList', smartContractList);
 
                 if (smartContractList && smartContractList.length > 0) {
                   smartContractList.forEach(function (contract) {
@@ -2449,7 +2442,6 @@ function _onNetworkId() {
                       smartContractMap[contract.address.toLowerCase()] = contract.abi;
                     }
                   });
-                  console.log("interfaceMap", interfaceMap);
 
                   _logMessage(smartContractMetaTransactionMap);
 
