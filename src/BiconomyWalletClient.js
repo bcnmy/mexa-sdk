@@ -199,11 +199,6 @@ class BiconomyWalletClient {
 
         this.baseWallet = this.baseWallet.attach(walletAddress);
 
-
-        //append webwallet_address key in this object webHookAttributes
-        const owner = await this.baseWallet.owner(); //eoa
-        webHookAttributes.webwallet_address = owner;
-
         this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
         
 
@@ -215,14 +210,14 @@ class BiconomyWalletClient {
         );
         let dispatchProvider = this.engine.getEthersProvider();
 
-        //TODO
-        //Check if webhook attributes are passed before forwarding ?
-        webHookAttributes.webHookData.webwallet_address = walletAddress;
+        //append webwallet_address key in this object webHookAttributes
+        const owner = await this.baseWallet.owner(); //eoa
+        webHookAttributes.webHookData.webwallet_address = owner;
 
         let txParams = {
             data: executionData.data,
             to: this.baseWallet.address,
-            from: walletAddress,
+            from: owner,
             webHookAttributes: webHookAttributes
         };
 

@@ -2150,6 +2150,8 @@ function _sendTransaction2() {
                       _logMessage("Strict mode is off so falling back to default provider for handling transaction");
 
                       try {
+                        console.log("payload", payload);
+                        debugger;
                         return callDefaultProvider(engine, payload, cb, "Conditions not met for given webhook attributes");
                       } catch (error) {
                         return cb(error);
