@@ -222,18 +222,17 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
               case 0:
                 data = _ref4.data, to = _ref4.to, walletAddress = _ref4.walletAddress, _ref4$batchId = _ref4.batchId, batchId = _ref4$batchId === void 0 ? 0 : _ref4$batchId;
                 this.baseWallet = this.baseWallet.attach(walletAddress);
-                console.log(this.baseWallet);
-                _context3.next = 5;
+                _context3.next = 4;
                 return this.baseWallet.getNonce(batchId);
 
-              case 5:
+              case 4:
                 nonce = _context3.sent;
                 return _context3.abrupt("return", {
                   to: to,
                   value: 0,
                   data: data,
                   operation: 0,
-                  safeTxGas: 0,
+                  targetTxGas: 0,
                   baseGas: 0,
                   gasPrice: 0,
                   gasToken: config.ZERO_ADDRESS,
@@ -241,7 +240,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   nonce: nonce
                 });
 
-              case 7:
+              case 6:
               case "end":
                 return _context3.stop();
             }
@@ -259,7 +258,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
     key: "sendBiconomyWalletTransaction",
     value: function () {
       var _sendBiconomyWalletTransaction = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee4(_ref5) {
-        var execTransactionBody, _ref5$batchId, batchId, walletAddress, signatureType, _ref5$signature, signature, webHookAttributes, transaction, refundInfo, transactionHash, _getSignatureParamete, r, s, v, executionData, dispatchProvider, txParams, tx;
+        var execTransactionBody, _ref5$batchId, batchId, walletAddress, signatureType, _ref5$signature, signature, webHookAttributes, transaction, refundInfo, transactionHash, _getSignatureParamete, r, s, v, owner, executionData, dispatchProvider, txParams, tx;
 
         return _regenerator["default"].wrap(function _callee4$(_context4) {
           while (1) {
@@ -285,7 +284,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   value: execTransactionBody.value,
                   data: execTransactionBody.data,
                   operation: execTransactionBody.operation,
-                  safeTxGas: execTransactionBody.safeTxGas
+                  targetTxGas: execTransactionBody.targetTxGas
                 };
                 refundInfo = {
                   baseGas: execTransactionBody.baseGas,
@@ -305,7 +304,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 }
 
                 _context4.next = 10;
-                return this.baseWallet.getTransactionHash(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.safeTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, execTransactionBody.nonce);
+                return this.baseWallet.getTransactionHash(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.targetTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, execTransactionBody.nonce);
 
               case 10:
                 transactionHash = _context4.sent;
@@ -326,18 +325,26 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 return this.provider.getSigner()._signTypedData({
                   verifyingContract: walletAddress,
                   chainId: this.networkId
-                }, config.EIP712_SAFE_TX_TYPE, execTransactionBody);
+                }, config.EIP712_WALLET_TX_TYPE, execTransactionBody);
 
               case 22:
                 signature = _context4.sent;
 
               case 23:
-                this.baseWallet = this.baseWallet.attach(walletAddress);
+                this.baseWallet = this.baseWallet.attach(walletAddress); //append webwallet_address key in this object webHookAttributes
+
+                _context4.next = 26;
+                return this.baseWallet.owner();
+
+              case 26:
+                owner = _context4.sent;
+                //eoa
+                webHookAttributes.webwallet_address = owner;
                 this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
-                _context4.next = 27;
+                _context4.next = 31;
                 return this.baseWallet.populateTransaction.execTransaction(transaction, batchId, refundInfo, signature);
 
-              case 27:
+              case 31:
                 executionData = _context4.sent;
                 dispatchProvider = this.engine.getEthersProvider(); //TODO
                 //Check if webhook attributes are passed before forwarding ?
@@ -349,31 +356,31 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   from: walletAddress,
                   webHookAttributes: webHookAttributes
                 };
-                _context4.prev = 31;
-                _context4.next = 34;
+                _context4.prev = 35;
+                _context4.next = 38;
                 return dispatchProvider.send("eth_sendTransaction", [txParams]);
 
-              case 34:
+              case 38:
                 tx = _context4.sent;
-                _context4.next = 41;
+                _context4.next = 45;
                 break;
 
-              case 37:
-                _context4.prev = 37;
-                _context4.t0 = _context4["catch"](31);
+              case 41:
+                _context4.prev = 41;
+                _context4.t0 = _context4["catch"](35);
                 // handle conditional rejections in this stack trace
                 console.log(_context4.t0);
                 throw _context4.t0;
 
-              case 41:
+              case 45:
                 return _context4.abrupt("return", tx);
 
-              case 42:
+              case 46:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[31, 37]]);
+        }, _callee4, this, [[35, 41]]);
       }));
 
       function sendBiconomyWalletTransaction(_x4) {

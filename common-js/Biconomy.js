@@ -1934,28 +1934,41 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
 
           case 19:
             erc20ForwarderAddress = engine.options.erc20ForwarderAddress || engine.erc20ForwarderAddress;
-            transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress;
+            transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress; // Has to be biconomy wrapped provider in order to make gasless calls!
+
+            engine.biconomyWalletClient = new BiconomyWalletClient({
+              biconomyProvider: engine,
+              provider: ethersProvider,
+              targetProvider: targetProvider,
+              isSignerWithAccounts: isSignerWithAccounts,
+              biconomyAttributes: biconomyAttributes,
+              walletFactoryAddress: engine.walletFactoryAddress,
+              baseWalletAddress: engine.baseWalletAddress,
+              entryPointAddress: engine.entryPointAddress,
+              handlerAddress: engine.handlerAddress,
+              networkId: engine.networkId
+            });
 
             if (!erc20ForwarderAddress) {
-              _context5.next = 46;
+              _context5.next = 45;
               break;
             }
 
             erc20Forwarder = new ethers.Contract(erc20ForwarderAddress, erc20ForwarderAbi, signerOrProvider);
-            _context5.next = 25;
+            _context5.next = 26;
             return erc20Forwarder.oracleAggregator();
 
-          case 25:
+          case 26:
             oracleAggregatorAddress = _context5.sent;
-            _context5.next = 28;
+            _context5.next = 29;
             return erc20Forwarder.feeManager();
 
-          case 28:
+          case 29:
             feeManagerAddress = _context5.sent;
-            _context5.next = 31;
+            _context5.next = 32;
             return erc20Forwarder.forwarder();
 
-          case 31:
+          case 32:
             forwarderAddress = _context5.sent;
             oracleAggregator = new ethers.Contract(oracleAggregatorAddress, oracleAggregatorAbi, signerOrProvider);
             feeManager = new ethers.Contract(feeManagerAddress, feeManagerAbi, signerOrProvider); //If ERC20 Forwarder Address exits then it would have configured Forwarder 
@@ -1985,48 +1998,34 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               trustedForwarderOverhead: trustedForwarderOverhead,
               daiPermitOverhead: daiPermitOverhead,
               eip2612PermitOverhead: eip2612PermitOverhead
-            }); // Has to be biconomy wrapped provider in order to make gasless calls!
-
-            engine.biconomyWalletClient = new BiconomyWalletClient({
-              biconomyProvider: engine,
-              provider: ethersProvider,
-              targetProvider: targetProvider,
-              isSignerWithAccounts: isSignerWithAccounts,
-              biconomyAttributes: biconomyAttributes,
-              walletFactoryAddress: engine.walletFactoryAddress,
-              baseWalletAddress: engine.baseWalletAddress,
-              entryPointAddress: engine.entryPointAddress,
-              handlerAddress: engine.handlerAddress,
-              networkId: engine.networkId
             });
             console.log(engine.permitClient);
             console.log(engine.erc20ForwarderClient);
-            console.log(engine.biconomyWalletClient);
-            _context5.next = 47;
+            _context5.next = 46;
             break;
 
-          case 46:
+          case 45:
             _logMessage("ERC20 Forwarder is not supported for this network"); //Warning : you would not be able to use ERC20ForwarderClient and PermitClient 
 
 
-          case 47:
+          case 46:
             engine.status = STATUS.BICONOMY_READY;
             eventEmitter.emit(STATUS.BICONOMY_READY);
-            _context5.next = 54;
+            _context5.next = 53;
             break;
 
-          case 51:
-            _context5.prev = 51;
+          case 50:
+            _context5.prev = 50;
             _context5.t1 = _context5["catch"](0);
 
             _logMessage(_context5.t1);
 
-          case 54:
+          case 53:
           case "end":
             return _context5.stop();
         }
       }
-    }, _callee5, null, [[0, 51], [7, 13]]);
+    }, _callee5, null, [[0, 50], [7, 13]]);
   }));
 
   return function (_x21) {
