@@ -359,7 +359,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
 
               case 37:
                 tx = _context4.sent;
-                _context4.next = 45;
+                _context4.next = 44;
                 break;
 
               case 40:
@@ -367,13 +367,12 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 _context4.t0 = _context4["catch"](34);
                 // handle conditional rejections in this stack trace
                 console.log(_context4.t0);
-                debugger;
                 throw _context4.t0;
 
-              case 45:
+              case 44:
                 return _context4.abrupt("return", tx);
 
-              case 46:
+              case 45:
               case "end":
                 return _context4.stop();
             }

@@ -8,10 +8,6 @@ const {
     entryPointAbi
 } = require('./abis');
 
-function isEthersProvider(provider) {
-    return ethers.providers.Provider.isProvider(provider);
-}
-
 function getSignatureParameters(signature) {
     if (!ethers.utils.isHexString(signature)) {
         throw new Error(
@@ -140,7 +136,6 @@ class BiconomyWalletClient {
     }
 
     async sendBiconomyWalletTransaction({ execTransactionBody, batchId = 0, walletAddress, signatureType, signature = null, webHookAttributes }) {
-        // let signature;
 
         if (!this.isSignerWithAccounts) {
             if (!signature) {
@@ -167,9 +162,6 @@ class BiconomyWalletClient {
 
         if (!signature) {
             if (signatureType === 'PERSONAL_SIGN') {
-                // @review
-                // @chirag can you check signatures when transaction and refundInfo structs are used
-                // There shouldn't be any difference here. check the test cases
                 const transactionHash = await this.baseWallet.getTransactionHash(
                     execTransactionBody.to,
                     execTransactionBody.value,
