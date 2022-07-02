@@ -8,10 +8,6 @@ const {
     entryPointAbi
 } = require('./abis');
 
-function isEthersProvider(provider) {
-    return ethers.providers.Provider.isProvider(provider);
-}
-
 function getSignatureParameters(signature) {
     if (!ethers.utils.isHexString(signature)) {
         throw new Error(
@@ -90,7 +86,7 @@ class BiconomyWalletClient {
         }
     }
 
-    async checkIfWalletExistsAndDeploy({ eoa, index = 0, webHookAttributes }) {
+    async checkIfWalletExistsAndDeploy({ eoa, index = 0 }) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
         this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
@@ -102,7 +98,6 @@ class BiconomyWalletClient {
                 data: executionData.data,
                 to: this.walletFactory.address,
                 from: eoa,
-                webHookAttributes: webHookAttributes
             };
 
             let tx;
@@ -131,7 +126,7 @@ class BiconomyWalletClient {
             value: 0,
             data,
             operation: 0,
-            safeTxGas: 0,
+            targetTxGas: 0,
             baseGas: 0,
             gasPrice: 0,
             gasToken: config.ZERO_ADDRESS,
@@ -140,8 +135,7 @@ class BiconomyWalletClient {
         }
     }
 
-    async sendBiconomyWalletTransaction({ execTransactionBody, walletAddress, signatureType, signature = null, webHookAttributes }) {
-        // let signature;
+    async sendBiconomyWalletTransaction({ execTransactionBody, batchId = 0, walletAddress, signatureType, signature = null, webHookAttributes }) {
 
         if (!this.isSignerWithAccounts) {
             if (!signature) {
@@ -151,6 +145,21 @@ class BiconomyWalletClient {
             }
         }
 
+        const transaction = {
+            to: execTransactionBody.to,
+            value: execTransactionBody.value,
+            data: execTransactionBody.data,
+            operation: execTransactionBody.operation,
+            targetTxGas: execTransactionBody.targetTxGas,
+          };
+
+        const refundInfo = {
+            baseGas: execTransactionBody.baseGas,
+            gasPrice: execTransactionBody.gasPrice,
+            gasToken: execTransactionBody.gasToken,
+            refundReceiver: execTransactionBody.refundReceiver,
+          };
+
         if (!signature) {
             if (signatureType === 'PERSONAL_SIGN') {
                 const transactionHash = await this.baseWallet.getTransactionHash(
@@ -158,7 +167,7 @@ class BiconomyWalletClient {
                     execTransactionBody.value,
                     execTransactionBody.data,
                     execTransactionBody.operation,
-                    execTransactionBody.safeTxGas,
+                    execTransactionBody.targetTxGas,
                     execTransactionBody.baseGas,
                     execTransactionBody.gasPrice,
                     execTransactionBody.gasToken,
@@ -174,37 +183,34 @@ class BiconomyWalletClient {
             } else {
                 signature = await this.provider.getSigner()._signTypedData(
                     { verifyingContract: walletAddress, chainId: this.networkId },
-                    config.EIP712_SAFE_TX_TYPE,
+                    config.EIP712_WALLET_TX_TYPE,
                     execTransactionBody
                 )
             }
         }
 
         this.baseWallet = this.baseWallet.attach(walletAddress);
+
         this.baseWallet = this.baseWallet.connect(this.engine.getSignerByAddress(walletAddress));
         
+
         let executionData = await this.baseWallet.populateTransaction.execTransaction(
-            execTransactionBody.to,
-            execTransactionBody.value,
-            execTransactionBody.data,
-            execTransactionBody.operation,
-            execTransactionBody.safeTxGas,
-            execTransactionBody.baseGas,
-            execTransactionBody.gasPrice,
-            execTransactionBody.gasToken,
-            execTransactionBody.refundReceiver,
+            transaction,
+            batchId,
+            refundInfo,
             signature
         );
         let dispatchProvider = this.engine.getEthersProvider();
 
-        //TODO
-        //Check if webhook attributes are passed before forwarding ?
+        //append webwallet_address key in this object webHookAttributes
+        const owner = await this.baseWallet.owner(); //eoa
+        webHookAttributes.webHookData.webwallet_address = owner;
 
         let txParams = {
-             data: executionData.data,
-             to: this.baseWallet.address,
-             from: walletAddress,
-             webHookAttributes: webHookAttributes
+            data: executionData.data,
+            to: this.baseWallet.address,
+            from: owner,
+            webHookAttributes: webHookAttributes
         };
 
         let tx;

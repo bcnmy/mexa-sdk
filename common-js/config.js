@@ -13,7 +13,7 @@ config.daiDomainName = "Dai Stablecoin";
 config.daiVersion = "1";
 config.forwarderDomainName = "Biconomy Forwarder";
 config.forwarderVersion = "1";
-config.baseURL = "http://localhost:4000";
+config.baseURL = "https://staging-api.biconomy.io";
 config.nativeMetaTxUrl = "/api/".concat(config.version2, "/meta-tx/native");
 config.userLoginPath = "/api/".concat(config.version2, "/dapp-user/login");
 config.withdrawFundsUrl = "/api/".concat(config.version2, "/meta-tx/withdraw");
@@ -37,9 +37,9 @@ config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.DAI = "DAI_Permit";
 config.EIP2612 = "EIP2612_Permit";
-config.EIP712_SAFE_TX_TYPE = {
-  // "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
-  SafeTx: [{
+config.EIP712_WALLET_TX_TYPE = {
+  // "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 targetTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
+  WalletTx: [{
     type: "address",
     name: "to"
   }, {
@@ -53,7 +53,7 @@ config.EIP712_SAFE_TX_TYPE = {
     name: "operation"
   }, {
     type: "uint256",
-    name: "safeTxGas"
+    name: "targetTxGas"
   }, {
     type: "uint256",
     name: "baseGas"

@@ -1422,6 +1422,20 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
     const transferHandlerAddress =
       engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
+    // Has to be biconomy wrapped provider in order to make gasless calls!
+    engine.biconomyWalletClient = new BiconomyWalletClient({
+      biconomyProvider: engine,
+      provider: ethersProvider,
+      targetProvider,
+      isSignerWithAccounts,
+      biconomyAttributes,
+      walletFactoryAddress: engine.walletFactoryAddress,
+      baseWalletAddress: engine.baseWalletAddress,
+      entryPointAddress: engine.entryPointAddress,
+      handlerAddress: engine.handlerAddress,
+      networkId: engine.networkId
+    })
+
     if (erc20ForwarderAddress) {
       const erc20Forwarder = new ethers.Contract(
         erc20ForwarderAddress,
@@ -1484,23 +1498,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         eip2612PermitOverhead
       });
 
-      // Has to be biconomy wrapped provider in order to make gasless calls!
-      engine.biconomyWalletClient = new BiconomyWalletClient({
-        biconomyProvider: engine,
-        provider: ethersProvider,
-        targetProvider,
-        isSignerWithAccounts,
-        biconomyAttributes,
-        walletFactoryAddress: engine.walletFactoryAddress,
-        baseWalletAddress: engine.baseWalletAddress,
-        entryPointAddress: engine.entryPointAddress,
-        handlerAddress: engine.handlerAddress,
-        networkId: engine.networkId
-      })
-
-      _logMessage(engine.permitClient);
-      _logMessage(engine.erc20ForwarderClient);
-      _logMessage(engine.biconomyWalletClient);
+      console.log(engine.permitClient);
+      console.log(engine.erc20ForwarderClient);
     }
     else {
       _logMessage("ERC20 Forwarder is not supported for this network");
@@ -1610,7 +1609,6 @@ async function _sendTransaction(engine, account, api, data, cb, payload) {
           result.flag != BICONOMY_RESPONSE_CODES.SUCCESS
         ) {
           // check if conditions not met error code
-          console.log('result', result);
           if(result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
             if (engine.strictMode) {
               let error = formatMessage(
@@ -1877,7 +1875,6 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
               );
             }
             let smartContractList = result.smartContracts;
-            console.log('smartContractList', smartContractList);
             if (
               smartContractList &&
               smartContractList.length > 0
@@ -1901,7 +1898,6 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
                   ] = contract.abi;
                 }
               });
-              console.log("interfaceMap", interfaceMap);
               _logMessage(smartContractMetaTransactionMap);
               _checkUserLogin(engine, dappId);
             } else {
