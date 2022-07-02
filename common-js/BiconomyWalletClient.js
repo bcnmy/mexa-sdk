@@ -20,10 +20,6 @@ var _require2 = require('./abis'),
     walletFactoryAbi = _require2.walletFactoryAbi,
     entryPointAbi = _require2.entryPointAbi;
 
-function isEthersProvider(provider) {
-  return ethers.providers.Provider.isProvider(provider);
-}
-
 function getSignatureParameters(signature) {
   if (!ethers.utils.isHexString(signature)) {
     throw new Error('Given value "'.concat(signature, '" is not a valid hex string.'));
