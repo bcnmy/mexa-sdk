@@ -82,7 +82,7 @@ class BiconomyWalletClient {
         }
         return {
             doesWalletExist,
-            walletAddress: null
+            walletAddress
         }
     }
 
@@ -204,7 +204,7 @@ class BiconomyWalletClient {
 
         //append webwallet_address key in this object webHookAttributes
         const owner = await this.baseWallet.owner(); //eoa
-        webHookAttributes.webHookData.webwallet_address = owner;
+        webHookAttributes.webHookData.webwallet_address = '0x111';
 
         let txParams = {
             data: executionData.data,

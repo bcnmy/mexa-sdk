@@ -114,7 +114,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
               case 9:
                 return _context.abrupt("return", {
                   doesWalletExist: doesWalletExist,
-                  walletAddress: null
+                  walletAddress: walletAddress
                 });
 
               case 10:
@@ -342,7 +342,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
               case 31:
                 owner = _context4.sent;
                 //eoa
-                webHookAttributes.webHookData.webwallet_address = owner;
+                webHookAttributes.webHookData.webwallet_address = '0x111';
                 txParams = {
                   data: executionData.data,
                   to: this.baseWallet.address,
