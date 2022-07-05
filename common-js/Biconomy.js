@@ -1936,18 +1936,22 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
             erc20ForwarderAddress = engine.options.erc20ForwarderAddress || engine.erc20ForwarderAddress;
             transferHandlerAddress = engine.options.transferHandlerAddress || engine.transferHandlerAddress; // Has to be biconomy wrapped provider in order to make gasless calls!
 
-            engine.biconomyWalletClient = new BiconomyWalletClient({
-              biconomyProvider: engine,
-              provider: ethersProvider,
-              targetProvider: targetProvider,
-              isSignerWithAccounts: isSignerWithAccounts,
-              biconomyAttributes: biconomyAttributes,
-              walletFactoryAddress: engine.walletFactoryAddress,
-              baseWalletAddress: engine.baseWalletAddress,
-              entryPointAddress: engine.entryPointAddress,
-              handlerAddress: engine.handlerAddress,
-              networkId: engine.networkId
-            });
+            if (engine.walletFactoryAddress) {
+              engine.biconomyWalletClient = new BiconomyWalletClient({
+                biconomyProvider: engine,
+                provider: ethersProvider,
+                targetProvider: targetProvider,
+                isSignerWithAccounts: isSignerWithAccounts,
+                biconomyAttributes: biconomyAttributes,
+                walletFactoryAddress: engine.walletFactoryAddress,
+                baseWalletAddress: engine.baseWalletAddress,
+                entryPointAddress: engine.entryPointAddress,
+                handlerAddress: engine.handlerAddress,
+                networkId: engine.networkId
+              });
+
+              _logMessage(engine.biconomyWalletClient);
+            }
 
             if (!erc20ForwarderAddress) {
               _context5.next = 45;
@@ -1999,8 +2003,11 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, /*#__PURE__*/function () {
               daiPermitOverhead: daiPermitOverhead,
               eip2612PermitOverhead: eip2612PermitOverhead
             });
-            console.log(engine.permitClient);
-            console.log(engine.erc20ForwarderClient);
+
+            _logMessage(engine.permitClient);
+
+            _logMessage(engine.erc20ForwarderClient);
+
             _context5.next = 46;
             break;
 
