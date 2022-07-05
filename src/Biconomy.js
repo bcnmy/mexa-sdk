@@ -1423,18 +1423,21 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
       engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
     // Has to be biconomy wrapped provider in order to make gasless calls!
-    engine.biconomyWalletClient = new BiconomyWalletClient({
-      biconomyProvider: engine,
-      provider: ethersProvider,
-      targetProvider,
-      isSignerWithAccounts,
-      biconomyAttributes,
-      walletFactoryAddress: engine.walletFactoryAddress,
-      baseWalletAddress: engine.baseWalletAddress,
-      entryPointAddress: engine.entryPointAddress,
-      handlerAddress: engine.handlerAddress,
-      networkId: engine.networkId
-    })
+    if(engine.walletFactoryAddress) {
+      engine.biconomyWalletClient = new BiconomyWalletClient({
+        biconomyProvider: engine,
+        provider: ethersProvider,
+        targetProvider,
+        isSignerWithAccounts,
+        biconomyAttributes,
+        walletFactoryAddress: engine.walletFactoryAddress,
+        baseWalletAddress: engine.baseWalletAddress,
+        entryPointAddress: engine.entryPointAddress,
+        handlerAddress: engine.handlerAddress,
+        networkId: engine.networkId
+      })
+      _logMessage(engine.biconomyWalletClient);
+    }
 
     if (erc20ForwarderAddress) {
       const erc20Forwarder = new ethers.Contract(
@@ -1498,8 +1501,8 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         eip2612PermitOverhead
       });
 
-      console.log(engine.permitClient);
-      console.log(engine.erc20ForwarderClient);
+      _logMessage(engine.permitClient);
+      _logMessage(engine.erc20ForwarderClient);
     }
     else {
       _logMessage("ERC20 Forwarder is not supported for this network");
