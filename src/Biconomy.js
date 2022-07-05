@@ -18,6 +18,7 @@ const NATIVE_META_TX_URL = config.nativeMetaTxUrl;
 
 let PermitClient = require("./PermitClient");
 let ERC20ForwarderClient = require("./ERC20ForwarderClient");
+let BiconomyWalletClient = require("./BiconomyWalletClient");
 let { buildForwardTxRequest, getDomainSeperator } = require("./biconomyforwarder");
 let {
   erc20ForwarderAbi,
@@ -75,7 +76,7 @@ function Biconomy(provider, options) {
   this.strictMode = options.strictMode || false;
   this.providerId = options.providerId || 0;
   this.readViaContract = options.readViaContract || false;
-  
+
   this.READY = STATUS.BICONOMY_READY;
   this.LOGIN_CONFIRMATION = EVENTS.LOGIN_CONFIRMATION;
   this.ERROR = EVENTS.BICONOMY_ERROR;
@@ -714,7 +715,6 @@ async function sendSignedTransaction(engine, payload, end) {
             }
 
             paramArray.push(signature);
-
             let data = {};
             data.from = account;
             data.apiId = api.id;
@@ -723,7 +723,7 @@ async function sendSignedTransaction(engine, payload, end) {
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               data.signatureType = engine.EIP712_SIGN;
             }
-            await _sendTransaction(engine, account, api, data, end);
+            await _sendTransaction(engine, account, api, data, end, payload);
           } else {
             paramArray.push(...methodInfo.args);
 
@@ -733,7 +733,7 @@ async function sendSignedTransaction(engine, payload, end) {
             data.params = paramArray;
             data.gasLimit = decodedTx.gasLimit.toString(); //verify
             data.to = decodedTx.to.toLowerCase();
-            await _sendTransaction(engine, account, api, data, end);
+            await _sendTransaction(engine, account, api, data, end, payload);
           }
         } else {
           if (signature) {
@@ -757,7 +757,7 @@ async function sendSignedTransaction(engine, payload, end) {
               token: relayerPayment.token,
               amount: relayerPayment.amount,
             };
-            _sendTransaction(engine, account, api, data, end);
+            _sendTransaction(engine, account, api, data, end, payload);
           } else {
             let error = formatMessage(
               RESPONSE_CODES.INVALID_PAYLOAD,
@@ -832,6 +832,7 @@ async function handleSendTransaction(engine, payload, end) {
         // Information we get here is contractAddress, methodName, methodType, ApiId
         let metaTxApproach;
         let customBatchId;
+        let webHookAttributes;
         let customDomainName, customDomainVersion;
         let signTypedDataType;
         if (!api) {
@@ -853,6 +854,10 @@ async function handleSendTransaction(engine, payload, end) {
         let signatureType = payload.params[0].signatureType;
         if(payload.params[0].batchId){
         customBatchId = Number(payload.params[0].batchId);
+        }
+
+        if(payload.params[0].webHookAttributes){
+        webHookAttributes = payload.params[0].webHookAttributes;
         }
 
         if(payload.params[0].domainName){
@@ -1037,7 +1042,7 @@ async function handleSendTransaction(engine, payload, end) {
             if (signatureType && signatureType == engine.EIP712_SIGN) {
               data.signatureType = engine.EIP712_SIGN;
             }
-            await _sendTransaction(engine, account, api, data, end);
+            await _sendTransaction(engine, account, api, data, end, payload);
           } else {
             paramArray.push(...methodInfo.args);
 
@@ -1047,7 +1052,8 @@ async function handleSendTransaction(engine, payload, end) {
             data.params = paramArray;
             data.gasLimit = gasLimit;
             data.to = to;
-            _sendTransaction(engine, account, api, data, end);
+            data.webHookAttributes = webHookAttributes;
+            _sendTransaction(engine, account, api, data, end, payload);
           }
         } else {
           let error = formatMessage(
@@ -1179,8 +1185,9 @@ function getTargetProvider(engine) {
         //comment this out and just log
         //throw new Error(`Please pass a provider connected to a wallet that can sign messages in Biconomy options.`);
         _logMessage("Please pass a provider connected to a wallet that can sign messages in Biconomy options");      
+      } else {
+        provider = engine.walletProvider;
       }
-      provider = engine.walletProvider;
     }
   }
   return provider;
@@ -1415,6 +1422,23 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
     const transferHandlerAddress =
       engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
+    // Has to be biconomy wrapped provider in order to make gasless calls!
+    if(engine.walletFactoryAddress) {
+      engine.biconomyWalletClient = new BiconomyWalletClient({
+        biconomyProvider: engine,
+        provider: ethersProvider,
+        targetProvider,
+        isSignerWithAccounts,
+        biconomyAttributes,
+        walletFactoryAddress: engine.walletFactoryAddress,
+        baseWalletAddress: engine.baseWalletAddress,
+        entryPointAddress: engine.entryPointAddress,
+        handlerAddress: engine.handlerAddress,
+        networkId: engine.networkId
+      })
+      _logMessage(engine.biconomyWalletClient);
+    }
+
     if (erc20ForwarderAddress) {
       const erc20Forwarder = new ethers.Contract(
         erc20ForwarderAddress,
@@ -1565,7 +1589,7 @@ function _validate(options) {
  * @param data Data to be sent to biconomy server having transaction data
  * @param cb Callback method to be called to pass result or send error
  **/
-async function _sendTransaction(engine, account, api, data, cb) {
+async function _sendTransaction(engine, account, api, data, cb, payload) {
   if (engine && account && api && data) {
     let url = api.url;
     let fetchOption = getFetchOptions("POST", engine.apiKey);
@@ -1587,6 +1611,27 @@ async function _sendTransaction(engine, account, api, data, cb) {
           result.flag != BICONOMY_RESPONSE_CODES.ACTION_COMPLETE &&
           result.flag != BICONOMY_RESPONSE_CODES.SUCCESS
         ) {
+          // check if conditions not met error code
+          if(result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
+            if (engine.strictMode) {
+              let error = formatMessage(
+                RESPONSE_CODES.CONDITIONS_NOT_SATISFIED,
+                `Conditions not met for given webhook attributes`
+              );
+              return cb(error);
+            } else {
+              _logMessage(
+                "Strict mode is off so falling back to default provider for handling transaction"
+              );
+
+              try {
+                return callDefaultProvider(engine, payload, cb, `Conditions not met for given webhook attributes`);
+              }
+              catch (error) {
+                return cb(error);
+              }
+            }
+          }
           //Any error from relayer infra
           //TODO
           //Involve fallback here with callDefaultProvider
@@ -1784,7 +1829,10 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           engine.PERSONAL_SIGN = systemInfo.personalSign;
           engine.tokenGasPriceV1SupportedNetworks =
             systemInfo.tokenGasPriceV1SupportedNetworks;
-
+          engine.walletFactoryAddress = systemInfo.walletFactoryAddress;
+          engine.baseWalletAddress = systemInfo.baseWalletAddress;
+          engine.entryPointAddress = systemInfo.entryPointAddress;
+          engine.handlerAddress = systemInfo.handlerAddress;
 
           daiDomainData.verifyingContract =
             engine.daiTokenAddress;

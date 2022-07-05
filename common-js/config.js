@@ -37,6 +37,40 @@ config.DEFAULT_RELAYER_PAYMENT_AMOUNT = 0;
 config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.DAI = "DAI_Permit";
 config.EIP2612 = "EIP2612_Permit";
+config.EIP712_WALLET_TX_TYPE = {
+  // "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 targetTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
+  WalletTx: [{
+    type: "address",
+    name: "to"
+  }, {
+    type: "uint256",
+    name: "value"
+  }, {
+    type: "bytes",
+    name: "data"
+  }, {
+    type: "uint8",
+    name: "operation"
+  }, {
+    type: "uint256",
+    name: "targetTxGas"
+  }, {
+    type: "uint256",
+    name: "baseGas"
+  }, {
+    type: "uint256",
+    name: "gasPrice"
+  }, {
+    type: "address",
+    name: "gasToken"
+  }, {
+    type: "address",
+    name: "refundReceiver"
+  }, {
+    type: "uint256",
+    name: "nonce"
+  }]
+};
 config.handleSignedTxUrl = "/api/".concat(config.version2, "/meta-tx/sendSignedTx");
 config.logsEnabled = false;
 var EVENTS = {
@@ -64,7 +98,8 @@ var RESPONSE_CODES = {
   EVENT_NOT_SUPPORTED: 'B513',
   INVALID_DATA: 'B514',
   INVALID_OPERATION: 'B515',
-  WRONG_ABI: 'B516'
+  WRONG_ABI: 'B516',
+  CONDITIONS_NOT_SATISFIED: 'B517'
 }; // could get these from sys info call
 
 config.forwardRequestType = [{
@@ -158,7 +193,8 @@ var BICONOMY_RESPONSE_CODES = {
   SUCCESS: 200,
   ACTION_COMPLETE: 143,
   USER_CONTRACT_NOT_FOUND: 148,
-  ERROR_RESPONSE: 144
+  ERROR_RESPONSE: 144,
+  CONDITIONS_NOT_SATISFIED: 400
 };
 var HTTP_CODES = {
   OK: 200,
