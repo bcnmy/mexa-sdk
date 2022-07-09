@@ -342,7 +342,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
               case 31:
                 owner = _context4.sent;
                 //eoa
-                webHookAttributes.webHookData.webwallet_address = '0x111';
+                webHookAttributes.webHookData.webwallet_address = owner;
                 txParams = {
                   data: executionData.data,
                   to: this.baseWallet.address,
