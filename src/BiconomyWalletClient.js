@@ -212,7 +212,7 @@ class BiconomyWalletClient {
             data: executionData.data,
             to: this.baseWallet.address,
             from: owner,
-            webHookAttributes: webHookAttributes || {}
+            webHookAttributes: webHookAttributes || null
         };
 
         let tx;

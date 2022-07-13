@@ -351,7 +351,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   data: executionData.data,
                   to: this.baseWallet.address,
                   from: owner,
-                  webHookAttributes: webHookAttributes || {}
+                  webHookAttributes: webHookAttributes || null
                 };
                 _context4.prev = 34;
                 _context4.next = 37;
