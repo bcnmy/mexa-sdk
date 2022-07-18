@@ -37,6 +37,8 @@ import {
 } from './helpers/signature-helpers';
 import { sendTransaction } from './helpers/send-transaction-helper';
 import { buildSignatureCustomEIP712MetaTransaction, buildSignatureCustomPersonalSignMetaTransaction } from './helpers/meta-transaction-custom-helpers';
+import { BiconomyWalletClient } from './BiconomyWalletClient';
+import { GnosisWalletClient } from './GnosisWalletClient';
 
 export class Biconomy extends EventEmitter {
   apiKey: string;
@@ -120,6 +122,10 @@ export class Biconomy extends EventEmitter {
   buildSignatureCustomPersonalSignMetaTransaction = buildSignatureCustomPersonalSignMetaTransaction;
 
   clientMessenger: any;
+
+  biconomyWalletClient?: BiconomyWalletClient;
+
+  gnosiWalletClient?: GnosisWalletClient;
 
   /**
    * constructor would initiliase providers and set values passed in options
@@ -312,6 +318,33 @@ export class Biconomy extends EventEmitter {
           throw new Error(`Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${this.networkId}`);
         }
         await this.getSystemInfo(providerNetworkId);
+
+        if (
+          this.walletFactoryAddress
+           && this.baseWalletAddress
+            && this.entryPointAddress
+             && this.handlerAddress
+        ) {
+          this.biconomyWalletClient = new BiconomyWalletClient({
+            provider: this.provider,
+            ethersProvider: this.ethersProvider,
+            walletFactoryAddress: this.walletFactoryAddress,
+            baseWalletAddress: this.baseWalletAddress,
+            entryPointAddress: this.entryPointAddress,
+            handlerAddress: this.handlerAddress,
+            networkId: this.networkId,
+          });
+        }
+
+        if (this.gnosisSafeProxyFactoryAddress && this.gnosisSafeAddress) {
+          this.gnosiWalletClient = new GnosisWalletClient({
+            ethersProvider: this.ethersProvider,
+            networkId: this.networkId,
+            apiKey: this.apiKey,
+            gnosisSafeProxyFactoryAddress: this.gnosisSafeProxyFactoryAddress,
+            gnosisSafeAddress: this.gnosisSafeAddress,
+          });
+        }
       } else {
         throw new Error('Could not get network version');
       }
