@@ -56,6 +56,10 @@ function getSystemInfo(providerNetworkId) {
                 this.handlerAddress = systemInfo.handlerAddress;
                 this.gnosisSafeProxyFactoryAddress = systemInfo.gnosisSafeProxyFactoryAddress;
                 this.gnosisSafeAddress = systemInfo.gnosisSafeAddress;
+                this.walletFactoryAddress = systemInfo.walletFactoryAddress;
+                this.baseWalletAddress = systemInfo.baseWalletAddress;
+                this.entryPointAddress = systemInfo.entryPointAddress;
+                this.handlerAddress = systemInfo.handlerAddress;
                 if (this.forwarderAddress && this.forwarderAddress !== '') {
                     this.biconomyForwarder = new ethers_1.ethers.Contract(this.forwarderAddress, abis_1.biconomyForwarderAbi, this.ethersProvider);
                 }

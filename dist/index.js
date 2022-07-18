@@ -31,6 +31,8 @@ const get_system_info_helper_1 = require("./helpers/get-system-info-helper");
 const signature_helpers_1 = require("./helpers/signature-helpers");
 const send_transaction_helper_1 = require("./helpers/send-transaction-helper");
 const meta_transaction_custom_helpers_1 = require("./helpers/meta-transaction-custom-helpers");
+const BiconomyWalletClient_1 = require("./BiconomyWalletClient");
+const GnosisWalletClient_1 = require("./GnosisWalletClient");
 class Biconomy extends events_1.default {
     /**
      * constructor would initiliase providers and set values passed in options
@@ -231,12 +233,37 @@ class Biconomy extends events_1.default {
                         throw new Error(`Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${this.networkId}`);
                     }
                     yield this.getSystemInfo(providerNetworkId);
+                    console.log('this.walletFactoryAddress', this.walletFactoryAddress);
+                    if (this.walletFactoryAddress
+                        && this.baseWalletAddress
+                        && this.entryPointAddress
+                        && this.handlerAddress) {
+                        this.biconomyWalletClient = new BiconomyWalletClient_1.BiconomyWalletClient({
+                            provider: this.provider,
+                            ethersProvider: this.ethersProvider,
+                            walletFactoryAddress: this.walletFactoryAddress,
+                            baseWalletAddress: this.baseWalletAddress,
+                            entryPointAddress: this.entryPointAddress,
+                            handlerAddress: this.handlerAddress,
+                            networkId: this.networkId,
+                        });
+                    }
+                    if (this.gnosisSafeProxyFactoryAddress && this.gnosisSafeAddress) {
+                        this.gnosiWalletClient = new GnosisWalletClient_1.GnosisWalletClient({
+                            ethersProvider: this.ethersProvider,
+                            networkId: this.networkId,
+                            apiKey: this.apiKey,
+                            gnosisSafeProxyFactoryAddress: this.gnosisSafeProxyFactoryAddress,
+                            gnosisSafeAddress: this.gnosisSafeAddress,
+                        });
+                    }
                 }
                 else {
                     throw new Error('Could not get network version');
                 }
             }
             catch (error) {
+                console.log(error);
                 (0, utils_1.logMessage)(error);
                 return error;
             }
@@ -262,15 +289,27 @@ class Biconomy extends events_1.default {
                 if (smartContracts && smartContracts.length > 0) {
                     smartContracts.forEach((contract) => {
                         const contractInterface = new ethers_1.ethers.utils.Interface(JSON.parse(contract.abi.toString()));
-                        this.smartContractMetaTransactionMap[contract.address.toLowerCase()] = contract.metaTransactionType;
-                        this.interfaceMap[contract.address.toLowerCase()] = contractInterface;
-                        this.smartContractMap[contract.address.toLowerCase()] = contract.abi.toString();
+                        if (contract.type === 'SCW') {
+                            this.smartContractMetaTransactionMap['SCW'] = contract.metaTransactionType;
+                            this.interfaceMap['SCW'] = contractInterface;
+                            this.smartContractMap['SCW'] = contract.abi.toString();
+                        }
+                        else {
+                            this.smartContractMetaTransactionMap[contract.address.toLowerCase()] = contract.metaTransactionType;
+                            this.interfaceMap[contract.address.toLowerCase()] = contractInterface;
+                            this.smartContractMap[contract.address.toLowerCase()] = contract.abi.toString();
+                        }
                     });
                 }
                 if (metaApis && metaApis.length > 0) {
                     metaApis.forEach((metaApi) => {
                         const { contractAddress, method } = metaApi;
-                        this.dappApiMap[`${contractAddress.toLowerCase()}-${method}`] = metaApi;
+                        if (!contractAddress) {
+                            this.dappApiMap[`SCW-${method}`] = metaApi;
+                        }
+                        else {
+                            this.dappApiMap[`${contractAddress.toLowerCase()}-${method}`] = metaApi;
+                        }
                     });
                 }
             }

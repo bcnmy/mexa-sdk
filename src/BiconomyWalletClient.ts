@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import ethers from 'ethers';
+import { ethers, Signer } from 'ethers';
 import {
   BiconomyWalletClientParamsType,
   BuildExecTransactionParamsType,
@@ -90,17 +90,17 @@ export class BiconomyWalletClient {
     this.walletFactory = new ethers.Contract(
       this.walletFactoryAddress,
       walletFactoryAbi,
-      this.ethersProvider,
+      this.provider as Signer | ethers.providers.Provider | undefined,
     );
     this.baseWallet = new ethers.Contract(
       this.baseWalletAddress,
       baseWalletAbi,
-      this.ethersProvider,
+      this.provider as Signer | ethers.providers.Provider | undefined,
     );
     this.entryPoint = new ethers.Contract(
       this.entryPointAddress,
       entryPointAbi,
-      this.ethersProvider,
+      this.provider as Signer | ethers.providers.Provider | undefined,
     );
   }
 
@@ -212,7 +212,7 @@ export class BiconomyWalletClient {
         );
       }
     }
-
+    debugger;
     this.baseWallet = this.baseWallet.attach(walletAddress);
 
     this.baseWallet = this.baseWallet.connect(this.getSignerByAddress(walletAddress, this.ethersProvider));

@@ -318,7 +318,7 @@ export class Biconomy extends EventEmitter {
           throw new Error(`Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${this.networkId}`);
         }
         await this.getSystemInfo(providerNetworkId);
-
+        console.log('this.walletFactoryAddress',this.walletFactoryAddress);
         if (
           this.walletFactoryAddress
            && this.baseWalletAddress
@@ -349,6 +349,7 @@ export class Biconomy extends EventEmitter {
         throw new Error('Could not get network version');
       }
     } catch (error) {
+      console.log(error);
       logMessage(error);
       return error;
     }
@@ -378,21 +379,31 @@ export class Biconomy extends EventEmitter {
       if (smartContracts && smartContracts.length > 0) {
         smartContracts.forEach((contract: SmartContractType) => {
           const contractInterface = new ethers.utils.Interface(JSON.parse(contract.abi.toString()));
-          this.smartContractMetaTransactionMap[
-            contract.address.toLowerCase()
-          ] = contract.metaTransactionType;
-          this.interfaceMap[
-            contract.address.toLowerCase()
-          ] = contractInterface;
-          this.smartContractMap[
-            contract.address.toLowerCase()
-          ] = contract.abi.toString();
+          if(contract.type === 'SCW') {
+            this.smartContractMetaTransactionMap['SCW'] = contract.metaTransactionType;
+            this.interfaceMap['SCW'] = contractInterface;
+            this.smartContractMap['SCW'] = contract.abi.toString();
+          } else {
+            this.smartContractMetaTransactionMap[
+              contract.address.toLowerCase()
+            ] = contract.metaTransactionType;
+            this.interfaceMap[
+              contract.address.toLowerCase()
+            ] = contractInterface;
+            this.smartContractMap[
+              contract.address.toLowerCase()
+            ] = contract.abi.toString();
+          }
         });
       }
       if (metaApis && metaApis.length > 0) {
         metaApis.forEach((metaApi: MetaApiType) => {
           const { contractAddress, method } = metaApi;
-          this.dappApiMap[`${contractAddress.toLowerCase()}-${method}`] = metaApi;
+          if(!contractAddress) {
+            this.dappApiMap[`SCW-${method}`] = metaApi;
+          } else {
+            this.dappApiMap[`${contractAddress.toLowerCase()}-${method}`] = metaApi;
+          }
         });
       }
     } catch (error) {

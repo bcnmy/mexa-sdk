@@ -12,6 +12,8 @@ import { getSystemInfo } from './helpers/get-system-info-helper';
 import { getSignatureEIP712, getSignaturePersonal } from './helpers/signature-helpers';
 import { sendTransaction } from './helpers/send-transaction-helper';
 import { buildSignatureCustomEIP712MetaTransaction, buildSignatureCustomPersonalSignMetaTransaction } from './helpers/meta-transaction-custom-helpers';
+import { BiconomyWalletClient } from './BiconomyWalletClient';
+import { GnosisWalletClient } from './GnosisWalletClient';
 export declare class Biconomy extends EventEmitter {
     apiKey: string;
     private externalProvider;
@@ -54,6 +56,8 @@ export declare class Biconomy extends EventEmitter {
     buildSignatureCustomEIP712MetaTransaction: typeof buildSignatureCustomEIP712MetaTransaction;
     buildSignatureCustomPersonalSignMetaTransaction: typeof buildSignatureCustomPersonalSignMetaTransaction;
     clientMessenger: any;
+    biconomyWalletClient?: BiconomyWalletClient;
+    gnosiWalletClient?: GnosisWalletClient;
     /**
      * constructor would initiliase providers and set values passed in options
      * strictMode true would return error, strictMode false would fallback to default provider
