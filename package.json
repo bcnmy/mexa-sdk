@@ -4,7 +4,7 @@
   "description": "Mexa SDK to enable meta transaction in your DApps",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "repository": "https://github.com/bcnmy/mexa-sdk.git",
+  "repository": "git+https://github.com/bcnmy/mexa-sdk.git",
   "license": "MIT",
   "scripts": {
     "build": "tsc",
