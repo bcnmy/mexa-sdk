@@ -120,8 +120,6 @@ export class BiconomyWalletClient {
         let executionData = await this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
         let dispatchProvider = this.biconomyProvider.getEthersProvider();
 
-        // TODO
-        // Check gaslimit 
         let txParams = {
             data: executionData.data,
             to: this.walletFactory.address,
