@@ -82,21 +82,6 @@ export declare const baseWalletAbi: ({
     name?: undefined;
     outputs?: undefined;
 } | {
-    inputs: {
-        internalType: string;
-        name: string;
-        type: string;
-    }[];
-    name: string;
-    outputs: {
-        internalType: string;
-        name: string;
-        type: string;
-    }[];
-    stateMutability: string;
-    type: string;
-    anonymous?: undefined;
-} | {
     inputs: ({
         components: {
             internalType: string;
@@ -113,7 +98,11 @@ export declare const baseWalletAbi: ({
         components?: undefined;
     })[];
     name: string;
-    outputs: never[];
+    outputs: {
+        internalType: string;
+        name: string;
+        type: string;
+    }[];
     stateMutability: string;
     type: string;
     anonymous?: undefined;
@@ -192,6 +181,26 @@ export declare const entryPointAbi: ({
     stateMutability?: undefined;
     outputs?: undefined;
 } | {
+    inputs: {
+        internalType: string;
+        name: string;
+        type: string;
+    }[];
+    name: string;
+    outputs: {
+        components: {
+            internalType: string;
+            name: string;
+            type: string;
+        }[];
+        internalType: string;
+        name: string;
+        type: string;
+    }[];
+    stateMutability: string;
+    type: string;
+    anonymous?: undefined;
+} | {
     inputs: ({
         components: {
             internalType: string;
@@ -223,26 +232,6 @@ export declare const entryPointAbi: ({
     name?: undefined;
     anonymous?: undefined;
     outputs?: undefined;
-} | {
-    inputs: {
-        internalType: string;
-        name: string;
-        type: string;
-    }[];
-    name: string;
-    outputs: {
-        components: {
-            internalType: string;
-            name: string;
-            type: string;
-        }[];
-        internalType: string;
-        name: string;
-        type: string;
-    }[];
-    stateMutability: string;
-    type: string;
-    anonymous?: undefined;
 })[];
 export declare const gnosisSafeAbi: ({
     inputs: never[];

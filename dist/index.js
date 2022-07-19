@@ -233,14 +233,12 @@ class Biconomy extends events_1.default {
                         throw new Error(`Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${this.networkId}`);
                     }
                     yield this.getSystemInfo(providerNetworkId);
-                    console.log('this.walletFactoryAddress', this.walletFactoryAddress);
                     if (this.walletFactoryAddress
                         && this.baseWalletAddress
                         && this.entryPointAddress
                         && this.handlerAddress) {
                         this.biconomyWalletClient = new BiconomyWalletClient_1.BiconomyWalletClient({
-                            provider: this.provider,
-                            ethersProvider: this.ethersProvider,
+                            biconomyProvider: this,
                             walletFactoryAddress: this.walletFactoryAddress,
                             baseWalletAddress: this.baseWalletAddress,
                             entryPointAddress: this.entryPointAddress,
@@ -263,7 +261,6 @@ class Biconomy extends events_1.default {
                 }
             }
             catch (error) {
-                console.log(error);
                 (0, utils_1.logMessage)(error);
                 return error;
             }
@@ -289,10 +286,10 @@ class Biconomy extends events_1.default {
                 if (smartContracts && smartContracts.length > 0) {
                     smartContracts.forEach((contract) => {
                         const contractInterface = new ethers_1.ethers.utils.Interface(JSON.parse(contract.abi.toString()));
-                        if (contract.type === 'SCW') {
-                            this.smartContractMetaTransactionMap['SCW'] = contract.metaTransactionType;
-                            this.interfaceMap['SCW'] = contractInterface;
-                            this.smartContractMap['SCW'] = contract.abi.toString();
+                        if (contract.type === `${config_1.config.SCW}`) {
+                            this.smartContractMetaTransactionMap[`${config_1.config.SCW}`] = contract.metaTransactionType;
+                            this.interfaceMap[`${config_1.config.SCW}`] = contractInterface;
+                            this.smartContractMap[`${config_1.config.SCW}`] = contract.abi.toString();
                         }
                         else {
                             this.smartContractMetaTransactionMap[contract.address.toLowerCase()] = contract.metaTransactionType;
@@ -305,13 +302,15 @@ class Biconomy extends events_1.default {
                     metaApis.forEach((metaApi) => {
                         const { contractAddress, method } = metaApi;
                         if (!contractAddress) {
-                            this.dappApiMap[`SCW-${method}`] = metaApi;
+                            this.dappApiMap[`${config_1.config.SCW}-${method}`] = metaApi;
                         }
                         else {
                             this.dappApiMap[`${contractAddress.toLowerCase()}-${method}`] = metaApi;
                         }
                     });
                 }
+                (0, utils_1.logMessage)(`smartContractMetaTransactionMap: ${JSON.stringify(this.smartContractMetaTransactionMap)}`);
+                (0, utils_1.logMessage)(`dappApiMap: ${JSON.stringify(this.dappApiMap)}`);
             }
             catch (error) {
                 (0, utils_1.logErrorMessage)(error);
@@ -344,6 +343,18 @@ class Biconomy extends events_1.default {
                 };
             }
         });
+    }
+    getSignerByAddress(userAddress) {
+        let provider = this.getEthersProvider();
+        let signer = provider.getSigner();
+        signer = signer.connectUnchecked();
+        signer.getAddress = () => __awaiter(this, void 0, void 0, function* () {
+            return userAddress;
+        });
+        return signer;
+    }
+    getEthersProvider() {
+        return new ethers_1.ethers.providers.Web3Provider(this.provider);
     }
 }
 exports.Biconomy = Biconomy;

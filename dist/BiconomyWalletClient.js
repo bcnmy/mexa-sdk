@@ -30,56 +30,66 @@ const getSignatureParameters = (signature) => {
         v,
     };
 };
-const getSignerByAddress = (userAddress, ethersProvider) => {
-    let signer = ethersProvider.getSigner();
-    signer = signer.connectUnchecked();
-    signer.getAddress = () => __awaiter(void 0, void 0, void 0, function* () { return userAddress; });
-    return signer;
-};
 /**
  * Class to provide methods for biconomy wallet deployment,
  *  signature building and sending the transaction
  */
 class BiconomyWalletClient {
     constructor(biconomyWalletClientParams) {
-        this.getSignerByAddress = getSignerByAddress;
-        const { provider, ethersProvider, walletFactoryAddress, baseWalletAddress, entryPointAddress, handlerAddress, networkId, } = biconomyWalletClientParams;
-        this.provider = provider;
-        this.ethersProvider = ethersProvider;
-        this.walletFactoryAddress = walletFactoryAddress;
+        const { biconomyProvider, walletFactoryAddress, baseWalletAddress, entryPointAddress, handlerAddress, networkId, } = biconomyWalletClientParams;
+        this.biconomyProvider = biconomyProvider,
+            this.walletFactoryAddress = walletFactoryAddress;
         this.baseWalletAddress = baseWalletAddress;
         this.entryPointAddress = entryPointAddress;
         this.handlerAddress = handlerAddress;
         this.networkId = networkId;
-        this.walletFactory = new ethers_1.ethers.Contract(this.walletFactoryAddress, abis_1.walletFactoryAbi, this.provider);
-        this.baseWallet = new ethers_1.ethers.Contract(this.baseWalletAddress, abis_1.baseWalletAbi, this.provider);
-        this.entryPoint = new ethers_1.ethers.Contract(this.entryPointAddress, abis_1.entryPointAbi, this.provider);
+        this.walletFactory = new ethers_1.ethers.Contract(this.walletFactoryAddress, abis_1.walletFactoryAbi, this.biconomyProvider.getEthersProvider());
+        this.baseWallet = new ethers_1.ethers.Contract(this.baseWalletAddress, abis_1.baseWalletAbi, this.biconomyProvider.getEthersProvider());
+        this.entryPoint = new ethers_1.ethers.Contract(this.entryPointAddress, abis_1.entryPointAbi, this.biconomyProvider.getEthersProvider());
     }
     checkIfWalletExists(checkIfWalletExistsParams) {
         return __awaiter(this, void 0, void 0, function* () {
             const { eoa, index } = checkIfWalletExistsParams;
             // Read calls would need providerOrSigner
-            const walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
+            let walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
             const doesWalletExist = yield this.walletFactory.isWalletExist(walletAddress);
             if (doesWalletExist) {
                 return {
                     doesWalletExist,
-                    walletAddress,
+                    walletAddress
                 };
             }
             return {
                 doesWalletExist,
-                walletAddress,
+                walletAddress
             };
         });
     }
     checkIfWalletExistsAndDeploy(checkIfWalletExistsAndDeployParams) {
         return __awaiter(this, void 0, void 0, function* () {
             const { eoa, index } = checkIfWalletExistsAndDeployParams;
-            const walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
+            let walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
             const doesWalletExist = yield this.walletFactory.isWalletExist[walletAddress];
+            this.walletFactory = this.walletFactory.connect(this.biconomyProvider.getSignerByAddress(eoa));
             if (!doesWalletExist) {
-                yield this.walletFactory.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+                let executionData = yield this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+                let dispatchProvider = this.biconomyProvider.getEthersProvider();
+                // TODO
+                // Check gaslimit 
+                let txParams = {
+                    data: executionData.data,
+                    to: this.walletFactory.address,
+                    from: eoa,
+                };
+                let tx;
+                try {
+                    tx = yield dispatchProvider.send("eth_sendTransaction", [txParams]);
+                }
+                catch (err) {
+                    // handle conditional rejections in this stack trace
+                    console.log(err);
+                    throw err;
+                }
             }
             return walletAddress;
         });
@@ -97,7 +107,7 @@ class BiconomyWalletClient {
                 value: 0,
                 data,
                 operation: 0,
-                safeTxGas: 0,
+                targetTxGas: 0,
                 baseGas: 0,
                 gasPrice: 0,
                 gasToken: config_1.config.ZERO_ADDRESS,
@@ -108,7 +118,7 @@ class BiconomyWalletClient {
     }
     sendBiconomyWalletTransaction(sendBiconomyWalletTransactionParams) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { execTransactionBody, walletAddress, signatureType, batchId, webHookAttributes, } = sendBiconomyWalletTransactionParams;
+            const { execTransactionBody, walletAddress, signatureType, batchId = 0, webHookAttributes, } = sendBiconomyWalletTransactionParams;
             let { signature } = sendBiconomyWalletTransactionParams;
             const transaction = {
                 to: execTransactionBody.to,
@@ -127,20 +137,19 @@ class BiconomyWalletClient {
                 if (signatureType === 'PERSONAL_SIGN') {
                     const transactionHash = yield this.baseWallet.getTransactionHash(execTransactionBody.to, execTransactionBody.value, execTransactionBody.data, execTransactionBody.operation, execTransactionBody.targetTxGas, execTransactionBody.baseGas, execTransactionBody.gasPrice, execTransactionBody.gasToken, execTransactionBody.refundReceiver, execTransactionBody.nonce);
                     // Review targetProvider vs provider
-                    signature = yield this.ethersProvider.getSigner().signMessage(ethers_1.ethers.utils.arrayify(transactionHash));
+                    signature = yield this.biconomyProvider.getEthersProvider().getSigner().signMessage(ethers_1.ethers.utils.arrayify(transactionHash));
                     const { r, s, v } = getSignatureParameters(signature);
                     const newV = ethers_1.ethers.BigNumber.from(v + 4).toHexString();
                     signature = r + s.slice(2) + newV.slice(2);
                 }
                 else {
-                    signature = yield this.ethersProvider.getSigner()._signTypedData({ verifyingContract: walletAddress, chainId: this.networkId }, config_1.config.EIP712_WALLET_TX_TYPE, execTransactionBody);
+                    signature = yield this.biconomyProvider.getEthersProvider().getSigner()._signTypedData({ verifyingContract: walletAddress, chainId: this.networkId }, config_1.config.EIP712_WALLET_TX_TYPE, execTransactionBody);
                 }
             }
-            debugger;
             this.baseWallet = this.baseWallet.attach(walletAddress);
-            this.baseWallet = this.baseWallet.connect(this.getSignerByAddress(walletAddress, this.ethersProvider));
+            this.baseWallet = this.baseWallet.connect(this.biconomyProvider.getSignerByAddress(walletAddress));
             const executionData = yield this.baseWallet.populateTransaction.execTransaction(transaction, batchId, refundInfo, signature);
-            const dispatchProvider = this.ethersProvider;
+            const dispatchProvider = this.biconomyProvider.getEthersProvider();
             // append webwallet_address key in this object webHookAttributes
             const owner = yield this.baseWallet.owner(); // eoa
             if (webHookAttributes && webHookAttributes.webHookData) {

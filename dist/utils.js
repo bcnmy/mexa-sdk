@@ -40,7 +40,7 @@ const decodeMethod = (to, data, interfaceMap) => {
     if (to && data && interfaceMap[to]) {
         return interfaceMap[to].parseTransaction({ data });
     }
-    throw new Error('to, data or interfaceMap are undefined');
+    return;
 };
 exports.decodeMethod = decodeMethod;
 //# sourceMappingURL=utils.js.map

@@ -87,5 +87,7 @@ export declare class Biconomy extends EventEmitter {
     init(): Promise<unknown>;
     getDappData(): Promise<void>;
     getTransactionStatus(transactionId: string): Promise<any>;
+    getSignerByAddress(userAddress: string): ethers.providers.JsonRpcSigner;
+    getEthersProvider(): ethers.providers.Web3Provider;
 }
 //# sourceMappingURL=index.d.ts.map

@@ -318,7 +318,6 @@ export class Biconomy extends EventEmitter {
           throw new Error(`Current networkId ${providerNetworkId} is different from dapp network id registered on mexa dashboard ${this.networkId}`);
         }
         await this.getSystemInfo(providerNetworkId);
-        console.log('this.walletFactoryAddress',this.walletFactoryAddress);
         if (
           this.walletFactoryAddress
            && this.baseWalletAddress
@@ -326,8 +325,7 @@ export class Biconomy extends EventEmitter {
              && this.handlerAddress
         ) {
           this.biconomyWalletClient = new BiconomyWalletClient({
-            provider: this.provider,
-            ethersProvider: this.ethersProvider,
+            biconomyProvider: this,
             walletFactoryAddress: this.walletFactoryAddress,
             baseWalletAddress: this.baseWalletAddress,
             entryPointAddress: this.entryPointAddress,
@@ -349,7 +347,6 @@ export class Biconomy extends EventEmitter {
         throw new Error('Could not get network version');
       }
     } catch (error) {
-      console.log(error);
       logMessage(error);
       return error;
     }
@@ -379,10 +376,10 @@ export class Biconomy extends EventEmitter {
       if (smartContracts && smartContracts.length > 0) {
         smartContracts.forEach((contract: SmartContractType) => {
           const contractInterface = new ethers.utils.Interface(JSON.parse(contract.abi.toString()));
-          if(contract.type === 'SCW') {
-            this.smartContractMetaTransactionMap['SCW'] = contract.metaTransactionType;
-            this.interfaceMap['SCW'] = contractInterface;
-            this.smartContractMap['SCW'] = contract.abi.toString();
+          if(contract.type === `${config.SCW}`) {
+            this.smartContractMetaTransactionMap[`${config.SCW}`] = contract.metaTransactionType;
+            this.interfaceMap[`${config.SCW}`] = contractInterface;
+            this.smartContractMap[`${config.SCW}`] = contract.abi.toString();
           } else {
             this.smartContractMetaTransactionMap[
               contract.address.toLowerCase()
@@ -400,12 +397,15 @@ export class Biconomy extends EventEmitter {
         metaApis.forEach((metaApi: MetaApiType) => {
           const { contractAddress, method } = metaApi;
           if(!contractAddress) {
-            this.dappApiMap[`SCW-${method}`] = metaApi;
+            this.dappApiMap[`${config.SCW}-${method}`] = metaApi;
           } else {
             this.dappApiMap[`${contractAddress.toLowerCase()}-${method}`] = metaApi;
           }
         });
       }
+      logMessage(`smartContractMetaTransactionMap: ${JSON.stringify(this.smartContractMetaTransactionMap)}`);
+      logMessage(`dappApiMap: ${JSON.stringify(this.dappApiMap)}`);
+
     } catch (error) {
       logErrorMessage(error);
       throw error;
@@ -440,5 +440,19 @@ export class Biconomy extends EventEmitter {
         error: serializeError(error),
       };
     }
+  }
+
+  getSignerByAddress (userAddress: string) {
+    let provider = this.getEthersProvider();
+    let signer = provider.getSigner();
+    signer = signer.connectUnchecked();
+    signer.getAddress = async () => {
+      return userAddress
+    }
+    return signer;
+  }
+
+  getEthersProvider() {
+    return new ethers.providers.Web3Provider(this.provider);
   }
 }

@@ -5,8 +5,6 @@ import { BiconomyWalletClientParamsType, BuildExecTransactionParamsType, CheckIf
  *  signature building and sending the transaction
  */
 export declare class BiconomyWalletClient {
-    provider: import("@ethersproject/providers").ExternalProvider;
-    ethersProvider: ethers.providers.Web3Provider;
     walletFactoryAddress: string;
     baseWalletAddress: string;
     entryPointAddress: string;
@@ -15,7 +13,7 @@ export declare class BiconomyWalletClient {
     walletFactory: ethers.Contract;
     baseWallet: ethers.Contract;
     entryPoint: ethers.Contract;
-    getSignerByAddress: (userAddress: string, ethersProvider: ethers.providers.Web3Provider) => ethers.providers.JsonRpcSigner;
+    biconomyProvider: import(".").Biconomy;
     constructor(biconomyWalletClientParams: BiconomyWalletClientParamsType);
     checkIfWalletExists(checkIfWalletExistsParams: CheckIfWalletExistsParamsType): Promise<{
         doesWalletExist: any;
@@ -27,7 +25,7 @@ export declare class BiconomyWalletClient {
         value: number;
         data: string;
         operation: number;
-        safeTxGas: number;
+        targetTxGas: number;
         baseGas: number;
         gasPrice: number;
         gasToken: string;

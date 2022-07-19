@@ -136,9 +136,14 @@ export async function sendSignedTransaction(
             }
           }
           const methodName = methodInfo.name;
-          const api = this.dappApiMap[`${to}-${methodName}`];
+          let api = this.dappApiMap[`${to}-${methodName}`];
           const contractAddress = api.contractAddress.toLowerCase();
-          const metaTxApproach = this.smartContractMetaTransactionMap[contractAddress];
+          let metaTxApproach = this.smartContractMetaTransactionMap[contractAddress];
+
+          if (!api) {
+            api = this.dappApiMap[`${config.SCW}-${methodName}`] || undefined;
+            metaTxApproach = this.smartContractMetaTransactionMap[config.SCW];
+          }
 
           if (!api) {
             logMessage(`API not found for method ${methodName}`);

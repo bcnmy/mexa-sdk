@@ -1,5 +1,4 @@
-import { ExternalProvider } from '@ethersproject/providers';
-import { ethers } from 'ethers';
+import { Biconomy } from '..';
 export declare type CheckIfWalletExistsAndDeployParamsType = {
     eoa: string;
     index: number;
@@ -32,8 +31,7 @@ export declare type SendBiconomyWalletTransactionsParamsType = {
     webHookAttributes: any;
 };
 export declare type BiconomyWalletClientParamsType = {
-    provider: ExternalProvider;
-    ethersProvider: ethers.providers.Web3Provider;
+    biconomyProvider: Biconomy;
     walletFactoryAddress: string;
     baseWalletAddress: string;
     entryPointAddress: string;

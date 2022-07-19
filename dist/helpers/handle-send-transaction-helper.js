@@ -13,6 +13,7 @@ exports.handleSendTransaction = void 0;
 const ethers_1 = require("ethers");
 const utils_1 = require("../utils");
 const meta_transaction_EIP2771_helpers_1 = require("./meta-transaction-EIP2771-helpers");
+const config_1 = require("../config");
 /**
   * Function decodes the parameter in payload and gets the user signature using eth_signTypedData_v4
   * method and send the request to biconomy for processing and call the callback method 'end'
@@ -56,20 +57,30 @@ function handleSendTransaction(handleSendTransactionParams) {
             const { params, fallback, } = handleSendTransactionParams;
             if (params && params[0] && params[0].to) {
                 const to = params[0].to.toLowerCase();
-                if (this.interfaceMap[to]) {
-                    const methodInfo = (0, utils_1.decodeMethod)(to, params[0].data, this.interfaceMap);
+                if (this.interfaceMap[to] || this.interfaceMap[`${config_1.config.SCW}`]) {
+                    let methodInfo = (0, utils_1.decodeMethod)(to, params[0].data, this.interfaceMap);
+                    if (!methodInfo) {
+                        methodInfo = (0, utils_1.decodeMethod)(`${config_1.config.SCW}`, params[0].data, this.interfaceMap);
+                    }
                     if (!methodInfo) {
                         throw new Error('Can\'t decode method information from payload. Make sure you have uploaded correct ABI on Biconomy Dashboard');
                     }
                     const methodName = methodInfo.name;
-                    const api = this.dappApiMap[`${to}-${methodName}`];
+                    let api = this.dappApiMap[`${to}-${methodName}`];
+                    let metaTxApproach;
+                    if (!api) {
+                        api = this.dappApiMap[`${config_1.config.SCW}-${methodName}`] || undefined;
+                        metaTxApproach = this.smartContractMetaTransactionMap[`${config_1.config.SCW}`];
+                    }
+                    else {
+                        const contractAddress = api.contractAddress.toLowerCase();
+                        metaTxApproach = this.smartContractMetaTransactionMap[contractAddress];
+                    }
                     // Information we get here is contractAddress, methodName, methodType, ApiId
                     let customBatchId;
                     let customDomainName;
                     let customDomainVersion;
                     let signTypedDataType;
-                    const contractAddress = api.contractAddress.toLowerCase();
-                    const metaTxApproach = this.smartContractMetaTransactionMap[contractAddress];
                     // Sanitise gas limit here. big number / hex / number -> hex
                     let gasLimit = params[0].gas || params[0].gasLimit;
                     if (gasLimit) {
