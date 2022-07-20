@@ -6,7 +6,7 @@ import EventEmitter from 'events';
 import { ExternalProvider } from '@ethersproject/providers';
 import { ethers } from 'ethers';
 import axios from 'axios';
-import { ClientMessenger } from 'gasless-messaging-sdk';
+import { ClientMessenger } from '@biconomy/gasless-messaging-sdk';
 import WebSocket from 'isomorphic-ws';
 import { serializeError } from 'serialize-error';
 import {
