@@ -20,7 +20,7 @@ exports.Biconomy = void 0;
 const events_1 = __importDefault(require("events"));
 const ethers_1 = require("ethers");
 const axios_1 = __importDefault(require("axios"));
-const gasless_messaging_sdk_1 = require("gasless-messaging-sdk");
+const gasless_messaging_sdk_1 = require("@biconomy/gasless-messaging-sdk");
 const isomorphic_ws_1 = __importDefault(require("isomorphic-ws"));
 const serialize_error_1 = require("serialize-error");
 const utils_1 = require("./utils");
@@ -248,11 +248,9 @@ class Biconomy extends events_1.default {
                     }
                     if (this.gnosisSafeProxyFactoryAddress && this.gnosisSafeAddress) {
                         this.gnosiWalletClient = new GnosisWalletClient_1.GnosisWalletClient({
-                            ethersProvider: this.ethersProvider,
+                            biconomyProvider: this,
                             networkId: this.networkId,
                             apiKey: this.apiKey,
-                            gnosisSafeProxyFactoryAddress: this.gnosisSafeProxyFactoryAddress,
-                            gnosisSafeAddress: this.gnosisSafeAddress,
                         });
                     }
                 }
