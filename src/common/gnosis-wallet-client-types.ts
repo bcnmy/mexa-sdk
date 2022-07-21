@@ -1,11 +1,9 @@
-import { ethers } from 'ethers';
+import { Biconomy } from '..';
 
 export type GnosisWalletClientParams = {
-  ethersProvider: ethers.providers.Web3Provider,
+  biconomyProvider: Biconomy,
   networkId: number,
   apiKey: string,
-  gnosisSafeProxyFactoryAddress: string,
-  gnosisSafeAddress: string,
 };
 
 export type DeployGnosisSafeParamsType = {

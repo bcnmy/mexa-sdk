@@ -336,11 +336,9 @@ export class Biconomy extends EventEmitter {
 
         if (this.gnosisSafeProxyFactoryAddress && this.gnosisSafeAddress) {
           this.gnosiWalletClient = new GnosisWalletClient({
-            ethersProvider: this.ethersProvider,
+            biconomyProvider: this,
             networkId: this.networkId,
             apiKey: this.apiKey,
-            gnosisSafeProxyFactoryAddress: this.gnosisSafeProxyFactoryAddress,
-            gnosisSafeAddress: this.gnosisSafeAddress,
           });
         }
       } else {
