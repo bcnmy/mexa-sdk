@@ -13,7 +13,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GnosisWalletClient = void 0;
+const ethers_1 = require("ethers");
 const axios_1 = __importDefault(require("axios"));
+const safe_ethers_lib_1 = __importDefault(require("@gnosis.pm/safe-ethers-lib"));
 const config_1 = require("./config");
 class GnosisWalletClient {
     constructor(gnosisClientParameters) {
@@ -21,6 +23,14 @@ class GnosisWalletClient {
         this.biconomyProvider = biconomyProvider;
         this.networkId = networkId;
         this.apiKey = apiKey;
+    }
+    setEthersAdapter(userAddress) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.ethAdapter = new safe_ethers_lib_1.default({
+                ethers: ethers_1.ethers,
+                signer: this.biconomyProvider.getSignerByAddress(userAddress)
+            });
+        });
     }
     createNewGnosisSafe() {
         return __awaiter(this, void 0, void 0, function* () {

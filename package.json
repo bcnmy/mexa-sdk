@@ -19,6 +19,7 @@
     "@gnosis.pm/safe-core-sdk": "^2.2.1",
     "@gnosis.pm/safe-ethers-lib": "^1.2.1",
     "@gnosis.pm/safe-service-client": "^1.2.0",
+    "@gnosis.pm/safe-web3-lib": "^1.2.1",
     "axios": "^0.27.2",
     "ethereum-tx-decoder": "^3.0.0",
     "ethereumjs-abi": "^0.6.8",

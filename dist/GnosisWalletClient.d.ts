@@ -3,7 +3,9 @@ export declare class GnosisWalletClient {
     biconomyProvider: import(".").Biconomy;
     apiKey: string;
     networkId: number;
+    ethAdapter: any;
     constructor(gnosisClientParameters: GnosisWalletClientParams);
+    setEthersAdapter(userAddress: string): Promise<void>;
     createNewGnosisSafe(): Promise<void>;
     connectToGnosisSafe(): Promise<void>;
     buildSafeTransaction(): Promise<void>;

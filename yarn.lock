@@ -427,6 +427,14 @@
     "@gnosis.pm/safe-core-sdk-types" "^1.2.1"
     node-fetch "^2.6.6"
 
+"@gnosis.pm/safe-web3-lib@^1.2.1":
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@gnosis.pm/safe-web3-lib/-/safe-web3-lib-1.2.1.tgz#23f11250cba49860849812cc79977e2d982f6d3f"
+  integrity sha512-s5ZK0rmBp+LtYU2NbeA/X9yhm0TVyefkA2UBb1VnYNxZ+mi54Qe6eM4l0Uz+PZh29VipMr+6LK+v9WKvVAb5Uw==
+  dependencies:
+    "@gnosis.pm/safe-core-sdk-types" "^1.2.1"
+    "@gnosis.pm/safe-core-sdk-utils" "^1.2.1"
+
 "@humanwhocodes/config-array@^0.9.2":
   version "0.9.5"
   resolved "https://registry.yarnpkg.com/@humanwhocodes/config-array/-/config-array-0.9.5.tgz#2cbaf9a89460da24b5ca6531b8bbfc23e1df50c7"
