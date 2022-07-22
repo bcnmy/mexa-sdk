@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 import { ethers, Signer } from 'ethers';
 import {
   BiconomyWalletClientParamsType,
@@ -33,7 +32,6 @@ const getSignatureParameters = (signature: string) => {
     v,
   };
 };
-
 
 /**
  * Class to provide methods for biconomy wallet deployment,
@@ -95,46 +93,45 @@ export class BiconomyWalletClient {
   async checkIfWalletExists(checkIfWalletExistsParams: CheckIfWalletExistsParamsType) {
     const { eoa, index } = checkIfWalletExistsParams;
     // Read calls would need providerOrSigner
-    let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
+    const walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
     const doesWalletExist = await this.walletFactory.isWalletExist(walletAddress);
     if (doesWalletExist) {
-        return {
-            doesWalletExist,
-            walletAddress
-        }
+      return {
+        doesWalletExist,
+        walletAddress,
+      };
     }
     return {
-        doesWalletExist,
-        walletAddress
-    }
+      doesWalletExist,
+      walletAddress,
+    };
   }
 
   async checkIfWalletExistsAndDeploy(
     checkIfWalletExistsAndDeployParams: CheckIfWalletExistsAndDeployParamsType,
   ) {
     const { eoa, index } = checkIfWalletExistsAndDeployParams;
-    let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
+    const walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
     const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
     this.walletFactory = this.walletFactory.connect(this.biconomyProvider.getSignerByAddress(eoa));
     if (!doesWalletExist) {
-        let executionData = await this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
-        let dispatchProvider = this.biconomyProvider.getEthersProvider();
+      const executionData = await this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+      const dispatchProvider = this.biconomyProvider.getEthersProvider();
 
-        let txParams = {
-            data: executionData.data,
-            to: this.walletFactory.address,
-            from: eoa,
-        };
+      const txParams = {
+        data: executionData.data,
+        to: this.walletFactory.address,
+        from: eoa,
+      };
 
-        let tx;
-        try {
-            tx = await dispatchProvider.send("eth_sendTransaction", [txParams])
-        }
-        catch (err) {
-            // handle conditional rejections in this stack trace
-            console.log(err);
-            throw err;
-        }
+      let tx;
+      try {
+        tx = await dispatchProvider.send('eth_sendTransaction', [txParams]);
+      } catch (err) {
+        // handle conditional rejections in this stack trace
+        console.log(err);
+        throw err;
+      }
     }
     return walletAddress;
   }
@@ -150,16 +147,16 @@ export class BiconomyWalletClient {
 
     const nonce = await this.baseWallet.getNonce(batchId);
     return {
-        to,
-        value: 0,
-        data,
-        operation: 0,
-        targetTxGas: 0,
-        baseGas: 0,
-        gasPrice: 0,
-        gasToken: config.ZERO_ADDRESS,
-        refundReceiver: config.ZERO_ADDRESS,
-        nonce,
+      to,
+      value: 0,
+      data,
+      operation: 0,
+      targetTxGas: 0,
+      baseGas: 0,
+      gasPrice: 0,
+      gasToken: config.ZERO_ADDRESS,
+      refundReceiver: config.ZERO_ADDRESS,
+      nonce,
     };
   }
 
@@ -198,7 +195,7 @@ export class BiconomyWalletClient {
           execTransactionBody.gasPrice,
           execTransactionBody.gasToken,
           execTransactionBody.refundReceiver,
-          execTransactionBody.nonce
+          execTransactionBody.nonce,
         );
         // Review targetProvider vs provider
         signature = await this.biconomyProvider.getEthersProvider().getSigner().signMessage(ethers.utils.arrayify(transactionHash));
@@ -228,7 +225,7 @@ export class BiconomyWalletClient {
     // append webwallet_address key in this object webHookAttributes
     const owner = await this.baseWallet.owner(); // eoa
     if (webHookAttributes && webHookAttributes.webHookData) {
-        webHookAttributes.webHookData.webwallet_address = owner;
+      webHookAttributes.webHookData.webwallet_address = owner;
     }
 
     const txParams = {
