@@ -1,5 +1,3 @@
-import { ExternalProvider } from '@ethersproject/providers';
-import { ethers } from 'ethers';
 import { Biconomy } from '..';
 
 export type CheckIfWalletExistsAndDeployParamsType = {

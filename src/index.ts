@@ -39,6 +39,7 @@ import { sendTransaction } from './helpers/send-transaction-helper';
 import { buildSignatureCustomEIP712MetaTransaction, buildSignatureCustomPersonalSignMetaTransaction } from './helpers/meta-transaction-custom-helpers';
 import { BiconomyWalletClient } from './BiconomyWalletClient';
 import { GnosisWalletClient } from './GnosisWalletClient';
+import { PermitClient } from './PermitClient';
 
 export class Biconomy extends EventEmitter {
   apiKey: string;
@@ -126,6 +127,12 @@ export class Biconomy extends EventEmitter {
   biconomyWalletClient?: BiconomyWalletClient;
 
   gnosiWalletClient?: GnosisWalletClient;
+
+  permitClient?: PermitClient;
+
+  erc20ForwarderAddress?: string;
+
+  daiTokenAddress?: string;
 
   /**
    * constructor would initiliase providers and set values passed in options
@@ -340,6 +347,14 @@ export class Biconomy extends EventEmitter {
             networkId: this.networkId,
             apiKey: this.apiKey,
           });
+        }
+
+        if(this.erc20ForwarderAddress && this.daiTokenAddress) {
+          this.permitClient = new PermitClient({
+            biconomyProvider: this,
+            erc20ForwarderAddress: this.erc20ForwarderAddress,
+            daiTokenAddress: this.daiTokenAddress
+          })
         }
       } else {
         throw new Error('Could not get network version');
