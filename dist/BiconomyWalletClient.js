@@ -10,6 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BiconomyWalletClient = void 0;
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable import/no-cycle */
+/* eslint-disable max-len */
 const ethers_1 = require("ethers");
 const abis_1 = require("./abis");
 const config_1 = require("./config");
@@ -36,8 +39,8 @@ const getSignatureParameters = (signature) => {
 class BiconomyWalletClient {
     constructor(biconomyWalletClientParams) {
         const { biconomyProvider, walletFactoryAddress, baseWalletAddress, entryPointAddress, handlerAddress, networkId, } = biconomyWalletClientParams;
-        this.biconomyProvider = biconomyProvider,
-            this.walletFactoryAddress = walletFactoryAddress;
+        this.biconomyProvider = biconomyProvider;
+        this.walletFactoryAddress = walletFactoryAddress;
         this.baseWalletAddress = baseWalletAddress;
         this.entryPointAddress = entryPointAddress;
         this.handlerAddress = handlerAddress;
@@ -78,9 +81,8 @@ class BiconomyWalletClient {
                     to: this.walletFactory.address,
                     from: eoa,
                 };
-                let tx;
                 try {
-                    tx = yield dispatchProvider.send('eth_sendTransaction', [txParams]);
+                    yield dispatchProvider.send('eth_sendTransaction', [txParams]);
                 }
                 catch (err) {
                     // handle conditional rejections in this stack trace

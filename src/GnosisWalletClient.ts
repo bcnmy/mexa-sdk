@@ -1,8 +1,8 @@
+/* eslint-disable import/no-cycle */
 import { ethers } from 'ethers';
 import axios from 'axios';
 import EthersAdapter from '@gnosis.pm/safe-ethers-lib';
 import Web3Adapter from '@gnosis.pm/safe-web3-lib';
-import Web3 from 'web3';
 import Safe, { SafeFactory, SafeAccountConfig } from '@gnosis.pm/safe-core-sdk';
 import { SafeTransaction } from '@gnosis.pm/safe-core-sdk-types';
 import { GnosisWalletClientParams } from './common/gnosis-wallet-client-types';
@@ -35,15 +35,7 @@ export class GnosisWalletClient {
     this.apiKey = apiKey;
   }
 
-  async setEthersAdapter(userAddress: string, rpcUrl?: string) {
-    // if (rpcUrl) {
-    //   const web3 = new Web3.providers.HttpProvider(rpcUrl);
-    //   this.ethAdapter = new Web3Adapter({
-    //     web3,
-    //     signerAddress: userAddress,
-    //   });
-    //   return true;
-    // }
+  async setEthersAdapter(userAddress: string) {
     this.ethAdapter = new EthersAdapter({
       ethers,
       signer: this.biconomyProvider.getSignerByAddress(userAddress),
@@ -70,7 +62,10 @@ export class GnosisWalletClient {
 
   async executeSafeTransaction(safeTransaction: SafeTransaction, gasLimit: number) {
     if (this.ethAdapter && this.safeSdk) {
-      const safeTransactionResponse = await this.safeSdk.executeTransaction(safeTransaction, { gasLimit });
+      const safeTransactionResponse = await this.safeSdk.executeTransaction(
+        safeTransaction,
+        { gasLimit },
+      );
       return safeTransactionResponse;
     }
     throw new Error('Please set up ethAdapter and safeSdk before executing safe transaction.');

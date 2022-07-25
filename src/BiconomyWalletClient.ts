@@ -1,4 +1,7 @@
-import { ethers, Signer } from 'ethers';
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable import/no-cycle */
+/* eslint-disable max-len */
+import { ethers } from 'ethers';
 import {
   BiconomyWalletClientParamsType,
   BuildExecTransactionParamsType,
@@ -65,7 +68,7 @@ export class BiconomyWalletClient {
       handlerAddress,
       networkId,
     } = biconomyWalletClientParams;
-    this.biconomyProvider = biconomyProvider,
+    this.biconomyProvider = biconomyProvider;
     this.walletFactoryAddress = walletFactoryAddress;
     this.baseWalletAddress = baseWalletAddress;
     this.entryPointAddress = entryPointAddress;
@@ -124,9 +127,8 @@ export class BiconomyWalletClient {
         from: eoa,
       };
 
-      let tx;
       try {
-        tx = await dispatchProvider.send('eth_sendTransaction', [txParams]);
+        await dispatchProvider.send('eth_sendTransaction', [txParams]);
       } catch (err) {
         // handle conditional rejections in this stack trace
         console.log(err);
