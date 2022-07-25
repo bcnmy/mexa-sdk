@@ -40,8 +40,6 @@ exports.GnosisWalletClient = void 0;
 const ethers_1 = require("ethers");
 const axios_1 = __importDefault(require("axios"));
 const safe_ethers_lib_1 = __importDefault(require("@gnosis.pm/safe-ethers-lib"));
-const safe_web3_lib_1 = __importDefault(require("@gnosis.pm/safe-web3-lib"));
-const web3_1 = __importDefault(require("web3"));
 const safe_core_sdk_1 = __importStar(require("@gnosis.pm/safe-core-sdk"));
 const config_1 = require("./config");
 class GnosisWalletClient {
@@ -51,16 +49,8 @@ class GnosisWalletClient {
         this.networkId = networkId;
         this.apiKey = apiKey;
     }
-    setEthersAdapter(userAddress, rpcUrl) {
+    setEthersAdapter(userAddress) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (rpcUrl) {
-                const web3 = new web3_1.default.providers.HttpProvider(rpcUrl);
-                this.ethAdapter = new safe_web3_lib_1.default({
-                    web3,
-                    signerAddress: userAddress,
-                });
-                return true;
-            }
             this.ethAdapter = new safe_ethers_lib_1.default({
                 ethers: ethers_1.ethers,
                 signer: this.biconomyProvider.getSignerByAddress(userAddress),

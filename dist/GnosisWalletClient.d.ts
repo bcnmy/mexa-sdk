@@ -11,7 +11,7 @@ export declare class GnosisWalletClient {
     safeFactory?: SafeFactory;
     safeSdk?: Safe;
     constructor(gnosisClientParameters: GnosisWalletClientParams);
-    setEthersAdapter(userAddress: string, rpcUrl?: string): Promise<boolean>;
+    setEthersAdapter(userAddress: string): Promise<boolean>;
     createNewGnosisSafe(safeAccountConfig: SafeAccountConfig): Promise<Safe>;
     connectToGnosisSafe(safeAddress: string): Promise<Safe>;
     executeSafeTransaction(safeTransaction: SafeTransaction, gasLimit: number): Promise<import("@gnosis.pm/safe-core-sdk-types").TransactionResult>;
