@@ -10,13 +10,13 @@
     "build": "tsc",
     "lint": "eslint --fix --ext .ts .",
     "start": "node ./dist/index.js",
-    "dev": "ts-node ./index.ts",
-    "prepare": "npm run build"
+    "dev": "ts-node ./index.ts"
   },
   "dependencies": {
     "@biconomy/gasless-messaging-sdk": "^0.0.1",
     "@ethersproject/providers": "^5.6.8",
     "@gnosis.pm/safe-core-sdk": "^2.2.1",
+    "@gnosis.pm/safe-core-sdk-types": "^1.2.1",
     "@gnosis.pm/safe-ethers-lib": "^1.2.1",
     "@gnosis.pm/safe-service-client": "^1.2.0",
     "@gnosis.pm/safe-web3-lib": "^1.2.1",
@@ -36,10 +36,14 @@
     "@types/request-promise": "^4.1.48",
     "@typescript-eslint/eslint-plugin": "^5.30.6",
     "@typescript-eslint/parser": "^5.30.6",
-    "eslint": "^8.19.0",
+    "eslint": "^8.2.0",
+    "eslint-config-airbnb": "19.0.4",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "^17.0.0",
-    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-jsx-a11y": "^6.5.1",
+    "eslint-plugin-react": "^7.28.0",
+    "eslint-plugin-react-hooks": "^4.3.0",
     "typescript": "^4.7.4"
   }
 }

@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Biconomy = void 0;
+/* eslint-disable import/no-cycle */
 /* eslint-disable consistent-return */
 /**
  * @dev Biconomy class that is the entry point
@@ -33,6 +34,7 @@ const send_transaction_helper_1 = require("./helpers/send-transaction-helper");
 const meta_transaction_custom_helpers_1 = require("./helpers/meta-transaction-custom-helpers");
 const BiconomyWalletClient_1 = require("./BiconomyWalletClient");
 const GnosisWalletClient_1 = require("./GnosisWalletClient");
+const PermitClient_1 = require("./PermitClient");
 class Biconomy extends events_1.default {
     /**
      * constructor would initiliase providers and set values passed in options
@@ -253,6 +255,14 @@ class Biconomy extends events_1.default {
                             apiKey: this.apiKey,
                         });
                     }
+                    if (this.erc20ForwarderAddress && this.daiTokenAddress) {
+                        this.permitClient = new PermitClient_1.PermitClient({
+                            biconomyProvider: this,
+                            erc20ForwarderAddress: this.erc20ForwarderAddress,
+                            daiTokenAddress: this.daiTokenAddress,
+                            networkId: this.networkId,
+                        });
+                    }
                 }
                 else {
                     throw new Error('Could not get network version');
@@ -343,12 +353,10 @@ class Biconomy extends events_1.default {
         });
     }
     getSignerByAddress(userAddress) {
-        let provider = this.getEthersProvider();
+        const provider = this.getEthersProvider();
         let signer = provider.getSigner();
         signer = signer.connectUnchecked();
-        signer.getAddress = () => __awaiter(this, void 0, void 0, function* () {
-            return userAddress;
-        });
+        signer.getAddress = () => __awaiter(this, void 0, void 0, function* () { return userAddress; });
         return signer;
     }
     getEthersProvider() {

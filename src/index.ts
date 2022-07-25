@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable consistent-return */
 /**
  * @dev Biconomy class that is the entry point
@@ -349,12 +350,13 @@ export class Biconomy extends EventEmitter {
           });
         }
 
-        if(this.erc20ForwarderAddress && this.daiTokenAddress) {
+        if (this.erc20ForwarderAddress && this.daiTokenAddress) {
           this.permitClient = new PermitClient({
             biconomyProvider: this,
             erc20ForwarderAddress: this.erc20ForwarderAddress,
-            daiTokenAddress: this.daiTokenAddress
-          })
+            daiTokenAddress: this.daiTokenAddress,
+            networkId: this.networkId,
+          });
         }
       } else {
         throw new Error('Could not get network version');
@@ -389,7 +391,7 @@ export class Biconomy extends EventEmitter {
       if (smartContracts && smartContracts.length > 0) {
         smartContracts.forEach((contract: SmartContractType) => {
           const contractInterface = new ethers.utils.Interface(JSON.parse(contract.abi.toString()));
-          if(contract.type === `${config.SCW}`) {
+          if (contract.type === `${config.SCW}`) {
             this.smartContractMetaTransactionMap[`${config.SCW}`] = contract.metaTransactionType;
             this.interfaceMap[`${config.SCW}`] = contractInterface;
             this.smartContractMap[`${config.SCW}`] = contract.abi.toString();
@@ -409,7 +411,7 @@ export class Biconomy extends EventEmitter {
       if (metaApis && metaApis.length > 0) {
         metaApis.forEach((metaApi: MetaApiType) => {
           const { contractAddress, method } = metaApi;
-          if(!contractAddress) {
+          if (!contractAddress) {
             this.dappApiMap[`${config.SCW}-${method}`] = metaApi;
           } else {
             this.dappApiMap[`${contractAddress.toLowerCase()}-${method}`] = metaApi;
@@ -418,7 +420,6 @@ export class Biconomy extends EventEmitter {
       }
       logMessage(`smartContractMetaTransactionMap: ${JSON.stringify(this.smartContractMetaTransactionMap)}`);
       logMessage(`dappApiMap: ${JSON.stringify(this.dappApiMap)}`);
-
     } catch (error) {
       logErrorMessage(error);
       throw error;
@@ -455,13 +456,11 @@ export class Biconomy extends EventEmitter {
     }
   }
 
-  getSignerByAddress (userAddress: string) {
-    let provider = this.getEthersProvider();
+  getSignerByAddress(userAddress: string) {
+    const provider = this.getEthersProvider();
     let signer = provider.getSigner();
     signer = signer.connectUnchecked();
-    signer.getAddress = async () => {
-      return userAddress
-    }
+    signer.getAddress = async () => userAddress;
     return signer;
   }
 

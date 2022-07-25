@@ -4,6 +4,8 @@ export const config = {
   metaEntryPointBaseUrl: 'https://gasless-meta.prod.biconomy.io',
   webSocketConnectionUrl: 'wss://gasless-ws.prod.biconomy.io/connection/websocket',
   JSON_RPC_VERSION: '2.0',
+  daiDomainName: 'Dai Stablecoin',
+  daiVersion: '1',
   eip712SigVersion: '1',
   eip712DomainName: 'Biconomy Meta Transaction',
   eip712VerifyingContract: '0x3457dC2A8Ff1d3FcC45eAd532CA1740f5c477160',
@@ -15,16 +17,16 @@ export const config = {
   BASE_GAS: 0,
   EIP712_WALLET_TX_TYPE: { // Biconomy Wallet
     WalletTx: [
-      { type: "address", name: "to" },
-      { type: "uint256", name: "value" },
-      { type: "bytes", name: "data" },
-      { type: "uint8", name: "operation" },
-      { type: "uint256", name: "targetTxGas" },
-      { type: "uint256", name: "baseGas" },
-      { type: "uint256", name: "gasPrice" },
-      { type: "address", name: "gasToken" },
-      { type: "address", name: "refundReceiver" },
-      { type: "uint256", name: "nonce" },
+      { type: 'address', name: 'to' },
+      { type: 'uint256', name: 'value' },
+      { type: 'bytes', name: 'data' },
+      { type: 'uint8', name: 'operation' },
+      { type: 'uint256', name: 'targetTxGas' },
+      { type: 'uint256', name: 'baseGas' },
+      { type: 'uint256', name: 'gasPrice' },
+      { type: 'address', name: 'gasToken' },
+      { type: 'address', name: 'refundReceiver' },
+      { type: 'uint256', name: 'nonce' },
     ],
   },
   EIP712_SAFE_TX_TYPE: { // Gnosis Wallet
@@ -41,6 +43,27 @@ export const config = {
       { type: 'uint256', name: 'nonce' },
     ],
   },
+  // This domain type is used in Permit Client where chainId needs to be preserved
+  domainType: [
+    { name: 'name', type: 'string' },
+    { name: 'version', type: 'string' },
+    { name: 'chainId', type: 'uint256' },
+    { name: 'verifyingContract', type: 'address' },
+  ],
+  daiPermitType: [
+    { name: 'holder', type: 'address' },
+    { name: 'spender', type: 'address' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'expiry', type: 'uint256' },
+    { name: 'allowed', type: 'bool' },
+  ],
+  eip2612PermitType: [
+    { name: 'owner', type: 'address' },
+    { name: 'spender', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },
+  ],
 };
 
 export const EVENTS = {

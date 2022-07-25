@@ -4,6 +4,8 @@ export declare const config: {
     metaEntryPointBaseUrl: string;
     webSocketConnectionUrl: string;
     JSON_RPC_VERSION: string;
+    daiDomainName: string;
+    daiVersion: string;
     eip712SigVersion: string;
     eip712DomainName: string;
     eip712VerifyingContract: string;
@@ -25,6 +27,18 @@ export declare const config: {
             name: string;
         }[];
     };
+    domainType: {
+        name: string;
+        type: string;
+    }[];
+    daiPermitType: {
+        name: string;
+        type: string;
+    }[];
+    eip2612PermitType: {
+        name: string;
+        type: string;
+    }[];
 };
 export declare const EVENTS: {
     SMART_CONTRACT_DATA_READY: string;

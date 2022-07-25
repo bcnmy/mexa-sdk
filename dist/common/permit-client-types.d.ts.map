@@ -1,0 +1,1 @@
+{"version":3,"file":"permit-client-types.d.ts","sourceRoot":"","sources":["../../src/common/permit-client-types.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,QAAQ,EAAE,MAAM,IAAI,CAAC;AAE9B,oBAAY,kBAAkB,GAAG;IAC/B,gBAAgB,EAAE,QAAQ,CAAC;IAC3B,qBAAqB,EAAE,MAAM,CAAC;IAC9B,eAAe,EAAE,MAAM,CAAC;IACxB,SAAS,EAAE,MAAM,CAAC;CACnB,CAAC"}

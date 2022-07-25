@@ -1,13 +1,12 @@
-import { PermitClientParams } from "./common/permit-client-types";
+/* eslint-disable max-len */
+/* eslint-disable import/no-cycle */
+import { ethers } from 'ethers';
+import { PermitClientParams } from './common/permit-client-types';
 
-let { daiAbi, erc20Eip2612Abi } = require("./abis");
-let { ethers } = require("ethers");
-const { config } = require("./config");
+import { daiAbi, erc20Eip2612Abi } from './abis';
+import { config } from './config';
+import { logMessage } from './utils';
 
-let daiDomainData = {
-  name: config.daiDomainName,
-  version: config.daiVersion,
-};
 /**
  * Class to provide methods to give token transfer permissions to Biconomy's ERC20Forwarder smart contract
  * ERC20Forwarder contract is responsible to calculate gas cost in ERC20 tokens and making a transfer on user's behalf
@@ -16,23 +15,34 @@ let daiDomainData = {
  * Check https://docs.biconomy.io to see examples of how to use permit client to give one time token approvals
  */
 export class PermitClient {
+  biconomyProvider;
 
-    biconomyProvider;
+  erc20ForwarderAddress;
 
-    erc20ForwarderAddress;
-    
-    daiTokenAddress;
+  daiTokenAddress;
+
+  daiDomainData;
+
+  networkId;
+
   constructor(permiClientParams: PermitClientParams) {
     const {
-        biconomyProvider,
-        erc20ForwarderAddress,
-        daiTokenAddress
+      biconomyProvider,
+      erc20ForwarderAddress,
+      daiTokenAddress,
+      networkId,
     } = permiClientParams;
-    
-    this.biconomyProvider = biconomyProvider
+
+    this.biconomyProvider = biconomyProvider;
     this.erc20ForwarderAddress = erc20ForwarderAddress;
     this.daiTokenAddress = daiTokenAddress;
-    this.daiDomainData = daiDomainData;
+    this.networkId = networkId;
+    this.daiDomainData = {
+      name: config.daiDomainName,
+      version: config.daiVersion,
+      chainId: this.networkId,
+      verifyingContract: this.daiTokenAddress,
+    };
   }
 
   /**
@@ -42,24 +52,17 @@ export class PermitClient {
    * If spender is not provided by default approval will be given to ERC20 Forwarder contract on the same network as your provider
    * When your provider does not have a signer you must pass user address
    */
-  async daiPermit(daiPermitOptions) {
+  async daiPermit(daiPermitOptions: { spender: string; expiry: number; allowed: boolean; userAddress: string; }) {
     try {
       const spender = daiPermitOptions.spender || this.erc20ForwarderAddress;
-      const expiry =
-        daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
+      const expiry = daiPermitOptions.expiry || Math.floor(Date.now() / 1000 + 3600);
       const allowed = daiPermitOptions.allowed || true;
-      const userAddress =
-        daiPermitOptions.userAddress ||
-        (await this.provider.getSigner().getAddress());
-
-      let network = await this.provider.getNetwork();
-      daiDomainData.chainId = network.chainId;
-      daiDomainData.verifyingContract = this.daiTokenAddress;
+      const { userAddress } = daiPermitOptions;
 
       const dai = new ethers.Contract(
         this.daiDomainData.verifyingContract,
         daiAbi,
-        this.provider.getSigner()
+        this.biconomyProvider.getEthersProvider(),
       );
       const nonce = await dai.nonces(userAddress);
       const permitDataToSign = {
@@ -68,37 +71,36 @@ export class PermitClient {
           Permit: config.daiPermitType,
         },
         domain: this.daiDomainData,
-        primaryType: "Permit",
+        primaryType: 'Permit',
         message: {
           holder: userAddress,
-          spender: spender,
-          nonce: parseInt(nonce),
-          expiry: parseInt(expiry),
+          spender,
+          nonce: parseInt(nonce, 10),
+          expiry,
           allowed: true,
         },
       };
-      const result = await this.provider.send("eth_signTypedData_v4", [
+      const result = await this.provider.send('eth_signTypedData_v4', [
         userAddress,
         JSON.stringify(permitDataToSign),
       ]);
-      _logMessage("success", result);
       const signature = result.substring(2);
-      const r = "0x" + signature.substring(0, 64);
-      const s = "0x" + signature.substring(64, 128);
+      const r = `0x${signature.substring(0, 64)}`;
+      const s = `0x${signature.substring(64, 128)}`;
       const v = parseInt(signature.substring(128, 130), 16);
-      let tx = await dai.permit(
+      const tx = await dai.permit(
         userAddress,
         spender,
-        parseInt(nonce),
-        parseInt(expiry.toString()),
+        parseInt(nonce, 10),
+        expiry,
         allowed,
         v,
         r,
-        s
+        s,
       );
       return tx;
     } catch (error) {
-      _logMessage(error);
+      logMessage(error);
       throw error;
     }
   }
@@ -110,21 +112,18 @@ export class PermitClient {
    * If spender is not provided by default approval will be given to ERC20 Forwarder contract on the same network as your provider
    * When your provider does not have a signer you must pass user address
    */
-  async eip2612Permit(permitOptions) {
+  async eip2612Permit(permitOptions: { domainData?: any; domainType?: any; spender: string; deadline: number; userAddress: string; value?: any; }) {
     try {
       const tokenDomainData = permitOptions.domainData;
       const tokenDomainType = permitOptions.domainType || config.domainType;
       const spender = permitOptions.spender || this.erc20ForwarderAddress;
-      const value = permitOptions.value;
-      const deadline =
-        permitOptions.deadline || Math.floor(Date.now() / 1000 + 3600);
-      const userAddress =
-        permitOptions.userAddress ||
-        (await this.provider.getSigner().getAddress());
+      const { value } = permitOptions;
+      const deadline = permitOptions.deadline || Math.floor(Date.now() / 1000 + 3600);
+      const { userAddress } = permitOptions;
       const token = new ethers.Contract(
         tokenDomainData.verifyingContract,
         erc20Eip2612Abi,
-        this.provider.getSigner()
+        this.biconomyProvider.getEthersProvider(),
       );
       const nonce = await token.nonces(userAddress);
       const permitDataToSign = {
@@ -133,36 +132,35 @@ export class PermitClient {
           Permit: config.eip2612PermitType,
         },
         domain: tokenDomainData,
-        primaryType: "Permit",
+        primaryType: 'Permit',
         message: {
           owner: userAddress,
-          spender: spender,
-          nonce: parseInt(nonce),
-          value: value,
-          deadline: parseInt(deadline),
+          spender,
+          nonce,
+          value,
+          deadline,
         },
       };
-      const result = await this.provider.send("eth_signTypedData_v4", [
+      const result = await this.provider.send('eth_signTypedData_v4', [
         userAddress,
         JSON.stringify(permitDataToSign),
       ]);
-      _logMessage("success", result);
       const signature = result.substring(2);
-      const r = "0x" + signature.substring(0, 64);
-      const s = "0x" + signature.substring(64, 128);
+      const r = `0x${signature.substring(0, 64)}`;
+      const s = `0x${signature.substring(64, 128)}`;
       const v = parseInt(signature.substring(128, 130), 16);
-      let tx = await token.permit(
+      const tx = await token.permit(
         userAddress,
         spender,
         value,
-        parseInt(deadline.toString()),
+        deadline,
         v,
         r,
-        s
+        s,
       );
       return tx;
     } catch (error) {
-      _logMessage(error);
+      logMessage(error);
       throw error;
     }
   }

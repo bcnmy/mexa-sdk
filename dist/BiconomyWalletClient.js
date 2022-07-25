@@ -10,6 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BiconomyWalletClient = void 0;
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable import/no-cycle */
 /* eslint-disable max-len */
 const ethers_1 = require("ethers");
 const abis_1 = require("./abis");
@@ -37,8 +39,8 @@ const getSignatureParameters = (signature) => {
 class BiconomyWalletClient {
     constructor(biconomyWalletClientParams) {
         const { biconomyProvider, walletFactoryAddress, baseWalletAddress, entryPointAddress, handlerAddress, networkId, } = biconomyWalletClientParams;
-        this.biconomyProvider = biconomyProvider,
-            this.walletFactoryAddress = walletFactoryAddress;
+        this.biconomyProvider = biconomyProvider;
+        this.walletFactoryAddress = walletFactoryAddress;
         this.baseWalletAddress = baseWalletAddress;
         this.entryPointAddress = entryPointAddress;
         this.handlerAddress = handlerAddress;
@@ -51,37 +53,36 @@ class BiconomyWalletClient {
         return __awaiter(this, void 0, void 0, function* () {
             const { eoa, index } = checkIfWalletExistsParams;
             // Read calls would need providerOrSigner
-            let walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
+            const walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
             const doesWalletExist = yield this.walletFactory.isWalletExist(walletAddress);
             if (doesWalletExist) {
                 return {
                     doesWalletExist,
-                    walletAddress
+                    walletAddress,
                 };
             }
             return {
                 doesWalletExist,
-                walletAddress
+                walletAddress,
             };
         });
     }
     checkIfWalletExistsAndDeploy(checkIfWalletExistsAndDeployParams) {
         return __awaiter(this, void 0, void 0, function* () {
             const { eoa, index } = checkIfWalletExistsAndDeployParams;
-            let walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
+            const walletAddress = yield this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
             const doesWalletExist = yield this.walletFactory.isWalletExist[walletAddress];
             this.walletFactory = this.walletFactory.connect(this.biconomyProvider.getSignerByAddress(eoa));
             if (!doesWalletExist) {
-                let executionData = yield this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
-                let dispatchProvider = this.biconomyProvider.getEthersProvider();
-                let txParams = {
+                const executionData = yield this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+                const dispatchProvider = this.biconomyProvider.getEthersProvider();
+                const txParams = {
                     data: executionData.data,
                     to: this.walletFactory.address,
                     from: eoa,
                 };
-                let tx;
                 try {
-                    tx = yield dispatchProvider.send("eth_sendTransaction", [txParams]);
+                    yield dispatchProvider.send('eth_sendTransaction', [txParams]);
                 }
                 catch (err) {
                     // handle conditional rejections in this stack trace
