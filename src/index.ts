@@ -4,7 +4,7 @@
  * @dev Biconomy class that is the entry point
  */
 import EventEmitter from 'events';
-import { ExternalProvider } from '@ethersproject/providers';
+import { ExternalProvider, JsonRpcProvider } from '@ethersproject/providers';
 import { ethers } from 'ethers';
 import axios from 'axios';
 import { ClientMessenger } from '@biconomy/gasless-messaging-sdk';
@@ -41,15 +41,16 @@ import { buildSignatureCustomEIP712MetaTransaction, buildSignatureCustomPersonal
 import { BiconomyWalletClient } from './BiconomyWalletClient';
 import { GnosisWalletClient } from './GnosisWalletClient';
 import { PermitClient } from './PermitClient';
+import { commify } from 'ethers/lib/utils';
 
 export class Biconomy extends EventEmitter {
   apiKey: string;
 
-  private externalProvider: ExternalProvider;
+  private externalProvider: ExternalProvider | JsonRpcProvider;
 
   readOnlyProvider?: ethers.providers.JsonRpcProvider;
 
-  provider: ExternalProvider;
+  provider: ExternalProvider | JsonRpcProvider;
 
   dappApiMap: DappApiMapType = {};
 
@@ -99,7 +100,7 @@ export class Biconomy extends EventEmitter {
 
   gnosisSafeAddress?: string;
 
-  ethersProvider: ethers.providers.Web3Provider;
+  ethersProvider: ethers.providers.Web3Provider | ethers.providers.JsonRpcProvider;
 
   networkId?: number;
 
@@ -141,15 +142,22 @@ export class Biconomy extends EventEmitter {
    * externalProvider is the provider dev passes (ex. window.ethereum)
    * this.provider is the proxy provider object that would intercept all rpc calls for the SDK
    */
-  constructor(provider: ExternalProvider, options: OptionsType) {
+  constructor(provider: ExternalProvider | JsonRpcProvider, options: OptionsType) {
     super();
     validateOptions(options);
     this.apiKey = options.apiKey;
     this.strictMode = options.strictMode || false;
-    this.externalProvider = provider;
-    this.provider = this.proxyFactory();
+    if(this.isExternalProvider(provider)) {
+      this.externalProvider = provider;
+      this.ethersProvider = new ethers.providers.Web3Provider(provider);
+      this.provider = this.proxyFactory();
+    } else {
+      this.ethersProvider = provider;
+      this.externalProvider = provider;
+      this.provider = this.ethersProvider;
+    }
+
     this.contractAddresses = options.contractAddresses;
-    this.ethersProvider = new ethers.providers.Web3Provider(provider);
     this.clientMessenger = new ClientMessenger(
       config.webSocketConnectionUrl,
       WebSocket,
@@ -161,7 +169,7 @@ export class Biconomy extends EventEmitter {
   }
 
   private proxyFactory() {
-    return new Proxy(this.externalProvider, this.proxyProvider);
+    return new Proxy(this.externalProvider as ExternalProvider, this.proxyProvider);
   }
 
   proxyProvider = {
@@ -182,7 +190,7 @@ export class Biconomy extends EventEmitter {
   };
 
   async handleRpcSendType1(payload: JsonRpcRequest, callback: JsonRpcCallback) {
-    const fallback = () => this.externalProvider.send?.(payload, callback);
+    const fallback = () => (this.externalProvider as ExternalProvider).send?.(payload, callback);
     const { method, params } = payload;
     try {
       switch (method) {
@@ -266,8 +274,7 @@ export class Biconomy extends EventEmitter {
   }
 
   async handleRpcSendAsync(payload: JsonRpcRequest, callback: JsonRpcCallback) {
-    const fallback = () => this.externalProvider.sendAsync?.(payload, callback);
-
+    const fallback = () => (this.externalProvider as ExternalProvider).sendAsync?.(payload, callback);
     const { method, params } = payload;
     try {
       switch (method) {
@@ -285,8 +292,7 @@ export class Biconomy extends EventEmitter {
   }
 
   async handleRpcRequest({ method, params } : { method: string, params: string[] }) {
-    const fallback = () => this.externalProvider.request?.({ method, params });
-
+    const fallback = () => (this.externalProvider as ExternalProvider).request?.({ method, params });
     try {
       switch (method) {
         case 'eth_sendTransaction':
@@ -465,6 +471,16 @@ export class Biconomy extends EventEmitter {
   }
 
   getEthersProvider() {
-    return new ethers.providers.Web3Provider(this.provider);
+    if(this.isExternalProvider(this.externalProvider)) {
+      return new ethers.providers.Web3Provider(this.proxyFactory());
+    } else {
+      return this.externalProvider;
+    }
+  }
+
+  isExternalProvider<T>(
+    response: T | ExternalProvider,
+  ): response is ExternalProvider {
+    return (response as ExternalProvider).sendAsync !== undefined;
   }
 }
