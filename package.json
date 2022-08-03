@@ -1,54 +1,41 @@
 {
   "name": "@biconomy/mexa",
-  "version": "2.0.36",
+  "version": "3.0.2",
   "description": "Mexa SDK to enable meta transaction in your DApps",
-  "main": "common-js/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "repository": "git+https://github.com/bcnmy/mexa-sdk.git",
+  "license": "MIT",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "browserify ./common-js/Biconomy.js -o ./dist/mexa.js -s Biconomy -d",
-    "build:babel": "babel src -d common-js && npm run build"
+    "build": "tsc",
+    "lint": "eslint --fix --ext .ts .",
+    "start": "node ./dist/index.js",
+    "dev": "ts-node ./index.ts",
+    "prepare": "npm run build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bcnmy/mexa-sdk.git"
-  },
-  "keywords": [
-    "mexa",
-    "sdk",
-    "meta-transactions",
-    "gasless",
-    "transactions"
-  ],
-  "author": "Sachin Tomar",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/bcnmy/mexa-sdk/issues"
-  },
-  "homepage": "https://github.com/bcnmy/mexa-sdk#readme",
-  "files": [
-    "*.js",
-    "/dist/*.js",
-    "/common-js/*.js"
-  ],
   "dependencies": {
-    "@babel/core": "^7.12.13",
-    "@babel/runtime": "^7.12.13",
-    "cross-fetch": "^3.1.4",
+    "@ethersproject/providers": "^5.6.8",
+    "axios": "^0.27.2",
     "ethereum-tx-decoder": "^3.0.0",
     "ethereumjs-abi": "^0.6.8",
-    "ethers": "^5.0.24",
-    "events": "^3.0.0",
-    "promise": "^8.0.3"
-  },
-  "engines": {
-    "node": ">=10.22.0"
+    "ethereumjs-util": "^7.1.5",
+    "ethers": "^5.6.9",
+    "@biconomy/gasless-messaging-sdk": "^0.0.1",
+    "install": "^0.13.0",
+    "isomorphic-ws": "^5.0.0",
+    "mongoose": "^6.4.4",
+    "request-promise": "^4.2.6",
+    "serialize-error": "8.1.0",
+    "ws": "^8.8.0"
   },
   "devDependencies": {
-    "@babel/cli": "^7.12.13",
-    "@babel/plugin-transform-classes": "^7.12.13",
-    "@babel/plugin-transform-runtime": "^7.12.15",
-    "@babel/preset-env": "^7.12.13",
-    "babel-preset-env": "^1.7.0",
-    "browserify": "^16.5.0"
+    "@types/request-promise": "^4.1.48",
+    "@typescript-eslint/eslint-plugin": "^5.30.6",
+    "@typescript-eslint/parser": "^5.30.6",
+    "eslint": "^8.19.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "typescript": "^4.7.4"
   }
 }
