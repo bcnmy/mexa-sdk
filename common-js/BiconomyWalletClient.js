@@ -76,7 +76,6 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
     this.networkId = networkId;
     this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.providerOrSigner);
     this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.providerOrSigner);
-    this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, this.providerOrSigner);
   }
 
   (0, _createClass2["default"])(BiconomyWalletClient, [{

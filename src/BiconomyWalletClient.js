@@ -67,7 +67,6 @@ class BiconomyWalletClient {
 
         this.walletFactory = new ethers.Contract(this.walletFactoryAddress, walletFactoryAbi, this.providerOrSigner);
         this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.providerOrSigner);
-        this.entryPoint = new ethers.Contract(this.entryPointAddress, entryPointAbi, this.providerOrSigner);
     }
 
     async checkIfWalletExists({eoa, index = 0}) {
