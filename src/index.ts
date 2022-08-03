@@ -40,7 +40,7 @@ import { sendTransaction } from './helpers/send-transaction-helper';
 import { buildSignatureCustomEIP712MetaTransaction, buildSignatureCustomPersonalSignMetaTransaction } from './helpers/meta-transaction-custom-helpers';
 import { BiconomyWalletClient } from './BiconomyWalletClient';
 import { GnosisWalletClient } from './GnosisWalletClient';
-import { PermitClient } from './PermitClient';
+// import { PermitClient } from './PermitClient';
 
 export class Biconomy extends EventEmitter {
   apiKey: string;
@@ -129,7 +129,7 @@ export class Biconomy extends EventEmitter {
 
   gnosiWalletClient?: GnosisWalletClient;
 
-  permitClient?: PermitClient;
+  // permitClient?: PermitClient;
 
   erc20ForwarderAddress?: string;
 
@@ -340,24 +340,30 @@ export class Biconomy extends EventEmitter {
             handlerAddress: this.handlerAddress,
             networkId: this.networkId,
           });
+        } else {
+          logMessage(`BiconomyWalletClient not available for networkId: ${this.networkId}`);
         }
 
-        if (this.gnosisSafeProxyFactoryAddress && this.gnosisSafeAddress) {
+        if (this.gnosisSafeProxyFactoryAddress) {
           this.gnosiWalletClient = new GnosisWalletClient({
             biconomyProvider: this,
             networkId: this.networkId,
             apiKey: this.apiKey,
           });
+        } else {
+          logMessage(`GnosisWalletClient not available for networkId: ${this.networkId}`);
         }
 
-        if (this.erc20ForwarderAddress && this.daiTokenAddress) {
-          this.permitClient = new PermitClient({
-            biconomyProvider: this,
-            erc20ForwarderAddress: this.erc20ForwarderAddress,
-            daiTokenAddress: this.daiTokenAddress,
-            networkId: this.networkId,
-          });
-        }
+        // if (this.erc20ForwarderAddress && this.daiTokenAddress) {
+        //   this.permitClient = new PermitClient({
+        //     biconomyProvider: this,
+        //     erc20ForwarderAddress: this.erc20ForwarderAddress,
+        //     daiTokenAddress: this.daiTokenAddress,
+        //     networkId: this.networkId,
+        //   });
+        // } else {
+        //   logMessage(`PermitClient not available for networkId: ${this.networkId}`);
+        // }
       } else {
         throw new Error('Could not get network version');
       }

@@ -51,7 +51,6 @@ export async function getSystemInfo(
       this.entryPointAddress = systemInfo.entryPointAddress;
       this.handlerAddress = systemInfo.handlerAddress;
       this.gnosisSafeProxyFactoryAddress = systemInfo.gnosisSafeProxyFactoryAddress;
-      this.gnosisSafeAddress = systemInfo.gnosisSafeAddress;
       this.walletFactoryAddress = systemInfo.walletFactoryAddress;
       this.baseWalletAddress = systemInfo.baseWalletAddress;
       this.entryPointAddress = systemInfo.entryPointAddress;

@@ -34,7 +34,7 @@ const send_transaction_helper_1 = require("./helpers/send-transaction-helper");
 const meta_transaction_custom_helpers_1 = require("./helpers/meta-transaction-custom-helpers");
 const BiconomyWalletClient_1 = require("./BiconomyWalletClient");
 const GnosisWalletClient_1 = require("./GnosisWalletClient");
-const PermitClient_1 = require("./PermitClient");
+// import { PermitClient } from './PermitClient';
 class Biconomy extends events_1.default {
     /**
      * constructor would initiliase providers and set values passed in options
@@ -248,6 +248,9 @@ class Biconomy extends events_1.default {
                             networkId: this.networkId,
                         });
                     }
+                    else {
+                        (0, utils_1.logMessage)(`BiconomyWalletClient not available for networkId: ${this.networkId}`);
+                    }
                     if (this.gnosisSafeProxyFactoryAddress && this.gnosisSafeAddress) {
                         this.gnosiWalletClient = new GnosisWalletClient_1.GnosisWalletClient({
                             biconomyProvider: this,
@@ -255,14 +258,19 @@ class Biconomy extends events_1.default {
                             apiKey: this.apiKey,
                         });
                     }
-                    if (this.erc20ForwarderAddress && this.daiTokenAddress) {
-                        this.permitClient = new PermitClient_1.PermitClient({
-                            biconomyProvider: this,
-                            erc20ForwarderAddress: this.erc20ForwarderAddress,
-                            daiTokenAddress: this.daiTokenAddress,
-                            networkId: this.networkId,
-                        });
+                    else {
+                        (0, utils_1.logMessage)(`GnosisWalletClient not available for networkId: ${this.networkId}`);
                     }
+                    // if (this.erc20ForwarderAddress && this.daiTokenAddress) {
+                    //   this.permitClient = new PermitClient({
+                    //     biconomyProvider: this,
+                    //     erc20ForwarderAddress: this.erc20ForwarderAddress,
+                    //     daiTokenAddress: this.daiTokenAddress,
+                    //     networkId: this.networkId,
+                    //   });
+                    // } else {
+                    //   logMessage(`PermitClient not available for networkId: ${this.networkId}`);
+                    // }
                 }
                 else {
                     throw new Error('Could not get network version');
