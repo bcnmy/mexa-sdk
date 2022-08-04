@@ -69,16 +69,43 @@ class BiconomyWalletClient {
         this.baseWallet = new ethers.Contract(this.baseWalletAddress, baseWalletAbi, this.providerOrSigner);
     }
 
-    async checkIfWalletExists({eoa, index = 0}) {
-        // Read calls would need providerOrSigner
+
+    async deployWallet({ eoa, index = 0 }) {
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
-        const doesWalletExist = await this.walletFactory.isWalletExist(walletAddress);
-        if (doesWalletExist) {
+        let executionData = await this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
+        let dispatchProvider = this.engine.getEthersProvider();
+
+        let txParams = {
+            data: executionData.data,
+            to: this.walletFactory.address,
+            from: eoa,
+        };
+
+        let tx;
+        try {
+            tx = await dispatchProvider.send("eth_sendTransaction", [txParams])
+        }
+        catch (err) {
+            // handle conditional rejections in this stack trace
+            console.log(err);
+            throw err;
+        }
+        return walletAddress;
+    }
+
+    async checkIfWalletExists({eoa, index = 0, walletFactoryAddress}) {
+        // Read calls would need providerOrSigner
+        if(walletFactoryAddress) {
+            let walletFactory = new ethers.Contract(walletFactoryAddress, walletFactoryAbi, this.providerOrSigner);
+            let walletAddress = await walletFactory.getAddressForCounterfactualWallet(eoa, index);
+            const doesWalletExist = await this.walletFactory.isWalletExist(walletAddress);
             return {
                 doesWalletExist,
                 walletAddress
             }
         }
+        let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
+        const doesWalletExist = await this.walletFactory.isWalletExist(walletAddress);
         return {
             doesWalletExist,
             walletAddress
