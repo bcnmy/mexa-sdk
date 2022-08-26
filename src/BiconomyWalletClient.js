@@ -113,6 +113,7 @@ class BiconomyWalletClient {
     }
 
     async checkIfWalletExistsAndDeploy({ eoa, index = 0 }) {
+        let txHash;
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
         this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
@@ -126,9 +127,8 @@ class BiconomyWalletClient {
                 from: eoa,
             };
 
-            let tx;
             try {
-                tx = await dispatchProvider.send("eth_sendTransaction", [txParams])
+                txHash = await dispatchProvider.send("eth_sendTransaction", [txParams])
             }
             catch (err) {
                 // handle conditional rejections in this stack trace
@@ -136,7 +136,10 @@ class BiconomyWalletClient {
                 throw err;
             }
         }
-        return walletAddress;
+        return { 
+            walletAddress,
+            txHash,
+        };
     }
 
     // Gasless transaction
@@ -241,16 +244,16 @@ class BiconomyWalletClient {
             webHookAttributes: webHookAttributes || null
         };
 
-        let tx;
+        let txHash;
         try {
-            tx = await dispatchProvider.send("eth_sendTransaction", [txParams])
+            txHash = await dispatchProvider.send("eth_sendTransaction", [txParams])
         }
         catch (err) {
             // handle conditional rejections in this stack trace
             console.log(err);
             throw err;
         }
-        return tx;
+        return txHash;
     }
 
 }
