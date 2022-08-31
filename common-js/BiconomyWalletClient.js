@@ -205,13 +205,13 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
     key: "checkIfWalletExistsAndDeploy",
     value: function () {
       var _checkIfWalletExistsAndDeploy = (0, _asyncToGenerator2["default"])( /*#__PURE__*/_regenerator["default"].mark(function _callee3(_ref4) {
-        var eoa, _ref4$index, index, txHash, walletAddress, doesWalletExist, executionData, dispatchProvider, txParams;
+        var eoa, webHookAttributes, _ref4$index, index, txHash, walletAddress, doesWalletExist, executionData, dispatchProvider, txParams;
 
         return _regenerator["default"].wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                eoa = _ref4.eoa, _ref4$index = _ref4.index, index = _ref4$index === void 0 ? 0 : _ref4$index;
+                eoa = _ref4.eoa, webHookAttributes = _ref4.webHookAttributes, _ref4$index = _ref4.index, index = _ref4$index === void 0 ? 0 : _ref4$index;
                 _context3.next = 3;
                 return this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
 
@@ -225,7 +225,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
 
                 if (doesWalletExist) {
-                  _context3.next = 24;
+                  _context3.next = 26;
                   break;
                 }
 
@@ -235,39 +235,46 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
               case 11:
                 executionData = _context3.sent;
                 dispatchProvider = this.engine.getEthersProvider();
+
+                if (webHookAttributes && webHookAttributes.webHookData) {
+                  webHookAttributes.webHookData.webwallet_address = eoa;
+                }
+
+                console.log('webHookAttributes', webHookAttributes);
                 txParams = {
                   data: executionData.data,
                   to: this.walletFactory.address,
-                  from: eoa
+                  from: eoa,
+                  webHookAttributes: webHookAttributes || null
                 };
-                _context3.prev = 14;
-                _context3.next = 17;
+                _context3.prev = 16;
+                _context3.next = 19;
                 return dispatchProvider.send("eth_sendTransaction", [txParams]);
 
-              case 17:
+              case 19:
                 txHash = _context3.sent;
-                _context3.next = 24;
+                _context3.next = 26;
                 break;
 
-              case 20:
-                _context3.prev = 20;
-                _context3.t0 = _context3["catch"](14);
+              case 22:
+                _context3.prev = 22;
+                _context3.t0 = _context3["catch"](16);
                 // handle conditional rejections in this stack trace
                 console.log(_context3.t0);
                 throw _context3.t0;
 
-              case 24:
+              case 26:
                 return _context3.abrupt("return", {
                   walletAddress: walletAddress,
                   txHash: txHash
                 });
 
-              case 25:
+              case 27:
               case "end":
                 return _context3.stop();
             }
           }
-        }, _callee3, this, [[14, 20]]);
+        }, _callee3, this, [[16, 22]]);
       }));
 
       function checkIfWalletExistsAndDeploy(_x3) {

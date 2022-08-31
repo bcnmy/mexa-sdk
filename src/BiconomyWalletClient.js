@@ -112,7 +112,7 @@ class BiconomyWalletClient {
         }
     }
 
-    async checkIfWalletExistsAndDeploy({ eoa, index = 0 }) {
+    async checkIfWalletExistsAndDeploy({ eoa, webHookAttributes, index = 0 }) {
         let txHash;
         let walletAddress = await this.walletFactory.getAddressForCounterfactualWallet(eoa, index);
         const doesWalletExist = await this.walletFactory.isWalletExist[walletAddress];
@@ -121,10 +121,15 @@ class BiconomyWalletClient {
             let executionData = await this.walletFactory.populateTransaction.deployCounterFactualWallet(eoa, this.entryPointAddress, this.handlerAddress, index);
             let dispatchProvider = this.engine.getEthersProvider();
 
+            if(webHookAttributes && webHookAttributes.webHookData) {
+                webHookAttributes.webHookData.webwallet_address = eoa;
+            }
+            console.log('webHookAttributes', webHookAttributes);
             let txParams = {
                 data: executionData.data,
                 to: this.walletFactory.address,
                 from: eoa,
+                webHookAttributes: webHookAttributes || null
             };
 
             try {
