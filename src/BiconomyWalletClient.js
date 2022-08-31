@@ -124,7 +124,6 @@ class BiconomyWalletClient {
             if(webHookAttributes && webHookAttributes.webHookData) {
                 webHookAttributes.webHookData.webwallet_address = eoa;
             }
-            console.log('webHookAttributes', webHookAttributes);
             let txParams = {
                 data: executionData.data,
                 to: this.walletFactory.address,

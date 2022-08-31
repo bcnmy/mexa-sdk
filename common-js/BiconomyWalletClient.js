@@ -225,7 +225,7 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                 this.walletFactory = this.walletFactory.connect(this.engine.getSignerByAddress(eoa));
 
                 if (doesWalletExist) {
-                  _context3.next = 26;
+                  _context3.next = 25;
                   break;
                 }
 
@@ -240,41 +240,40 @@ var BiconomyWalletClient = /*#__PURE__*/function () {
                   webHookAttributes.webHookData.webwallet_address = eoa;
                 }
 
-                console.log('webHookAttributes', webHookAttributes);
                 txParams = {
                   data: executionData.data,
                   to: this.walletFactory.address,
                   from: eoa,
                   webHookAttributes: webHookAttributes || null
                 };
-                _context3.prev = 16;
-                _context3.next = 19;
+                _context3.prev = 15;
+                _context3.next = 18;
                 return dispatchProvider.send("eth_sendTransaction", [txParams]);
 
-              case 19:
+              case 18:
                 txHash = _context3.sent;
-                _context3.next = 26;
+                _context3.next = 25;
                 break;
 
-              case 22:
-                _context3.prev = 22;
-                _context3.t0 = _context3["catch"](16);
+              case 21:
+                _context3.prev = 21;
+                _context3.t0 = _context3["catch"](15);
                 // handle conditional rejections in this stack trace
                 console.log(_context3.t0);
                 throw _context3.t0;
 
-              case 26:
+              case 25:
                 return _context3.abrupt("return", {
                   walletAddress: walletAddress,
                   txHash: txHash
                 });
 
-              case 27:
+              case 26:
               case "end":
                 return _context3.stop();
             }
           }
-        }, _callee3, this, [[16, 22]]);
+        }, _callee3, this, [[15, 21]]);
       }));
 
       function checkIfWalletExistsAndDeploy(_x3) {
