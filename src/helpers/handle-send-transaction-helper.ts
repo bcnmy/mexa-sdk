@@ -221,7 +221,11 @@ export async function handleSendTransaction(
               );
               logMessage(`EIP712 signature is ${signatureEIP712}`);
             }
-            paramArray.push(signatureEIP712);
+            if (signatureEIP712) {
+              paramArray.push(signatureEIP712);
+            } else {
+              throw new Error('Could not get eip712 signature while processing transaction in Mexa SDK. Please check the providers you have passed to Biconomy');
+            }
           } else {
             logMessage('Personal signature flow');
             let signaturePersonal;
