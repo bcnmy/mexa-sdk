@@ -8,9 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendTransaction = void 0;
-const request_promise_1 = require("request-promise");
+const axios_1 = __importDefault(require("axios"));
 const config_1 = require("../config");
 const utils_1 = require("../utils");
 const client_messaging_helper_1 = require("./client-messaging-helper");
@@ -27,24 +30,24 @@ function sendTransaction(account, data, fallback) {
             if (!this || !account || !data) {
                 return undefined;
             }
+            const url = `${config_1.config.metaEntryPointBaseUrl}/api/v1/native`;
+            const jsonData = JSON.stringify(data);
             const options = {
-                uri: `${config_1.config.metaEntryPointBaseUrl}/api/v1/native`,
+                url,
                 headers: {
                     'x-api-key': this.apiKey,
                     'Content-Type': 'application/json;charset=utf-8',
                     version: config_1.config.PACKAGE_VERSION,
                 },
-                timeout: 600000,
-                body: JSON.stringify(data),
+                timeout: 600000, // 10 min
             };
             (0, utils_1.logMessage)('request body');
-            (0, utils_1.logMessage)(JSON.stringify(data));
-            const response = yield (0, request_promise_1.post)(options);
-            (0, utils_1.logMessage)(response);
-            const result = JSON.parse(response);
+            (0, utils_1.logMessage)(jsonData);
+            const result = yield axios_1.default.post(url, jsonData, options);
+            (0, utils_1.logMessage)(result);
             if (result.data
                 && result.data.transactionId
-                && result.flag === config_1.BICONOMY_RESPONSE_CODES.SUCCESS) {
+                && result.status === config_1.BICONOMY_RESPONSE_CODES.SUCCESS) {
                 (0, client_messaging_helper_1.mexaSdkClientMessenger)(this, {
                     transactionId: result.data.transactionId,
                 });
@@ -52,15 +55,15 @@ function sendTransaction(account, data, fallback) {
                     transactionId: result.data.transactionId,
                 };
             }
-            if (result.flag === config_1.BICONOMY_RESPONSE_CODES.BAD_REQUEST) {
+            if (result.status === config_1.BICONOMY_RESPONSE_CODES.BAD_REQUEST) {
                 yield fallback();
                 return {
                     transactionId: result.data.transactionId,
                 };
             }
             const error = {};
-            error.code = result.flag || result.code;
-            error.message = result.log || result.message || 'Error in native meta api call';
+            error.code = result.status;
+            error.message = result.statusText || 'Error in native meta api call';
             return {
                 error: error.toString(),
                 transcionId: result.data.transactionId,

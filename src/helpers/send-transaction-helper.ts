@@ -1,8 +1,9 @@
-import { post } from 'request-promise';
+import axios, { AxiosRequestConfig } from 'axios';
 import type { Biconomy } from '..';
 import { BICONOMY_RESPONSE_CODES, config } from '../config';
 import { logErrorMessage, logMessage } from '../utils';
 import { mexaSdkClientMessenger } from './client-messaging-helper';
+
 
 /**
  * Method to send the transaction to biconomy server and call the callback method
@@ -22,28 +23,28 @@ export async function sendTransaction(
       return undefined;
     }
 
-    const options = {
-      uri: `${config.metaEntryPointBaseUrl}/api/v1/native`,
+    const url = `${config.metaEntryPointBaseUrl}/api/v1/native`;
+    const jsonData = JSON.stringify(data);
+    const options: AxiosRequestConfig = {
+      url,
       headers: {
         'x-api-key': this.apiKey,
         'Content-Type': 'application/json;charset=utf-8',
         version: config.PACKAGE_VERSION,
       },
       timeout: 600000, // 10 min
-      body: JSON.stringify(data),
     };
 
     logMessage('request body');
-    logMessage(JSON.stringify(data));
+    logMessage(jsonData);
 
-    const response = await post(options);
-    logMessage(response);
-    const result = JSON.parse(response);
+    const result = await axios.post(url, jsonData, options);
+    logMessage(result);
 
     if (
       result.data
-       && result.data.transactionId
-       && result.flag === BICONOMY_RESPONSE_CODES.SUCCESS
+      && result.data.transactionId
+      && result.status === BICONOMY_RESPONSE_CODES.SUCCESS
     ) {
       mexaSdkClientMessenger(
         this,
@@ -54,15 +55,15 @@ export async function sendTransaction(
       return {
         transactionId: result.data.transactionId,
       };
-    } if (result.flag === BICONOMY_RESPONSE_CODES.BAD_REQUEST) {
+    } if (result.status === BICONOMY_RESPONSE_CODES.BAD_REQUEST) {
       await fallback();
       return {
         transactionId: result.data.transactionId,
       };
     }
     const error: any = {};
-    error.code = result.flag || result.code;
-    error.message = result.log || result.message || 'Error in native meta api call';
+    error.code = result.status;
+    error.message = result.statusText || 'Error in native meta api call';
     return {
       error: error.toString(),
       transcionId: result.data.transactionId,
