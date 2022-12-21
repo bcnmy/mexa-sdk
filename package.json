@@ -26,6 +26,7 @@
     "install": "^0.13.0",
     "isomorphic-ws": "^5.0.0",
     "mongoose": "^6.4.4",
+    "querystring": "^0.2.1",
     "serialize-error": "8.1.0",
     "ws": "^8.8.0"
   },
