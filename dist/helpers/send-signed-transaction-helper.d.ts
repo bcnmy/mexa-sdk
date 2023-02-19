@@ -11,5 +11,5 @@ import { SendSingedTransactionParamsType } from '../common/types';
  * @param {Object} this Reference to this SDK instance
  * @param {Object} payload Payload data
  */
-export declare function sendSignedTransaction(this: Biconomy, sendSignedTransactionParams: SendSingedTransactionParamsType): Promise<unknown>;
+export declare function sendSignedTransaction(this: Biconomy, sendSignedTransactionParams: SendSingedTransactionParamsType): Promise<any>;
 //# sourceMappingURL=send-signed-transaction-helper.d.ts.map
