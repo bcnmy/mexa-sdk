@@ -1,8 +1,8 @@
-import axios from "axios";
-import type { Biconomy } from "..";
-import { BICONOMY_RESPONSE_CODES, config } from "../config";
-import { logErrorMessage, logMessage } from "../utils";
-import { mexaSdkClientMessenger } from "./client-messaging-helper";
+import axios from 'axios';
+import type { Biconomy } from '..';
+import { BICONOMY_RESPONSE_CODES, config } from '../config';
+import { logErrorMessage, logMessage } from '../utils';
+import { mexaSdkClientMessenger } from './client-messaging-helper';
 
 /**
  * Method to send the transaction to biconomy server and call the callback method
@@ -22,7 +22,7 @@ export async function sendTransaction(
       return undefined;
     }
 
-    logMessage("request body");
+    logMessage('request body');
     logMessage(JSON.stringify(data));
 
     const response = await axios.post(
@@ -31,8 +31,8 @@ export async function sendTransaction(
       {
         timeout: 600000,
         headers: {
-          "x-api-key": this.apiKey,
-          "Content-Type": "application/json;charset=utf-8",
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json;charset=utf-8',
           version: config.PACKAGE_VERSION,
         },
       }
@@ -61,7 +61,7 @@ export async function sendTransaction(
     const error: any = {};
     error.code = result.flag || result.code;
     error.message =
-      result.log || result.message || "Error in native meta api call";
+      result.log || result.message || 'Error in native meta api call';
     return {
       error: error.toString(),
       transcionId: result.data.transactionId,
@@ -70,7 +70,7 @@ export async function sendTransaction(
     logErrorMessage(error);
     if (error.response) {
       return error.response.data;
-    };
+    }
     return error;
   }
 }
