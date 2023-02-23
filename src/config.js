@@ -36,20 +36,20 @@ config.DEFAULT_DESCRIPTION = "Smart Contract Interaction";
 config.DAI = "DAI_Permit";
 config.EIP2612 = "EIP2612_Permit";
 config.EIP712_WALLET_TX_TYPE = {
-    // "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 targetTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
-    WalletTx: [
-      { type: "address", name: "to" },
-      { type: "uint256", name: "value" },
-      { type: "bytes", name: "data" },
-      { type: "uint8", name: "operation" },
-      { type: "uint256", name: "targetTxGas" },
-      { type: "uint256", name: "baseGas" },
-      { type: "uint256", name: "gasPrice" },
-      { type: "address", name: "gasToken" },
-      { type: "address", name: "refundReceiver" },
-      { type: "uint256", name: "nonce" },
-    ],
-  };
+	// "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 targetTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
+	WalletTx: [
+		{ type: "address", name: "to" },
+		{ type: "uint256", name: "value" },
+		{ type: "bytes", name: "data" },
+		{ type: "uint8", name: "operation" },
+		{ type: "uint256", name: "targetTxGas" },
+		{ type: "uint256", name: "baseGas" },
+		{ type: "uint256", name: "gasPrice" },
+		{ type: "address", name: "gasToken" },
+		{ type: "address", name: "refundReceiver" },
+		{ type: "uint256", name: "nonce" },
+	],
+};
 
 config.handleSignedTxUrl = `/api/${config.version2}/meta-tx/sendSignedTx`;
 config.logsEnabled = false;
@@ -64,7 +64,7 @@ const EVENTS = {
 
 const RESPONSE_CODES = {
 	ERROR_RESPONSE: 'B500',
-	API_NOT_FOUND : 'B501',
+	API_NOT_FOUND: 'B501',
 	USER_CONTRACT_NOT_FOUND: 'B502',
 	USER_NOT_LOGGED_IN: 'B503',
 	USER_ACCOUNT_NOT_FOUND: 'B504',
@@ -76,32 +76,33 @@ const RESPONSE_CODES = {
 	INVALID_PAYLOAD: 'B510',
 	DASHBOARD_DATA_MISMATCH: 'B511',
 	SUCCESS_RESPONSE: 'B200',
-	USER_CONTRACT_CREATION_FAILED:'B512',
+	USER_CONTRACT_CREATION_FAILED: 'B512',
 	EVENT_NOT_SUPPORTED: 'B513',
 	INVALID_DATA: 'B514',
 	INVALID_OPERATION: 'B515',
 	WRONG_ABI: 'B516',
-	CONDITIONS_NOT_SATISFIED: 'B517'
+	CONDITIONS_NOT_SATISFIED: 'B517',
+	GAS_CAP_LIMIT_EXECEED: 'B518'
 };
 
 // could get these from sys info call
 config.forwardRequestType = [
-    {name:'from',type:'address'},
-    {name:'to',type:'address'},
-    {name:'token',type:'address'},
-    {name:'txGas',type:'uint256'},
-    {name:'tokenGasPrice',type:'uint256'},
-    {name:'batchId',type:'uint256'},
-    {name:'batchNonce',type:'uint256'},
-    {name:'deadline',type:'uint256'},
-    {name:'data',type:'bytes'}
+	{ name: 'from', type: 'address' },
+	{ name: 'to', type: 'address' },
+	{ name: 'token', type: 'address' },
+	{ name: 'txGas', type: 'uint256' },
+	{ name: 'tokenGasPrice', type: 'uint256' },
+	{ name: 'batchId', type: 'uint256' },
+	{ name: 'batchNonce', type: 'uint256' },
+	{ name: 'deadline', type: 'uint256' },
+	{ name: 'data', type: 'bytes' }
 ];
 
 config.customForwardRequestType = [
-	{name:'warning',type:'string'},
-	{name:'info',type:'string'},
-    {name:'action',type:'string'},
-    {name:'request',type:'ERC20ForwardRequest'},
+	{ name: 'warning', type: 'string' },
+	{ name: 'info', type: 'string' },
+	{ name: 'action', type: 'string' },
+	{ name: 'request', type: 'ERC20ForwardRequest' },
 ]
 
 config.daiPermitType = [
@@ -110,7 +111,7 @@ config.daiPermitType = [
 	{ name: "nonce", type: "uint256" },
 	{ name: "expiry", type: "uint256" },
 	{ name: "allowed", type: "bool" },
-  ];
+];
 
 config.eip2612PermitType = [
 	{ name: "owner", type: "address" },
@@ -118,7 +119,7 @@ config.eip2612PermitType = [
 	{ name: "value", type: "uint256" },
 	{ name: "nonce", type: "uint256" },
 	{ name: "deadline", type: "uint256" },
-  ];
+];
 
 // This domain type is used in Permit Client where chainId needs to be preserved
 config.domainType = [
@@ -126,14 +127,15 @@ config.domainType = [
 	{ name: "version", type: "string" },
 	{ name: "chainId", type: "uint256" },
 	{ name: "verifyingContract", type: "address" },
-  ];
+];
 
 const BICONOMY_RESPONSE_CODES = {
-	SUCCESS : 200,
+	SUCCESS: 200,
 	ACTION_COMPLETE: 143,
 	USER_CONTRACT_NOT_FOUND: 148,
 	ERROR_RESPONSE: 144,
-	CONDITIONS_NOT_SATISFIED: 400
+	CONDITIONS_NOT_SATISFIED: 400,
+	GAS_CAP_LIMIT_EXECEED: 145
 };
 
 const HTTP_CODES = {
@@ -156,8 +158,8 @@ const RESPONSE_BODY_CODES = {
 
 const STATUS = {
 	INIT: 'init',
-	BICONOMY_READY:'biconomy_ready',
-	NO_DATA:'no_data'
+	BICONOMY_READY: 'biconomy_ready',
+	NO_DATA: 'no_data'
 };
 
 config.SCW = "SCW";

@@ -87,26 +87,26 @@ function Biconomy(provider, options) {
   this.originalProvider = provider;
   this.isEthersProviderPresent = false;
   this.canSignMessages = false;
-  
+
   if (options.debug) {
     config.logsEnabled = true;
   }
-  
-  if(options.walletProvider) {
-    if(isEthersProvider(options.walletProvider)) {
+
+  if (options.walletProvider) {
+    if (isEthersProvider(options.walletProvider)) {
       throw new Error("Wallet Provider in options can't be an ethers provider. Please pass the provider you get from your wallet directly.")
     }
     this.walletProvider = new ethers.providers.Web3Provider(options.walletProvider);
   }
-  
+
   if (provider) {
-    if(isEthersProvider(provider)) {
+    if (isEthersProvider(provider)) {
       this.ethersProvider = provider;
       this.isEthersProviderPresent = true;
     } else {
       this.ethersProvider = new ethers.providers.Web3Provider(provider);
     }
-      
+
     _init(this.apiKey, this);
     const proto = Object.getPrototypeOf(provider);
     const keys = Object.getOwnPropertyNames(proto);
@@ -134,13 +134,13 @@ function Biconomy(provider, options) {
       }
 
       if (payload.method == "eth_sendTransaction") {
-        return new Promise((resolve, reject)=>{
+        return new Promise((resolve, reject) => {
           handleSendTransaction(this, payload, (error, result) => {
             let response = this._createJsonRpcResponse(payload, error, result);
             if (cb && !self.isEthersProviderPresent) {
               cb(error, response);
             }
-            if(response.error) {
+            if (response.error) {
               reject(response.error);
             } else {
               resolve(response.result);
@@ -148,13 +148,13 @@ function Biconomy(provider, options) {
           });
         });
       } else if (payload.method == "eth_sendRawTransaction") {
-        return new Promise((resolve, reject)=>{
+        return new Promise((resolve, reject) => {
           sendSignedTransaction(this, payload, (error, result) => {
             let response = this._createJsonRpcResponse(payload, error, result);
             if (cb && !self.isEthersProviderPresent) {
               cb(error, response);
             }
-            if(response.error) {
+            if (response.error) {
               reject(response.error);
             } else {
               resolve(response.result);
@@ -223,11 +223,11 @@ function Biconomy(provider, options) {
               payload.method,
               payload.params
             );
-            if(self.isEthersProviderPresent) {
+            if (self.isEthersProviderPresent) {
               try {
                 let localResult = await self.originalProvider.send(jsonRPCPaylod.method, jsonRPCPaylod.params);
                 resolve(localResult);
-              } catch(error) {
+              } catch (error) {
                 reject(error);
               }
             } else {
@@ -259,7 +259,7 @@ function Biconomy(provider, options) {
   }
 }
 
-Biconomy.prototype.getSignerByAddress = function(userAddress) {
+Biconomy.prototype.getSignerByAddress = function (userAddress) {
   let provider = this.getEthersProvider();
   let signer = provider.getSigner();
   signer = signer.connectUnchecked();
@@ -269,7 +269,7 @@ Biconomy.prototype.getSignerByAddress = function(userAddress) {
   return signer;
 }
 
-Biconomy.prototype.getEthersProvider = function() {
+Biconomy.prototype.getEthersProvider = function () {
   return new ethers.providers.Web3Provider(this);
 }
 
@@ -284,203 +284,203 @@ Biconomy.prototype.getForwardRequestAndMessageToSign = function (
   cb
 ) {
   try {
-  let engine = this;
-  return new Promise(async (resolve, reject) => {
-    if (rawTransaction) {
-      let decodedTx = txDecoder.decodeTx(rawTransaction);
-      if (decodedTx.to && decodedTx.data && decodedTx.value) {
-        let to = decodedTx.to.toLowerCase();
-        let methodInfo = decodeMethod(to, decodedTx.data);
-        if (!methodInfo) {
-          let error = formatMessage(
-            RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
-            `Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`
-          );
-          if (cb) cb(error);
+    let engine = this;
+    return new Promise(async (resolve, reject) => {
+      if (rawTransaction) {
+        let decodedTx = txDecoder.decodeTx(rawTransaction);
+        if (decodedTx.to && decodedTx.data && decodedTx.value) {
+          let to = decodedTx.to.toLowerCase();
+          let methodInfo = decodeMethod(to, decodedTx.data);
+          if (!methodInfo) {
+            let error = formatMessage(
+              RESPONSE_CODES.DASHBOARD_DATA_MISMATCH,
+              `Smart Contract address registered on dashboard is different than what is sent(${decodedTx.to}) in current transaction`
+            );
+            if (cb) cb(error);
 
-          return reject(error);
-        }
-        let methodName = methodInfo.name;
-        //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
-        let token = tokenAddress ? tokenAddress : engine.daiTokenAddress;
-        _logMessage(tokenAddress);
-        let api = engine.dappAPIMap[to]
-          ? engine.dappAPIMap[to][methodName]
-          : undefined;
-        let metaTxApproach;
-        if (!api) {
-          api = engine.dappAPIMap[config.SCW]
-            ? engine.dappAPIMap[config.SCW][methodName]
-            : undefined;
-          metaTxApproach = smartContractMetaTransactionMap[config.SCW];
-        } else {
-          let contractAddr = api.contractAddress.toLowerCase();
-          metaTxApproach = smartContractMetaTransactionMap[contractAddr];
-        }
-
-        if (!api) {
-          _logMessage(`API not found for method ${methodName}`);
-          let error = formatMessage(
-            RESPONSE_CODES.API_NOT_FOUND,
-            `No API found on dashboard for called method ${methodName}`
-          );
-          if (cb) cb(error);
-          return reject(error);
-        }
-        _logMessage("API found");
-
-        let parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
-        let account = parsedTransaction.from;
-
-        _logMessage(`Signer is ${account}`);
-        let gasLimit = decodedTx.gasLimit;
-        let gasLimitNum;
-
-        if (!gasLimit || parseInt(gasLimit) == 0) {
-          let contractABI = smartContractMap[to];
-          if (contractABI) {
-            let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
-            try {
-            gasLimit = await contract.estimateGas[methodInfo.signature](...methodInfo.args, { from: account });
-            } catch(err) {
-              return reject(err);
-            }
-            // Do not send this value in API call. only meant for txGas
-            gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
-              .add(ethers.BigNumber.from(5000))
-              .toNumber();
-            _logMessage(`Gas limit number ${gasLimitNum}`);
+            return reject(error);
           }
-        } else {
-          gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
-        }
-
-        if (!account) {
-          let error = formatMessage(
-            RESPONSE_CODES.ERROR_RESPONSE,
-            `Not able to get user account from signed transaction`
-          );
-          return end(error);
-        }
-
-        let request, cost, forwarderToUse;
-        if (metaTxApproach == engine.TRUSTED_FORWARDER) {
-
-          forwarderToUse = await findTheRightForwarder(engine,to);
-
-          //Attach the forwarder with right address
-
-          
-          request = (
-            await buildForwardTxRequest(
-              account,
-              to,
-              gasLimitNum,
-              decodedTx.data,
-              biconomyForwarder.attach(forwarderToUse),
-              customBatchId
-            )
-          ).request;
-        } else if (metaTxApproach == engine.ERC20_FORWARDER) {
+          let methodName = methodInfo.name;
           //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
-          let buildTxResponse = await engine.erc20ForwarderClient.buildTx({
-            userAddress: account,
-            to,
-            txGas: gasLimitNum,
-            data: decodedTx.data,
-            token
-          });
-          if (buildTxResponse) {
-            request = buildTxResponse.request;
-            cost = buildTxResponse.cost;
+          let token = tokenAddress ? tokenAddress : engine.daiTokenAddress;
+          _logMessage(tokenAddress);
+          let api = engine.dappAPIMap[to]
+            ? engine.dappAPIMap[to][methodName]
+            : undefined;
+          let metaTxApproach;
+          if (!api) {
+            api = engine.dappAPIMap[config.SCW]
+              ? engine.dappAPIMap[config.SCW][methodName]
+              : undefined;
+            metaTxApproach = smartContractMetaTransactionMap[config.SCW];
           } else {
-            reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Unable to build forwarder request"));
+            let contractAddr = api.contractAddress.toLowerCase();
+            metaTxApproach = smartContractMetaTransactionMap[contractAddr];
           }
+
+          if (!api) {
+            _logMessage(`API not found for method ${methodName}`);
+            let error = formatMessage(
+              RESPONSE_CODES.API_NOT_FOUND,
+              `No API found on dashboard for called method ${methodName}`
+            );
+            if (cb) cb(error);
+            return reject(error);
+          }
+          _logMessage("API found");
+
+          let parsedTransaction = ethers.utils.parseTransaction(rawTransaction);
+          let account = parsedTransaction.from;
+
+          _logMessage(`Signer is ${account}`);
+          let gasLimit = decodedTx.gasLimit;
+          let gasLimitNum;
+
+          if (!gasLimit || parseInt(gasLimit) == 0) {
+            let contractABI = smartContractMap[to];
+            if (contractABI) {
+              let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
+              try {
+                gasLimit = await contract.estimateGas[methodInfo.signature](...methodInfo.args, { from: account });
+              } catch (err) {
+                return reject(err);
+              }
+              // Do not send this value in API call. only meant for txGas
+              gasLimitNum = ethers.BigNumber.from(gasLimit.toString())
+                .add(ethers.BigNumber.from(5000))
+                .toNumber();
+              _logMessage(`Gas limit number ${gasLimitNum}`);
+            }
+          } else {
+            gasLimitNum = ethers.BigNumber.from(gasLimit.toString()).toNumber();
+          }
+
+          if (!account) {
+            let error = formatMessage(
+              RESPONSE_CODES.ERROR_RESPONSE,
+              `Not able to get user account from signed transaction`
+            );
+            return end(error);
+          }
+
+          let request, cost, forwarderToUse;
+          if (metaTxApproach == engine.TRUSTED_FORWARDER) {
+
+            forwarderToUse = await findTheRightForwarder(engine, to);
+
+            //Attach the forwarder with right address
+
+
+            request = (
+              await buildForwardTxRequest(
+                account,
+                to,
+                gasLimitNum,
+                decodedTx.data,
+                biconomyForwarder.attach(forwarderToUse),
+                customBatchId
+              )
+            ).request;
+          } else if (metaTxApproach == engine.ERC20_FORWARDER) {
+            //token address needs to be passed otherwise fees will be charged in DAI by default, given DAI permit is given
+            let buildTxResponse = await engine.erc20ForwarderClient.buildTx({
+              userAddress: account,
+              to,
+              txGas: gasLimitNum,
+              data: decodedTx.data,
+              token
+            });
+            if (buildTxResponse) {
+              request = buildTxResponse.request;
+              cost = buildTxResponse.cost;
+            } else {
+              reject(formatMessage(RESPONSE_CODES.ERROR_RESPONSE, "Unable to build forwarder request"));
+            }
+          } else {
+            let error = formatMessage(
+              RESPONSE_CODES.INVALID_OPERATION,
+              `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`
+            );
+            if (cb) cb(error);
+            return reject(error);
+          }
+
+          _logMessage("Forward Request is: ");
+          _logMessage(request);
+
+
+
+          // Update the verifyingContract field of domain data based on the current request
+          forwarderDomainData.verifyingContract = forwarderToUse;
+          let domainDataToUse = forwarderDomainDetails[forwarderToUse];
+
+          if (customDomainName) {
+            domainDataToUse.name = customDomainName.toString();
+          }
+
+          if (customDomainVersion) {
+            domainDataToUse.version = customDomainVersion.toString();
+          }
+
+          const eip712DataToSign = {
+            types: {
+              EIP712Domain: forwarderDomainType,
+              ERC20ForwardRequest: forwardRequestType,
+            },
+            domain: domainDataToUse,
+            primaryType: "ERC20ForwardRequest",
+            message: request,
+          };
+
+          const hashToSign = abi.soliditySHA3(
+            [
+              "address",
+              "address",
+              "address",
+              "uint256",
+              "uint256",
+              "uint256",
+              "uint256",
+              "uint256",
+              "bytes32",
+            ],
+            [
+              request.from,
+              request.to,
+              request.token,
+              request.txGas,
+              request.tokenGasPrice,
+              request.batchId,
+              request.batchNonce,
+              request.deadline,
+              ethers.utils.keccak256(request.data),
+            ]
+          );
+
+          const dataToSign = {
+            eip712Format: eip712DataToSign,
+            personalSignatureFormat: hashToSign,
+            request: request,
+            cost: cost
+          };
+
+          if (cb) cb(null, dataToSign);
+
+          return resolve(dataToSign);
         } else {
           let error = formatMessage(
-            RESPONSE_CODES.INVALID_OPERATION,
-            `Smart contract is not registered in the dashboard for this meta transaction approach. Kindly use biconomy.getUserMessageToSign`
+            RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,
+            `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`
           );
           if (cb) cb(error);
+
           return reject(error);
         }
-
-        _logMessage("Forward Request is: ");
-        _logMessage(request);
-
-
-
-        // Update the verifyingContract field of domain data based on the current request
-        forwarderDomainData.verifyingContract = forwarderToUse;
-        let domainDataToUse = forwarderDomainDetails[forwarderToUse];
-
-        if(customDomainName) {
-          domainDataToUse.name = customDomainName.toString();
-        }
-
-        if(customDomainVersion) {
-          domainDataToUse.version = customDomainVersion.toString();
-        }
-
-        const eip712DataToSign = {
-          types: {
-            EIP712Domain: forwarderDomainType,
-            ERC20ForwardRequest: forwardRequestType,
-          },
-          domain: domainDataToUse,
-          primaryType: "ERC20ForwardRequest",
-          message: request,
-        };
-
-        const hashToSign = abi.soliditySHA3(
-          [
-            "address",
-            "address",
-            "address",
-            "uint256",
-            "uint256",
-            "uint256",
-            "uint256",
-            "uint256",
-            "bytes32",
-          ],
-          [
-            request.from,
-            request.to,
-            request.token,
-            request.txGas,
-            request.tokenGasPrice,
-            request.batchId,
-            request.batchNonce,
-            request.deadline,
-            ethers.utils.keccak256(request.data),
-          ]
-        );
-
-        const dataToSign = {
-          eip712Format: eip712DataToSign,
-          personalSignatureFormat: hashToSign,
-          request: request,
-          cost: cost
-        };
-
-        if (cb) cb(null, dataToSign);
-
-        return resolve(dataToSign);
-      } else {
-        let error = formatMessage(
-          RESPONSE_CODES.BICONOMY_NOT_INITIALIZED,
-          `Decoders not initialized properly in mexa sdk. Make sure your have smart contracts registered on Mexa Dashboard`
-        );
-        if (cb) cb(error);
-
-        return reject(error);
       }
-    }
-  });
-} catch(error) {
-  return end(error);
-}
+    });
+  } catch (error) {
+    return end(error);
+  }
 };
 
 /**
@@ -691,17 +691,17 @@ async function sendSignedTransaction(engine, payload, end) {
 
             paramArray.push(request);
 
-            let forwarderToUse = await findTheRightForwarder(engine,to);
+            let forwarderToUse = await findTheRightForwarder(engine, to);
 
             //Update the verifyingContract in domain data
             forwarderDomainData.verifyingContract = forwarderToUse;
             let domainDataToUse = forwarderDomainDetails[forwarderToUse];
 
-            if(customDomainName) {
+            if (customDomainName) {
               domainDataToUse.name = customDomainName.toString();
             }
-    
-            if(customDomainVersion) {
+
+            if (customDomainVersion) {
               domainDataToUse.version = customDomainVersion.toString();
             }
 
@@ -847,40 +847,40 @@ async function handleSendTransaction(engine, payload, end) {
 
         //Sanitise gas limit here. big number / hex / number -> hex
         let gasLimit = payload.params[0].gas || payload.params[0].gasLimit;
-        if(gasLimit) {
-        gasLimit = ethers.BigNumber.from(gasLimit.toString()).toHexString();
+        if (gasLimit) {
+          gasLimit = ethers.BigNumber.from(gasLimit.toString()).toHexString();
         }
         let txGas = payload.params[0].txGas;
         let signatureType = payload.params[0].signatureType;
-        if(payload.params[0].batchId){
-        customBatchId = Number(payload.params[0].batchId);
+        if (payload.params[0].batchId) {
+          customBatchId = Number(payload.params[0].batchId);
         }
 
-        if(payload.params[0].webHookAttributes){
-        webHookAttributes = payload.params[0].webHookAttributes;
+        if (payload.params[0].webHookAttributes) {
+          webHookAttributes = payload.params[0].webHookAttributes;
         }
 
-        if(payload.params[0].domainName){
+        if (payload.params[0].domainName) {
           customDomainName = payload.params[0].domainName;
         }
 
-        if(payload.params[0].domainVersion){
+        if (payload.params[0].domainVersion) {
           customDomainVersion = payload.params[0].domainVersion;
         }
 
-        if(payload.params[0].signTypedDataType) {
+        if (payload.params[0].signTypedDataType) {
           signTypedDataType = payload.params[0].signTypedDataType;
         }
 
         _logMessage(payload.params[0]);
         _logMessage(api);
         _logMessage(`gas limit : ${gasLimit}`);
-        if(txGas){
-        _logMessage(`tx gas supplied : ${txGas}`);
+        if (txGas) {
+          _logMessage(`tx gas supplied : ${txGas}`);
         }
 
         if (!api) {
-          
+
           _logMessage(`API not found for method ${methodName}`);
           _logMessage(`Strict mode ${engine.strictMode}`);
           if (engine.strictMode) {
@@ -930,16 +930,16 @@ async function handleSendTransaction(engine, payload, end) {
 
             let signatureFromPayload = payload.params[0].signature;
             // Check if txGas is present, if not calculate gas limit for txGas
-            
+
             if (!txGas || parseInt(txGas) == 0) {
               let contractABI = smartContractMap[to];
               if (contractABI) {
                 let contract = new ethers.Contract(to, JSON.parse(contractABI), engine.ethersProvider);
                 txGas = await contract.estimateGas[methodInfo.signature](...methodInfo.args, { from: account });
-                 // do not send this value in API call. only meant for txGas
+                // do not send this value in API call. only meant for txGas
                 gasLimitNum = ethers.BigNumber.from(txGas.toString())
-                 .add(ethers.BigNumber.from(5000))
-                 .toNumber();
+                  .add(ethers.BigNumber.from(5000))
+                  .toNumber();
 
                 _logMessage(`Gas limit (txGas) calculated for method ${methodName} in SDK: ${gasLimitNum}`);
               }
@@ -959,7 +959,7 @@ async function handleSendTransaction(engine, payload, end) {
               _logMessage("gas limit number for txGas " + gasLimitNum);
             }
 
-            let forwarderToAttach = await findTheRightForwarder(engine,to);
+            let forwarderToAttach = await findTheRightForwarder(engine, to);
 
             const request = (
               await buildForwardTxRequest(
@@ -978,11 +978,11 @@ async function handleSendTransaction(engine, payload, end) {
             forwarderDomainData.verifyingContract = forwarderToAttach;
             let domainDataToUse = forwarderDomainDetails[forwarderToAttach];
 
-            if(customDomainName) {
+            if (customDomainName) {
               domainDataToUse.name = customDomainName.toString();
             }
-    
-            if(customDomainVersion) {
+
+            if (customDomainVersion) {
               domainDataToUse.version = customDomainVersion.toString();
             }
 
@@ -1125,11 +1125,11 @@ async function callDefaultProvider(engine, payload, callback, errorMessage) {
 
 function _getEIP712ForwardMessageToSign(request, forwarder, domainData) {
   // Update the verifyingContract field of domain data based on the current request
-  if(!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder) {
+  if (!forwarderDomainType || !forwardRequestType || !forwarderDomainData || !forwarder) {
     throw new Error("Biconomy is not properly initialized");
   }
 
-  if(!forwarderDomainDetails || Object.keys(forwarderDomainDetails).length === 0) {
+  if (!forwarderDomainDetails || Object.keys(forwarderDomainDetails).length === 0) {
     throw new Error("Biconomy is not properly initialized");
   }
 
@@ -1178,13 +1178,13 @@ function _getPersonalForwardMessageToSign(request) {
 
 function getTargetProvider(engine) {
   let provider;
-  if(engine) {
+  if (engine) {
     provider = engine.originalProvider;
-    if(!engine.canSignMessages) {
-      if(!engine.walletProvider) {
+    if (!engine.canSignMessages) {
+      if (!engine.walletProvider) {
         //comment this out and just log
         //throw new Error(`Please pass a provider connected to a wallet that can sign messages in Biconomy options.`);
-        _logMessage("Please pass a provider connected to a wallet that can sign messages in Biconomy options");      
+        _logMessage("Please pass a provider connected to a wallet that can sign messages in Biconomy options");
       } else {
         provider = engine.walletProvider;
       }
@@ -1195,9 +1195,9 @@ function getTargetProvider(engine) {
 
 function getSignatureParameters(signature) {
   if (!ethers.utils.isHexString(signature)) {
-      throw new Error(
-          'Given value "'.concat(signature, '" is not a valid hex string.')
-      );
+    throw new Error(
+      'Given value "'.concat(signature, '" is not a valid hex string.')
+    );
   }
   var r = signature.slice(0, 66);
   var s = "0x".concat(signature.slice(66, 130));
@@ -1205,9 +1205,9 @@ function getSignatureParameters(signature) {
   v = ethers.BigNumber.from(v).toNumber();
   if (![27, 28].includes(v)) v += 27;
   return {
-      r: r,
-      s: s,
-      v: v
+    r: r,
+    s: s,
+    v: v
   };
 }
 
@@ -1266,23 +1266,23 @@ async function findTheRightForwarder(engine, to) {
 function getSignatureEIP712(engine, account, request, forwarder, domainData, type) {
   //default V4 now   
   let signTypedDataType = "eth_signTypedData_v4";
-  if(type === "v3" || type === "V3") {
+  if (type === "v3" || type === "V3") {
     signTypedDataType = "eth_signTypedData_v3";
   }
   const dataToSign = _getEIP712ForwardMessageToSign(request, forwarder, domainData);
   let targetProvider = getTargetProvider(engine);
-  if(!targetProvider){
+  if (!targetProvider) {
     throw new Error(`Unable to get provider information passed to Biconomy`);
   }
   const promise = new Promise(async function (resolve, reject) {
-    if(targetProvider) {
-      if(isEthersProvider(targetProvider)) {
-        try{
-        let signature = await targetProvider.send(signTypedDataType, [account, dataToSign]);
-        let { r, s, v } = getSignatureParameters(signature);
-        v = ethers.BigNumber.from(v).toHexString();
-        let newSignature = r + s.slice(2) + v.slice(2);
-        resolve(newSignature);
+    if (targetProvider) {
+      if (isEthersProvider(targetProvider)) {
+        try {
+          let signature = await targetProvider.send(signTypedDataType, [account, dataToSign]);
+          let { r, s, v } = getSignatureParameters(signature);
+          v = ethers.BigNumber.from(v).toHexString();
+          let newSignature = r + s.slice(2) + v.slice(2);
+          resolve(newSignature);
         } catch (error) {
           reject(error);
         }
@@ -1323,18 +1323,18 @@ async function getSignaturePersonal(engine, req) {
   let signature;
   let targetProvider = getTargetProvider(engine);
 
-  if(!targetProvider){
+  if (!targetProvider) {
     throw new Error(`Unable to get provider information passed to Biconomy`);
   }
 
   let providerWithSigner;
 
-  if(isEthersProvider(targetProvider)) {
+  if (isEthersProvider(targetProvider)) {
     providerWithSigner = targetProvider;
   } else {
     providerWithSigner = new ethers.providers.Web3Provider(targetProvider);
   }
-  
+
   let signer = providerWithSigner.getSigner();
   const promise = new Promise(async function (resolve, reject) {
     try {
@@ -1423,7 +1423,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
       engine.options.transferHandlerAddress || engine.transferHandlerAddress;
 
     // Has to be biconomy wrapped provider in order to make gasless calls!
-    if(engine.walletFactoryAddress) {
+    if (engine.walletFactoryAddress) {
       engine.biconomyWalletClient = new BiconomyWalletClient({
         biconomyProvider: engine,
         provider: ethersProvider,
@@ -1486,7 +1486,7 @@ eventEmitter.on(EVENTS.HELPER_CLENTS_READY, async (engine) => {
         networkId: engine.networkId,
         provider: ethersProvider,
         targetProvider: targetProvider,
-        forwarderDomainData : requiredDomainData,
+        forwarderDomainData: requiredDomainData,
         forwarderDomainDetails,
         forwarderDomainType,
         erc20Forwarder,
@@ -1537,7 +1537,7 @@ function _getUserAccount(engine, payload, cb) {
           params: [],
         },
         (error, response) => {
-            cb(error, response);
+          cb(error, response);
         }
       );
     } else {
@@ -1612,7 +1612,7 @@ async function _sendTransaction(engine, account, api, data, cb, payload) {
           result.flag != BICONOMY_RESPONSE_CODES.SUCCESS
         ) {
           // check if conditions not met error code
-          if(result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
+          if (result.code == BICONOMY_RESPONSE_CODES.CONDITIONS_NOT_SATISFIED) {
             if (engine.strictMode) {
               let error = formatMessage(
                 RESPONSE_CODES.CONDITIONS_NOT_SATISFIED,
@@ -1632,6 +1632,29 @@ async function _sendTransaction(engine, account, api, data, cb, payload) {
               }
             }
           }
+
+          if (result.code == BICONOMY_RESPONSE_CODES.GAS_CAP_LIMIT_EXECEED) {
+            if (engine.strictMode) {
+              let error = formatMessage(
+                RESPONSE_CODES.GAS_CAP_LIMIT_EXECEED,
+                result.message ? result.message : "Gas Cap Limit exceeded"
+              );
+              return cb(error);
+            } else {
+              _logMessage(
+                "Strict mode is off so falling back to default provider for handling transaction"
+              );
+
+              try {
+                return callDefaultProvider(engine, payload, cb, result.message ? result.message : "Gas Cap Limit exceeded");
+              }
+              catch (error) {
+                return cb(error);
+              }
+            }
+          }
+
+
           //Any error from relayer infra
           //TODO
           //Involve fallback here with callDefaultProvider
@@ -1850,7 +1873,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
             )
           );
         }
-        
+
         // check if Valid trusted forwarder address is present from system info
 
         if (engine.forwarderAddress && engine.forwarderAddress != "") {
@@ -1858,7 +1881,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
           // prevent initialising it here as system info could return an array of forwarder addresses
           biconomyForwarder = new ethers.Contract(
             //pick up first forwarder address from the array by default then attach to an address accordingly
-            engine.forwarderAddress, 
+            engine.forwarderAddress,
             biconomyForwarderAbi,
             engine.ethersProvider
           );
@@ -1882,7 +1905,7 @@ async function onNetworkId(engine, { providerNetworkId, dappNetworkId, apiKey, d
               smartContractList &&
               smartContractList.length > 0
             ) {
-              
+
               smartContractList.forEach((contract) => {
                 let contractInterface = new ethers.utils.Interface(JSON.parse(contract.abi));
                 if (contract.type === config.SCW) {
