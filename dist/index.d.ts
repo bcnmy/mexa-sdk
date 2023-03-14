@@ -80,7 +80,7 @@ export declare class Biconomy extends EventEmitter {
      * and initialize the decoders for each smart
      * contract which will be used to decode information during function calls.
      * */
-    init(): Promise<unknown>;
+    init(): Promise<any>;
     getDappData(): Promise<void>;
     getTransactionStatus(transactionId: string): Promise<any>;
 }
