@@ -1,4 +1,4 @@
-import type { Biconomy } from "..";
+import type { Biconomy } from '..';
 /**
  * Method to send the transaction to biconomy server and call the callback method
  * to pass the result of meta transaction to web3 function call.

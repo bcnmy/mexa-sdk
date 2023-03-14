@@ -30,13 +30,13 @@ function sendTransaction(account, data, fallback) {
             if (!this || !account || !data) {
                 return undefined;
             }
-            (0, utils_1.logMessage)("request body");
+            (0, utils_1.logMessage)('request body');
             (0, utils_1.logMessage)(JSON.stringify(data));
             const response = yield axios_1.default.post(`${config_1.config.metaEntryPointBaseUrl}/api/v1/native`, data, {
                 timeout: 600000,
                 headers: {
-                    "x-api-key": this.apiKey,
-                    "Content-Type": "application/json;charset=utf-8",
+                    'x-api-key': this.apiKey,
+                    'Content-Type': 'application/json;charset=utf-8',
                     version: config_1.config.PACKAGE_VERSION,
                 },
             });
@@ -61,7 +61,7 @@ function sendTransaction(account, data, fallback) {
             const error = {};
             error.code = result.flag || result.code;
             error.message =
-                result.log || result.message || "Error in native meta api call";
+                result.log || result.message || 'Error in native meta api call';
             return {
                 error: error.toString(),
                 transcionId: result.data.transactionId,
@@ -72,7 +72,6 @@ function sendTransaction(account, data, fallback) {
             if (error.response) {
                 return error.response.data;
             }
-            ;
             return error;
         }
     });
