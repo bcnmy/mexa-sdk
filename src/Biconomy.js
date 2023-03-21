@@ -92,11 +92,12 @@ function Biconomy(provider, options) {
     config.logsEnabled = true;
   }
   
-  if(options.walletProvider) {
-    if(isEthersProvider(options.walletProvider)) {
-      throw new Error("Wallet Provider in options can't be an ethers provider. Please pass the provider you get from your wallet directly.")
+  if (options.walletProvider) {
+    if (isEthersProvider(options.walletProvider)) {
+      this.walletProvider = options.walletProvider;
+    } else {
+      this.walletProvider = new ethers.providers.Web3Provider(options.walletProvider);
     }
-    this.walletProvider = new ethers.providers.Web3Provider(options.walletProvider);
   }
   
   if (provider) {

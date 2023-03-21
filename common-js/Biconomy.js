@@ -19,17 +19,17 @@ var txDecoder = require("ethereum-tx-decoder");
 var abi = require("ethereumjs-abi");
 
 var _require = require("./util"),
-    toJSONRPCPayload = _require.toJSONRPCPayload;
+  toJSONRPCPayload = _require.toJSONRPCPayload;
 
 var _require2 = require("./abis"),
-    eip2771BaseAbi = _require2.eip2771BaseAbi;
+  eip2771BaseAbi = _require2.eip2771BaseAbi;
 
 var _require3 = require("./config"),
-    config = _require3.config,
-    RESPONSE_CODES = _require3.RESPONSE_CODES,
-    EVENTS = _require3.EVENTS,
-    BICONOMY_RESPONSE_CODES = _require3.BICONOMY_RESPONSE_CODES,
-    STATUS = _require3.STATUS;
+  config = _require3.config,
+  RESPONSE_CODES = _require3.RESPONSE_CODES,
+  EVENTS = _require3.EVENTS,
+  BICONOMY_RESPONSE_CODES = _require3.BICONOMY_RESPONSE_CODES,
+  STATUS = _require3.STATUS;
 
 var DEFAULT_PAYLOAD_ID = "99999999";
 var baseURL = config.baseURL;
@@ -43,22 +43,22 @@ var ERC20ForwarderClient = require("./ERC20ForwarderClient");
 var BiconomyWalletClient = require("./BiconomyWalletClient");
 
 var _require4 = require("./biconomyforwarder"),
-    buildForwardTxRequest = _require4.buildForwardTxRequest,
-    getDomainSeperator = _require4.getDomainSeperator;
+  buildForwardTxRequest = _require4.buildForwardTxRequest,
+  getDomainSeperator = _require4.getDomainSeperator;
 
 var _require5 = require("./abis"),
-    erc20ForwarderAbi = _require5.erc20ForwarderAbi,
-    oracleAggregatorAbi = _require5.oracleAggregatorAbi,
-    feeManagerAbi = _require5.feeManagerAbi,
-    biconomyForwarderAbi = _require5.biconomyForwarderAbi,
-    transferHandlerAbi = _require5.transferHandlerAbi;
+  erc20ForwarderAbi = _require5.erc20ForwarderAbi,
+  oracleAggregatorAbi = _require5.oracleAggregatorAbi,
+  feeManagerAbi = _require5.feeManagerAbi,
+  biconomyForwarderAbi = _require5.biconomyForwarderAbi,
+  transferHandlerAbi = _require5.transferHandlerAbi;
 
 var fetch = require("cross-fetch");
 
 var interfaceMap = {},
-    smartContractMap = {},
-    smartContractMetaTransactionMap = {},
-    smartContractTrustedForwarderMap = {};
+  smartContractMap = {},
+  smartContractMetaTransactionMap = {},
+  smartContractTrustedForwarderMap = {};
 var biconomyForwarder;
 
 var events = require("events");
@@ -111,10 +111,10 @@ function Biconomy(provider, options) {
 
   if (options.walletProvider) {
     if (isEthersProvider(options.walletProvider)) {
-      throw new Error("Wallet Provider in options can't be an ethers provider. Please pass the provider you get from your wallet directly.");
+      this.walletProvider = options.walletProvider;
+    } else {
+      this.walletProvider = new ethers.providers.Web3Provider(options.walletProvider);
     }
-
-    this.walletProvider = new ethers.providers.Web3Provider(options.walletProvider);
   }
 
   if (provider) {
@@ -1203,7 +1203,7 @@ function _handleSendTransaction() {
             forwarderToAttach = _context8.sent;
             _context8.next = 88;
             return buildForwardTxRequest(account, to, parseInt(gasLimitNum), //txGas
-            forwardedData, biconomyForwarder.attach(forwarderToAttach), customBatchId);
+              forwardedData, biconomyForwarder.attach(forwarderToAttach), customBatchId);
 
           case 88:
             request = _context8.sent.request;
@@ -1726,9 +1726,9 @@ function getSignatureEIP712(engine, account, request, forwarder, domainData, typ
                   var oldSignature = res.result;
 
                   var _getSignatureParamete2 = getSignatureParameters(oldSignature),
-                      _r = _getSignatureParamete2.r,
-                      _s = _getSignatureParamete2.s,
-                      _v = _getSignatureParamete2.v;
+                    _r = _getSignatureParamete2.r,
+                    _s = _getSignatureParamete2.s,
+                    _v = _getSignatureParamete2.v;
 
                   _v = ethers.BigNumber.from(_v).toHexString();
 
@@ -2420,7 +2420,7 @@ function _onNetworkId() {
                 //let supportedForwarders = engine.forwarderAddresses;
                 // prevent initialising it here as system info could return an array of forwarder addresses
                 biconomyForwarder = new ethers.Contract( //pick up first forwarder address from the array by default then attach to an address accordingly
-                engine.forwarderAddress, biconomyForwarderAbi, engine.ethersProvider);
+                  engine.forwarderAddress, biconomyForwarderAbi, engine.ethersProvider);
               } // Get dapps smart contract data from biconomy servers
 
 
